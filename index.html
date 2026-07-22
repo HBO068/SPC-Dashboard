@@ -320,6 +320,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if (s === null || s === undefined) return "";
     return String(s).replace(/\s+/g, ' ').trim();
   }
+  // Best-guess defaults for which direction is "good" — admin can override any of these
+  // individually in the Settings screen, this is just the starting point.
+  const DEFAULT_LOWER_BETTER = new Set(["Planning Turnaround Time (h)", "Re-handles", "Yard Clashes", "Average Traveling Distance"]);
 
   function findHeaderRow(sheet, XLSX){
     for (let r = 1; r <= 15; r++){
@@ -380,12 +383,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if (label === "Weight"){ weightAnchorRow = r; break; }
       if (label && label.toLowerCase().includes("target")){
         const byYear = {};
+        let isPercent = false;
         Object.keys(years).forEach(yr => {
           const c = getCell(sheet, r, years[yr], XLSX);
           const v = c ? c.v : null;
+          if (c && c.z && String(c.z).includes("%")) isPercent = true;
           if (v !== null && v !== undefined && v !== '' && v !== '*') byYear[yr] = v;
         });
-        targets.push({row:r, label, by_year: byYear});
+        targets.push({row:r, label, by_year: byYear, isPercent});
       }
       r++; safety++;
     }
@@ -517,7 +522,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsm file
   // XLSX: the SheetJS library object (window.XLSX in browser)
   function parseWorkbook(workbookArrayBuffer, XLSX){
-    const wb = XLSX.read(workbookArrayBuffer, {type:"array", cellFormula:true, cellDates:true, cellNF:false, cellText:false});
+    const wb = XLSX.read(workbookArrayBuffer, {type:"array", cellFormula:true, cellDates:true, cellNF:true, cellText:false});
     const dataSheetName = wb.SheetNames.find(n => /dashboards? data/i.test(n)) || wb.SheetNames.find(n=>/data/i.test(n));
     const setupsSheetName = wb.SheetNames.find(n => /setups?/i.test(n));
     if (!dataSheetName) throw new Error("Could not find a 'Dashboards Data' sheet in this file.");
@@ -563,14 +568,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         const cell = getCell(dataSheet, sampleRow, pcolIdx, XLSX);
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
       });
-      kpiMap[col] = {key: col, targets_by_year: t.by_year, weight: null, period_cols: periodCols, period_agg: periodAgg};
+      kpiMap[col] = {key: col, targets_by_year: t.by_year, weight: null, period_cols: periodCols, period_agg: periodAgg, isPercent: !!t.isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
     });
 
     // Planning Turnaround Time: use the '%' compliance-rate columns/target instead of '(h)' hours.
     const ptKey = Object.keys(kpiMap).find(k => k.toLowerCase().startsWith("planning turnaround"));
     if (ptKey){
       const pctTargetRow = setupsData.targets.find(t => /\(%\)/.test(t.label) && /planning turnaround/i.test(t.label));
-      if (pctTargetRow) kpiMap[ptKey].targets_by_year = pctTargetRow.by_year;
+      if (pctTargetRow){ kpiMap[ptKey].targets_by_year = pctTargetRow.by_year; kpiMap[ptKey].isPercent = !!pctTargetRow.isPercent; }
       const pctCols = findPctPeriodCols(rawHeaders);
       if (Object.values(pctCols).some(Boolean)){
         kpiMap[ptKey].period_cols = pctCols;
@@ -738,8 +743,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const logoImg = document.getElementById("brandLogo");
   if (logoImg && ASSETS.logo) logoImg.src = ASSETS.logo;
 
-  const LOWER_BETTER = new Set(["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"]);
-  function dirOf(key){ return LOWER_BETTER.has(key) ? "lower" : "higher"; }
+
   function targetFor(kpi, year){
     const ty = (kpi && kpi.targets_by_year) || {};
     if (ty[year] !== undefined && ty[year] !== null) return Number(ty[year]);
@@ -919,18 +923,32 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (v===null || v===undefined || isNaN(v)) return "–";
     return Number(v).toLocaleString(undefined, {maximumFractionDigits: decimals===undefined?0:decimals});
   }
-  function fmtVal(key, v){
+  function effectiveIsPercent(kpi, term){
+    const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
+    if (s.isPercent !== undefined && s.isPercent !== null) return s.isPercent;
+    return !!kpi.isPercent;
+  }
+  function effectiveDirection(kpi, term){
+    const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
+    if (s.direction === "higher" || s.direction === "lower") return s.direction;
+    return kpi.direction || "higher";
+  }
+  // fmtVal/statusFor take the actual KPI object (not just its name) so they can read the
+  // real, Excel-detected "is this a percent" flag and the admin-set "which way is good"
+  // direction — both overridable per terminal in Settings — instead of guessing from the name.
+  function fmtVal(kpi, v, termOverride){
     if (v===null || v===undefined || isNaN(v)) return "–";
-    if (/%|Adherence|Quality|Planning|Alternation|Cycling|Clashes|handles|Mirroring$/.test(key) && Math.abs(v) <= 3) {
-      return (v*100).toFixed(1)+"%";
-    }
+    const term = termOverride || currentTerminal;
+    const isPct = typeof kpi === "object" ? effectiveIsPercent(kpi, term) : false;
+    if (isPct) return (v*100).toFixed(1)+"%";
     return fmtNum(v,2);
   }
-  function statusFor(key, value, target){
+  function statusFor(kpi, value, target, termOverride){
     if (value===null || value===undefined || target===null || target===undefined || isNaN(value) || isNaN(target) || target===0){
       return "watch";
     }
-    const dir = dirOf(key);
+    const term = termOverride || currentTerminal;
+    const dir = typeof kpi === "object" ? effectiveDirection(kpi, term) : "higher";
     if (dir === "higher") {
       if (value >= target) return "good";
       if (value >= target*0.85) return "watch";
@@ -1383,7 +1401,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
       const data = rowsSorted.map(x=>x.v);
       const target = effectiveTarget(k, currentTerminal, curYear);
-      const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k.key, x.v, target)]);
+      const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
       const canvas = document.getElementById("vmini_"+i);
       const ctx = canvas.getContext("2d");
       vesselMiniCharts["vmini_"+i] = new Chart(ctx, {
@@ -1410,13 +1428,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const card = document.createElement("div");
       card.className = "vr-card";
       const rowsHtml = rowsSorted.map(x => {
-        const status = statusFor(k.key, x.v, target);
+        const status = statusFor(k, x.v, target);
         const color = STATUS_COLOR[status];
         const widthPct = Math.max(2, (Math.abs(x.v)/maxAbs)*100);
         return `<div class="vr-row">
           <div class="vname">${vesselShortId(x.r)}</div>
           <div class="vbar-wrap"><div class="vbar" style="width:${widthPct}%; background:${color}"></div></div>
-          <div class="vval" style="color:${color}">${fmtVal(k.key, x.v)}</div>
+          <div class="vval" style="color:${color}">${fmtVal(k, x.v)}</div>
         </div>`;
       }).join("");
       card.innerHTML = `<div class="label">${prettyLabel(k.key)}</div>${rowsHtml}`;
@@ -1472,7 +1490,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const scoreVal = scoreKpi ? getValue(scoreKpi, periodRows, currentType) : null;
       const scoreTgt = scoreKpi && periodRows.length ? effectiveTarget(scoreKpi, term, periodRows[0]._year) : (scoreKpi ? latestTarget(scoreKpi) : null);
       if (scoreVal !== null && scoreVal !== undefined) { scoreSum += scoreVal; scoreCount++; }
-      termSummaries.push({ term, vols, kpis, scoreVal, scoreTgt, periodRows });
+      termSummaries.push({ term, vols, kpis, scoreKpi, scoreVal, scoreTgt, periodRows });
     });
 
     const netAvgScore = scoreCount ? scoreSum/scoreCount : null;
@@ -1503,14 +1521,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     termSummaries
       .sort((a,b) => (b.scoreVal||0) - (a.scoreVal||0))
       .forEach(ts => {
-        const status = statusFor("Vessel Score", ts.scoreVal, ts.scoreTgt);
+        const status = statusFor(ts.scoreKpi, ts.scoreVal, ts.scoreTgt, ts.term);
         const color = STATUS_COLOR[status];
         const topKpis = activeSortedKpis(ts.term, "global").slice(0,4);
         const chips = topKpis.map(k => {
           const v = getValue(k, ts.periodRows, currentType);
           const tgt = ts.periodRows.length ? effectiveTarget(k, ts.term, ts.periodRows[0]._year) : latestTarget(k);
-          const st = statusFor(k.key, v, tgt);
-          return `<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k.key,v)}</span>`;
+          const st = statusFor(k, v, tgt, ts.term);
+          return `<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,ts.term)}</span>`;
         }).join("");
         const card = document.createElement("div");
         card.className = "term-card";
@@ -1700,14 +1718,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     otherKpis.forEach(k => {
       const value = getValue(k, curRows, currentType);
       const target = effectiveTarget(k, currentTerminal, curYear);
-      const status = statusFor(k.key, value, target);
+      const status = statusFor(k, value, target);
       const color = STATUS_COLOR[status];
       const pctWidth = target ? Math.min(100, Math.max(4, ((value||0)/target)*100)) : 0;
       const el = document.createElement("div");
       el.className = "score-card";
       el.innerHTML = `
         <div class="label">${prettyLabel(k.key)}</div>
-        <div class="value-row"><span class="value" style="color:${color}">${fmtVal(k.key,value)}</span><span class="target">/ ${fmtVal(k.key,target)} tgt</span></div>
+        <div class="value-row"><span class="value" style="color:${color}">${fmtVal(k,value)}</span><span class="target">/ ${fmtVal(k,target)} tgt</span></div>
         <div class="status ${status}"><span class="status-dot"></span>${status==='good'?'On target':status==='watch'?'Watch':'Below target'}</div>
         <div class="bar-bg"></div><div class="bar-fill" style="width:${pctWidth}%; background:${color}"></div>
       `;
@@ -1724,7 +1742,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const el = document.createElement("div");
         el.className = "chart-card";
         const curVal = getValue(k, curRows, currentType);
-        el.innerHTML = `<div class="label">${prettyLabel(k.key)} <span class="cur">${fmtVal(k.key,curVal)}</span></div><canvas id="${id}"></canvas>`;
+        el.innerHTML = `<div class="label">${prettyLabel(k.key)} <span class="cur">${fmtVal(k,curVal)}</span></div><canvas id="${id}"></canvas>`;
         chartsGrid.appendChild(el);
       });
       otherKpis.forEach((k,i) => makeTrendChart(k, subGroups, subPeriod, "trend_"+i));
@@ -1746,7 +1764,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           const left = ((start-minT)/span)*100;
           const width = Math.max(0.6, ((end-start)/span)*100);
           const score = r["Vessel Score"];
-          const status = statusFor("Vessel Score", score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
+          const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
           const row = document.createElement("div");
           row.className = "tl-row";
           row.innerHTML = `
@@ -1762,7 +1780,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       tbody.innerHTML = "";
       callRows.forEach(r => {
         const score = r["Vessel Score"];
-        const status = statusFor("Vessel Score", score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
+        const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${r["Vessel Name"]}</td><td>${r["Service"]||""}</td><td>${r["Line op"]||""}</td>
@@ -1893,8 +1911,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
 
   function yearsForTerm(term){
-    const ys = new Set(DATA[term].rows.map(r=>r._year));
-    // also include any year that already has a target defined, even if no rows yet (e.g. future year setup)
+    // Match the wide year range your Excel's Setups sheet itself provides (2020-2032), so you
+    // can pre-set targets for future years before any data exists for them, and still see/edit
+    // older years even if this terminal's currently-loaded data doesn't span back that far.
+    const ys = new Set();
+    for (let y = 2020; y <= 2032; y++) ys.add(String(y));
+    DATA[term].rows.forEach(r => ys.add(r._year));
     DATA[term].kpis.forEach(k => Object.keys(k.targets_by_year||{}).forEach(y=>ys.add(y)));
     return [...ys].sort();
   }
@@ -1902,7 +1924,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function renderSettingsView(){
     if (!settingsTerm) settingsTerm = TERM_CODES[0];
     const years = yearsForTerm(settingsTerm);
-    if (!settingsYear || !years.includes(settingsYear)) settingsYear = years[years.length-1];
+    if (!settingsYear || !years.includes(settingsYear)){
+      const dataYears = [...new Set(DATA[settingsTerm].rows.map(r=>r._year))].sort();
+      settingsYear = dataYears.length ? dataYears[dataYears.length-1] : String(new Date().getFullYear());
+    }
     const sv = document.getElementById("settingsView");
     sv.innerHTML = `
       <div class="settings-wrap">
@@ -1913,7 +1938,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
         <table class="settings-table">
-          <thead><tr><th>KPI</th><th>Weight</th><th>Target (${settingsYear||''})</th><th>Show on Terminal</th><th>Show on Global</th><th>Priority</th></tr></thead>
+          <thead><tr><th>KPI</th><th>Weight</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal</th><th>Show on Global</th><th>Priority</th></tr></thead>
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
@@ -1946,14 +1971,30 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tbody.innerHTML = "";
     const kpis = DATA[settingsTerm].kpis.filter(k=>k.key!=="Vessel Score");
     kpis.forEach(k => {
-      const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, weightOverride:null};
+      const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, weightOverride:null, direction:null};
+      const isPct = effectiveIsPercent(k, settingsTerm);
       const effTarget = effectiveTarget(k, settingsTerm, settingsYear);
       const effWeight = effectiveWeight(k, settingsTerm);
+      const effDir = effectiveDirection(k, settingsTerm);
+      const targetDisplay = effTarget!==null && effTarget!==undefined ? (isPct ? (effTarget*100).toFixed(2) : effTarget) : '';
+      const weightDisplay = effWeight!==null && effWeight!==undefined ? (effWeight*100).toFixed(2) : '';
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="kpi-key-cell">${prettyLabel(k.key)}</td>
-        <td><input type="number" step="0.01" class="priority-input weight-input" value="${effWeight!==null&&effWeight!==undefined?effWeight:''}" data-key="${k.key}" style="width:64px;"></td>
-        <td><input type="number" step="0.01" class="priority-input target-input" value="${effTarget!==null&&effTarget!==undefined?effTarget:''}" data-key="${k.key}" style="width:72px;"></td>
+        <td>
+          <input type="number" step="0.01" class="priority-input weight-input" value="${weightDisplay}" data-key="${k.key}" style="width:64px;">
+          <span class="weight-badge">%</span>
+        </td>
+        <td>
+          <input type="number" step="0.01" class="priority-input target-input" value="${targetDisplay}" data-key="${k.key}" style="width:72px;">
+          <span class="weight-badge">${isPct ? '%' : ''}</span>
+        </td>
+        <td>
+          <select class="priority-input direction-select" data-key="${k.key}" style="width:auto;">
+            <option value="higher" ${effDir==='higher'?'selected':''}>Higher = good</option>
+            <option value="lower" ${effDir==='lower'?'selected':''}>Lower = good</option>
+          </select>
+        </td>
         <td><label class="toggle"><input type="checkbox" ${s.activeTerminal!==false?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
         <td><label class="toggle"><input type="checkbox" ${s.activeGlobal!==false?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
         <td><input type="number" class="priority-input" value="${s.priority}" min="1" data-key="${k.key}"></td>
@@ -1966,12 +2007,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tbody.querySelectorAll(".active-global-toggle").forEach(cb => {
       cb.onchange = () => { SETTINGS[settingsTerm][cb.dataset.key].activeGlobal = cb.checked; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
+    tbody.querySelectorAll(".direction-select").forEach(sel => {
+      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+    });
     tbody.querySelectorAll(".priority-input:not(.weight-input):not(.target-input)").forEach(inp => {
+      if (inp.classList.contains("direction-select")) return;
       inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
     tbody.querySelectorAll(".weight-input").forEach(inp => {
       inp.onchange = () => {
-        const v = inp.value === '' ? null : Number(inp.value);
+        const kpi = DATA[settingsTerm].kpis.find(k=>k.key===inp.dataset.key);
+        const isPct = effectiveIsPercent(kpi, settingsTerm);
+        const v = inp.value === '' ? null : (isPct ? Number(inp.value)/100 : Number(inp.value));
         SETTINGS[settingsTerm][inp.dataset.key].weightOverride = v;
         saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved");
       };
@@ -1979,9 +2026,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tbody.querySelectorAll(".target-input").forEach(inp => {
       inp.onchange = () => {
         const s = SETTINGS[settingsTerm][inp.dataset.key];
+        const kpi = DATA[settingsTerm].kpis.find(k=>k.key===inp.dataset.key);
+        const isPct = effectiveIsPercent(kpi, settingsTerm);
         if (!s.targetOverrides) s.targetOverrides = {};
         if (inp.value === '') delete s.targetOverrides[settingsYear];
-        else s.targetOverrides[settingsYear] = Number(inp.value);
+        else s.targetOverrides[settingsYear] = isPct ? Number(inp.value)/100 : Number(inp.value);
         saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render();
       };
     });
