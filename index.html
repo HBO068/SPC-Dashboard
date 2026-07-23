@@ -880,6 +880,37 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   let TERM_CODES = Object.keys(BUNDLE.terminals);
+
+  // ---------- Theme (dark / light) ----------
+  let CURRENT_THEME = "dark";
+  try {
+    const saved = localStorage.getItem("spc_theme");
+    if (saved === "light" || saved === "dark") CURRENT_THEME = saved;
+  } catch(e){ /* localStorage unavailable — default to dark */ }
+  document.documentElement.setAttribute("data-theme", CURRENT_THEME);
+
+  function chartTickColor(){ return CURRENT_THEME === "light" ? "#57707D" : "#587482"; }
+  function chartGridColor(){ return CURRENT_THEME === "light" ? "rgba(10,30,40,0.08)" : "rgba(255,255,255,0.04)"; }
+  function gaugeTrackColor(){ return CURRENT_THEME === "light" ? "rgba(10,30,40,0.08)" : "rgba(255,255,255,0.06)"; }
+
+  function applyTheme(theme){
+    CURRENT_THEME = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("spc_theme", theme); } catch(e){ /* ignore */ }
+    const icon = theme === "light" ? "☀️" : "🌙";
+    const label = theme === "light" ? "Light" : "Dark";
+    document.getElementById("themeToggleBtn").innerHTML = icon + ' <span id="themeToggleLabel">' + label + "</span>";
+    render(); // re-render so every Chart.js chart picks up the new tick/grid colors
+  }
+  document.getElementById("themeToggleBtn").onclick = () => {
+    applyTheme(CURRENT_THEME === "light" ? "dark" : "light");
+  };
+  // Set the correct initial icon/label to match whatever theme was loaded (saved preference or default).
+  {
+    const icon = CURRENT_THEME === "light" ? "☀️" : "🌙";
+    const label = CURRENT_THEME === "light" ? "Light" : "Dark";
+    document.getElementById("themeToggleBtn").innerHTML = icon + ' <span id="themeToggleLabel">' + label + "</span>";
+  }
   const logoImg = document.getElementById("brandLogo");
   if (logoImg && ASSETS.logo) logoImg.src = ASSETS.logo;
 
@@ -1507,7 +1538,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const color = (target && value>=target) ? "#3ED17E" : (target && value >= target*0.8 ? "#F5C518" : "#F2483D");
     gaugeChart = new Chart(ctx, {
       type:"doughnut",
-      data:{ datasets:[{ data:[pct, 1-pct], backgroundColor:[color, "rgba(255,255,255,0.06)"], borderWidth:0 }]},
+      data:{ datasets:[{ data:[pct, 1-pct], backgroundColor:[color, gaugeTrackColor()], borderWidth:0 }]},
       options:{ rotation:-90, circumference:180, cutout:"78%", plugins:{ tooltip:{enabled:false}, legend:{display:false} }, animation:{ duration:300 } }
     });
     document.getElementById("gaugeNum").textContent = fmtNum(value,2);
@@ -1530,9 +1561,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         { label:"Target", data: targetData, borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, fill:false, tension:0 }
       ]},
       options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:"index", intersect:false },
-        plugins:{ legend:{ labels:{ color:"#7E9AA8", font:{size:10} } } },
-        scales:{ x:{ ticks:{ color:"#587482", font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:10 }, grid:{ color:"rgba(255,255,255,0.04)" } },
-                 y:{ ticks:{ color:"#587482", font:{size:9} }, grid:{ color:"rgba(255,255,255,0.04)" } } }
+        plugins:{ legend:{ labels:{ color:chartTickColor(), font:{size:10} } } },
+        scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:10 }, grid:{ color:chartGridColor() } },
+                 y:{ ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
       }
     });
   }
@@ -1551,8 +1582,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         { data: subGroups.map(g=>effectiveTarget(kpi, currentTerminal, g.rows[0]._year)), borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false, tension:0 }
       ]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-        scales:{ x:{ ticks:{ color:"#587482", font:{size:8}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
-                 y:{ ticks:{ color:"#587482", font:{size:9} }, grid:{ color:"rgba(255,255,255,0.04)" } } }
+        scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
+                 y:{ ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
       }
     });
   }
@@ -1608,8 +1639,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
               }
             }
           },
-          scales:{ x:{ ticks:{ color:"#587482", font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
-                   y:{ ticks:{ color:"#587482", font:{size:9} }, grid:{ color:"rgba(255,255,255,0.04)" } } }
+          scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
+                   y:{ ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
         }
       });
     });
