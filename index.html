@@ -384,8 +384,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 <div class="app-shell">
   <div class="sidebar" id="appSidebar">
     <div class="sidebar-mark" id="brandMark"><img id="brandLogo" alt="APM Terminals" style="width:100%;height:100%;object-fit:contain;padding:6px;"></div>
-    <button class="sidebar-btn" id="uploadBtn" title="Upload terminal Excel">⬆ <span>Upload Excel</span></button>
+    <button class="sidebar-btn" id="uploadBtn" title="Upload one of the 13 Tangier terminal Excel files">⬆ <span>Upload Tangier Excel</span></button>
     <input type="file" id="uploadFile" accept=".xlsm,.xlsx" style="display:none;">
+    <button class="sidebar-btn" id="uploadPanamaBtn" title="Upload Panama's weekly terminal KPI file">⬆ <span>Upload Panama Weekly</span></button>
+    <input type="file" id="uploadPanamaFile" accept=".xlsm,.xlsx" style="display:none;">
+    <button class="sidebar-btn" id="uploadAdherenceBtn" title="Upload the Gateways/Hubs Adherence export files">⬆ <span>Upload Adherence Data</span></button>
+    <input type="file" id="uploadAdherenceFile" accept=".xlsm,.xlsx" style="display:none;" multiple>
     <div style="position:relative;">
       <button class="sidebar-btn" id="printBtn" title="Print or export this view">🖨 <span>Print / Export</span></button>
       <div id="printMenu" class="print-menu" style="display:none;">
@@ -933,6 +937,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Number(ty[years[years.length-1]]);
   }
   function prettyLabel(key){ return key === "Twins Planning" ? "Twin Planning" : key; }
+  // Planning Turnaround Time shows as "(%)" everywhere it's a PERIOD-level figure (Daily/Weekly/
+  // Monthly Summary scorecards, KPI trend labels) but stays "(h)" at the per-vessel level, where
+  // the value really is measured in hours — matching your instruction directly.
+  function kpiPeriodLabel(key){
+    if (key === "Planning Turnaround Time (h)") return "Planning Turnaround Time (%)";
+    return prettyLabel(key);
+  }
   function shortLabel(key){
     const map = {
       "CI Adherence":"CI Adh.","Planning Turnaround Time (h)":"PLN.T","Stowage Quality":"Stowage",
@@ -1038,6 +1049,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   //   Traveling Distance) use MAX of the raw per-vessel-call value for the period, across every
   //   terminal — computed directly here rather than trusting the Excel's own (often average-based)
   //   precomputed column, per explicit instruction.
+  // Planning Turnaround Time is the one KPI whose raw per-vessel-call value (hours) is in
+  // different units than its period-level target (%) — there's no natural per-call "%" to max.
+  // Its period column is already the correct "% of calls exceeding target" figure (a repeated
+  // constant across the period), so MAX of that column is what "take the max" resolves to here.
+  const MAX_VIA_PERIOD_COLUMN = new Set(["Planning Turnaround Time (h)"]);
+
   function getValue(kpi, rows, period){
     const pcol = kpi.period_cols && kpi.period_cols[period];
     const method = kpi.period_agg && kpi.period_agg[period];
@@ -1045,6 +1062,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if (method === "sum"){
         const vals = rows.map(r=>r[pcol]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
         if (vals.length) return vals.reduce((a,b)=>a+b,0);
+      } else if (MAX_VIA_PERIOD_COLUMN.has(kpi.key)){
+        const vals = rows.map(r=>r[pcol]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
+        if (vals.length) return Math.max(...vals);
       } else {
         const vals = rows.map(r=>r[kpi.key]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
         if (vals.length) return Math.max(...vals);
@@ -1193,13 +1213,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     for (const year of newYears){
       await firestoreSetYearRows(term, year, rowsByYear[year]);
     }
-    if (!TERM_CODES.includes(term)){
-      let known = [];
-      try {
-        const kres = await storageGet("known_terminals", true);
-        if (kres && kres.value) known = JSON.parse(kres.value);
-      } catch(e){ /* none yet */ }
-      if (!known.includes(term)) known.push(term);
+    // Always keep the terminal registered in Firestore's permanent list — this must not be
+    // gated behind an in-memory check, since mergeUploadIntoMemory (which runs before this)
+    // already added it to the in-memory list by this point, which made that check always false
+    // and silently meant a fresh page load could never discover this terminal existed at all.
+    let known = [];
+    try {
+      const kres = await storageGet("known_terminals", true);
+      if (kres && kres.value) known = JSON.parse(kres.value);
+    } catch(e){ /* none yet */ }
+    if (!known.includes(term)){
+      known.push(term);
       await storageSet("known_terminals", JSON.stringify(known), true);
     }
   }
@@ -1291,6 +1315,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       setUploadStatus("✗ Upload failed: " + err.message, true);
     }
     uploadFile.value = "";
+  };
+
+  // Panama and Adherence uploads use completely different file formats than the Tangier terminal
+  // Excels — the parsing logic for each is being built as its own tested piece (per our plan).
+  // These buttons are wired now so the UI is correctly separated ahead of that, rather than
+  // silently doing nothing or pretending to work.
+  const uploadPanamaBtn = document.getElementById("uploadPanamaBtn");
+  const uploadPanamaFile = document.getElementById("uploadPanamaFile");
+  uploadPanamaBtn.onclick = () => uploadPanamaFile.click();
+  uploadPanamaFile.onchange = (e) => {
+    if (!e.target.files[0]) return;
+    setUploadStatus("Panama upload isn't built yet — coming next.", true);
+    uploadPanamaFile.value = "";
+  };
+
+  const uploadAdherenceBtn = document.getElementById("uploadAdherenceBtn");
+  const uploadAdherenceFile = document.getElementById("uploadAdherenceFile");
+  uploadAdherenceBtn.onclick = () => uploadAdherenceFile.click();
+  uploadAdherenceFile.onchange = (e) => {
+    if (!e.target.files.length) return;
+    setUploadStatus("Adherence upload isn't built yet — coming next.", true);
+    uploadAdherenceFile.value = "";
   };
 
   // ---------- Settings (KPI activation, priority, per-year target/weight overrides) ----------
@@ -1953,7 +1999,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const el = document.createElement("div");
       el.className = "score-card";
       el.innerHTML = `
-        <div class="label">${prettyLabel(k.key)}</div>
+        <div class="label">${kpiPeriodLabel(k.key)}</div>
         <div class="value-row"><span class="value" style="color:${color}">${fmtVal(k,value)}</span><span class="target">/ ${fmtVal(k,target)} tgt</span></div>
         <div class="status ${status}"><span class="status-dot"></span>${status==='good'?'On target':status==='watch'?'Watch':'Below target'}</div>
         <div class="bar-bg"></div><div class="bar-fill" style="width:${pctWidth}%; background:${color}"></div>
@@ -1971,7 +2017,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const el = document.createElement("div");
         el.className = "chart-card";
         const curVal = getValue(k, curRows, currentType);
-        el.innerHTML = `<div class="label">${prettyLabel(k.key)} <span class="cur">${fmtVal(k,curVal)}</span></div><canvas id="${id}"></canvas>`;
+        el.innerHTML = `<div class="label">${kpiPeriodLabel(k.key)} <span class="cur">${fmtVal(k,curVal)}</span></div><canvas id="${id}"></canvas>`;
         chartsGrid.appendChild(el);
       });
       otherKpis.forEach((k,i) => makeTrendChart(k, subGroups, subPeriod, "trend_"+i));
@@ -2209,7 +2255,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const weightDisplay = effWeight!==null && effWeight!==undefined ? (effWeight*100).toFixed(2) : '';
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="kpi-key-cell">${prettyLabel(k.key)}</td>
+        <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}</td>
         <td>
           <input type="number" step="0.01" class="priority-input weight-input" value="${weightDisplay}" data-key="${k.key}" style="width:64px;">
           <span class="weight-badge">%</span>
@@ -2298,9 +2344,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   function applyRoleToUI(){
     const uploadBtn = document.getElementById("uploadBtn");
+    const uploadPanamaBtn = document.getElementById("uploadPanamaBtn");
+    const uploadAdherenceBtn = document.getElementById("uploadAdherenceBtn");
     const settingsBtn = document.getElementById("settingsBtn");
     const rolesBtn = document.getElementById("rolesBtn");
     uploadBtn.style.display = can("upload") ? "" : "none";
+    uploadPanamaBtn.style.display = can("upload") ? "" : "none";
+    uploadAdherenceBtn.style.display = can("upload") ? "" : "none";
     settingsBtn.style.display = (CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings"))) ? "" : "none";
     rolesBtn.style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
