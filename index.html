@@ -63,6 +63,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     --blue:#4FA6E8; --violet:#9B8CF2;
     --display:'Space Grotesk',sans-serif; --body:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
   }
+  html[data-theme="light"]{
+    --bg:#F3F6F8; --bg-grid: rgba(10,30,40,0.035);
+    --panel:#FFFFFF; --panel-2:#EEF3F6; --border:#D7E0E6; --border-soft:#E6ECF0;
+    --text:#16242E; --text-muted:#57707D; --text-faint:#8298A4;
+    --teal:#1B9E63; --teal-dim: rgba(27,158,99,0.12);
+    --amber:#B8790A; --amber-dim: rgba(184,121,10,0.12);
+    --coral:#CC3529; --coral-dim: rgba(204,53,41,0.12);
+    --blue:#2872B8; --violet:#6C51C7;
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -177,8 +186,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .gauge-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
   .gauge-card .label{ font-size:11px; color:var(--text-faint); letter-spacing:0.6px; text-transform:uppercase; font-weight:600; margin-bottom:10px;}
   .gauge-wrap{ position:relative; width:190px; height:190px;}
-  .gauge-val{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
-  .gauge-val .num{ font-family:var(--mono); font-weight:600; font-size:34px;}
+  .gauge-val{ position:absolute; left:0; right:0; top:0; height:68%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:6px;}
+  .gauge-val .num{ font-family:var(--mono); font-weight:600; font-size:34px; line-height:1;}
   .gauge-val .tgt{ font-size:11px; color:var(--text-muted); margin-top:4px; font-family:var(--mono);}
   .prev-badge{ margin-top:12px; font-size:11px; color:var(--text-muted); font-family:var(--mono); text-align:center; }
   .prev-badge b{ color:var(--text); }
@@ -388,6 +397,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <button class="sidebar-btn" id="settingsBtn" title="KPI Settings">⚙ <span>Settings</span></button>
     <div class="sidebar-spacer"></div>
     <span id="uploadStatus" class="sidebar-status"></span>
+    <button class="sidebar-btn" id="themeToggleBtn" title="Toggle dark/light theme">🌙 <span id="themeToggleLabel">Dark</span></button>
     <button class="sidebar-btn" id="signOutBtn" title="Sign out">↩ <span>Sign out</span></button>
   </div>
   <div class="main-area">
@@ -990,6 +1000,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // (value * "% of Weekly/Monthly/... Moves|Loading" -> "sum": must be summed across every row in
   // the period to reconstruct the true weighted aggregate). Using the wrong one silently produces
   // numbers off by an order of magnitude, so this must match the actual Excel formula, not a guess.
+  // Two families of period columns exist across every terminal's Excel:
+  // - "sum": a per-vessel-call WEIGHTED CONTRIBUTION toward the period total — sum across every
+  //   row in the period to reconstruct the true aggregate (Vessel Score, RTG MBG, Rehandles, etc.)
+  // - the remaining KPIs (CI Adherence, Planning Turnaround Time, Port Hours Saved %, Average
+  //   Traveling Distance) use MAX of the raw per-vessel-call value for the period, across every
+  //   terminal — computed directly here rather than trusting the Excel's own (often average-based)
+  //   precomputed column, per explicit instruction.
   function getValue(kpi, rows, period){
     const pcol = kpi.period_cols && kpi.period_cols[period];
     const method = kpi.period_agg && kpi.period_agg[period];
@@ -998,8 +1015,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const vals = rows.map(r=>r[pcol]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
         if (vals.length) return vals.reduce((a,b)=>a+b,0);
       } else {
-        const v = rows[0][pcol];
-        if (v !== null && v !== undefined && v !== '' && !isNaN(v)) return Number(v);
+        const vals = rows.map(r=>r[kpi.key]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
+        if (vals.length) return Math.max(...vals);
       }
     }
     return avgSkipNull(rows, kpi.key);
@@ -1570,6 +1587,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         .filter(x => !isNaN(x.v))
         .sort((a,b)=>b.v-a.v);
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
+      const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
       const data = rowsSorted.map(x=>x.v);
       const target = effectiveTarget(k, currentTerminal, curYear);
       const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
@@ -1581,7 +1599,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           { data, backgroundColor: colors, borderRadius:3, barPercentage:0.7 },
           { type:"line", data: labels.map(()=>target), borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false }
         ]},
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ display:false },
+            tooltip:{
+              callbacks:{
+                title: (items) => items.length ? vesselNames[items[0].dataIndex] : "",
+                label: (item) => item.datasetIndex === 1 ? "Target: " + fmtVal(k.key, item.raw) : prettyLabel(k.key) + ": " + fmtVal(k.key, item.raw)
+              }
+            }
+          },
           scales:{ x:{ ticks:{ color:"#587482", font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
                    y:{ ticks:{ color:"#587482", font:{size:9} }, grid:{ color:"rgba(255,255,255,0.04)" } } }
         }
@@ -1602,7 +1628,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const status = statusFor(k, x.v, target);
         const color = STATUS_COLOR[status];
         const widthPct = Math.max(2, (Math.abs(x.v)/maxAbs)*100);
-        return `<div class="vr-row">
+        const vesselName = x.r["Vessel Name"] || vesselShortId(x.r);
+        return `<div class="vr-row" title="${vesselName}">
           <div class="vname">${vesselShortId(x.r)}</div>
           <div class="vbar-wrap"><div class="vbar" style="width:${widthPct}%; background:${color}"></div></div>
           <div class="vval" style="color:${color}">${fmtVal(k, x.v)}</div>
