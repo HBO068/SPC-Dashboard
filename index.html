@@ -621,7 +621,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     </div>
     <button class="sidebar-btn" id="rolesBtn" title="Manage user roles" style="display:none;">👤 <span>Roles</span></button>
     <button class="sidebar-btn" id="exportConfigBtn" title="Download the current KPI catalog and settings for every terminal" style="display:none;">📋 <span>Export Config</span></button>
-    <button class="sidebar-btn" id="exportConfigBtn" title="Download the current KPI catalog and settings for every terminal" style="display:none;">📋 <span>Export Config</span></button>
+    <button class="sidebar-btn" id="eraseDataBtn" title="Permanently erase a terminal's uploaded data" style="display:none; color:#F2483D;">🗑 <span>Erase Data</span></button>
     <button class="sidebar-btn" id="settingsBtn" title="KPI Settings">⚙ <span>Settings</span></button>
     <div class="sidebar-spacer"></div>
     <span id="uploadStatus" class="sidebar-status"></span>
@@ -653,10 +653,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   <div id="networkView"></div>
   <div id="terminalView" style="display:none"></div>
+  <div id="panamaView" style="display:none"></div>
   </div>
 
   <div id="settingsView" style="display:none"></div>
   <div id="rolesView" style="display:none"></div>
+  <div id="eraseView" style="display:none"></div>
 
   <div class="footer-note">SPC Tangier_HBO © Confidential &amp; Proprietary — Do not distribute outside SPC Tangier</div>
 </div>
@@ -1278,12 +1280,19 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Its period column is already the correct "% of calls exceeding target" figure (a repeated
   // constant across the period), so MAX of that column is what "take the max" resolves to here.
   const MAX_VIA_PERIOD_COLUMN = new Set(["Planning Turnaround Time (h)"]);
+  // Business-rule override: these KPIs use MAX of the raw per-vessel-call value regardless of
+  // what their Excel formula actually computes (their own "Daily/Weekly/... X" columns are the
+  // weighted-contribution "sum" style, but you want the worst/best single call instead).
+  const FORCE_MAX_RAW = new Set(["Stowage Quality"]);
 
   function getValue(kpi, rows, period){
     const pcol = kpi.period_cols && kpi.period_cols[period];
     const method = kpi.period_agg && kpi.period_agg[period];
     if (pcol && rows.length){
-      if (method === "sum"){
+      if (FORCE_MAX_RAW.has(kpi.key)){
+        const vals = rows.map(r=>r[kpi.key]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
+        if (vals.length) return Math.max(...vals);
+      } else if (method === "sum"){
         const vals = rows.map(r=>r[pcol]).filter(v=>v!==null&&v!==undefined&&v!==''&&!isNaN(v)).map(Number);
         if (vals.length) return vals.reduce((a,b)=>a+b,0);
       } else if (MAX_VIA_PERIOD_COLUMN.has(kpi.key)){
@@ -1717,9 +1726,21 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (!restricted){
       const allBtn = document.createElement("button");
       allBtn.className = "term-pill" + (currentTerminal==="ALL"?" active":"");
-      allBtn.textContent = "All Terminals";
+      allBtn.textContent = "All Tangier Terminals";
       allBtn.onclick = () => { currentTerminal = "ALL"; currentPeriod=null; render(); buildTerminalPills(); };
       terminalRow.appendChild(allBtn);
+
+      if (PANAMA_TERM_CODES.length){
+        const panBtn = document.createElement("button");
+        panBtn.className = "term-pill" + (currentTerminal==="PANAMA"?" active":"");
+        panBtn.textContent = "🌎 Panama";
+        panBtn.onclick = () => {
+          currentTerminal = "PANAMA"; currentPeriod=null;
+          if (currentType === "daily") currentType = "weekly"; // Panama has no daily granularity
+          render(); buildTerminalPills(); updateTabs();
+        };
+        terminalRow.appendChild(panBtn);
+      }
     }
     TERM_CODES.forEach(term => {
       const btn = document.createElement("button");
@@ -1741,7 +1762,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     btn.onclick = () => { currentType = type; currentPeriod = null; dailyYear=null; dailyMonth=null; render(); updateTabs(); };
     tabsEl.appendChild(btn);
   });
-  function updateTabs(){ [...tabsEl.children].forEach(b => b.classList.toggle("active", b.dataset.type===currentType)); }
+  function updateTabs(){
+    [...tabsEl.children].forEach(b => {
+      b.classList.toggle("active", b.dataset.type===currentType);
+      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA") ? "none" : "";
+    });
+  }
 
   function unionRowsForPeriodOptions(){
     if (currentTerminal === "ALL") return TERM_CODES.flatMap(t => DATA[t].rows);
@@ -2056,6 +2082,145 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     return rawKey;
   }
+  // ---------- Panama view ----------
+  // Panama's granularity floor is the WEEK (no per-vessel or daily data at all). Monthly/Quarterly/
+  // Yearly are simple averages of whichever weeks fall inside that period, per instruction — there
+  // is no finer data to sum or max from, unlike the Tangier terminals.
+  function panamaAllWeekKeys(){
+    const keys = new Set();
+    PANAMA_TERM_CODES.forEach(t => Object.keys(PANAMA_DATA[t]||{}).forEach(wk => keys.add(wk)));
+    return [...keys].sort((a,b) => {
+      const [ya,wa] = a.split("-W").map(Number), [yb,wb] = b.split("-W").map(Number);
+      return ya!==yb ? ya-yb : wa-wb;
+    });
+  }
+  function panamaWeekStart(weekKey){
+    for (const t of PANAMA_TERM_CODES){
+      const wk = PANAMA_DATA[t] && PANAMA_DATA[t][weekKey];
+      if (wk && wk.startDate) return new Date(wk.startDate);
+    }
+    return null;
+  }
+  function panamaGroupsForType(type){
+    const allWeeks = panamaAllWeekKeys();
+    if (type === "weekly") return allWeeks.map(wk => ({ key: wk, label: wk, weekKeys: [wk] }));
+    if (type === "monthly"){
+      const byMonth = {};
+      allWeeks.forEach(wk => {
+        const d = panamaWeekStart(wk);
+        const mk = d ? (d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0")) : wk;
+        (byMonth[mk] = byMonth[mk] || []).push(wk);
+      });
+      return Object.keys(byMonth).sort().map(mk => ({ key: mk, label: mk, weekKeys: byMonth[mk] }));
+    }
+    if (type === "quarterly"){
+      const byQ = {};
+      allWeeks.forEach(wk => {
+        const d = panamaWeekStart(wk);
+        const q = d ? Math.floor(d.getMonth()/3)+1 : 1;
+        const qk = d ? (d.getFullYear() + "-Q" + q) : wk;
+        (byQ[qk] = byQ[qk] || []).push(wk);
+      });
+      return Object.keys(byQ).sort().map(qk => ({ key: qk, label: qk, weekKeys: byQ[qk] }));
+    }
+    // yearly
+    const byY = {};
+    allWeeks.forEach(wk => {
+      const d = panamaWeekStart(wk);
+      const yk = d ? String(d.getFullYear()) : wk;
+      (byY[yk] = byY[yk] || []).push(wk);
+    });
+    return Object.keys(byY).sort().map(yk => ({ key: yk, label: yk, weekKeys: byY[yk] }));
+  }
+  function panamaAvg(term, weekKeys, kpiName){
+    const vals = weekKeys.map(wk => {
+      const w = PANAMA_DATA[term] && PANAMA_DATA[term][wk];
+      return w && w.kpis ? w.kpis[kpiName] : null;
+    }).filter(v => v !== null && v !== undefined && !isNaN(v));
+    if (!vals.length) return null;
+    return vals.reduce((a,b)=>a+b,0) / vals.length;
+  }
+  function panamaFmt(name, v){
+    if (v === null || v === undefined || isNaN(v)) return "–";
+    if (name === "Overall Score") return fmtNum(v,2);
+    if (name === "Calls" || name === "Moves") return fmtNum(v,0);
+    if (["Rehandle","Twin Planning","Alternation","Clash","Dual Cycling","Tandem","CI Adherence","POW per stack"].includes(name)) return (v*100).toFixed(1)+"%";
+    if (name === "Plan Lag-Time"){ const h=Math.floor(v), m=Math.round((v-h)*60); return h+"h "+m+"m"; }
+    return fmtNum(v,1);
+  }
+  const PANAMA_KPI_ORDER = ["Overall Score","Calls","Moves","Rehandle","Twin Planning","Alternation","Clash",
+    "Dual Cycling","Plan Lag-Time","Tandem","Loading Points","QC Unnecessary Gantry","RTG Moves",
+    "POW per stack","Yard Twin","CI Adherence","CMPH","GMPH","ATD"];
+
+  let panamaPeriod = null;
+  function renderPanamaView(){
+    document.getElementById("networkView").style.display = "none";
+    document.getElementById("terminalView").style.display = "none";
+    document.getElementById("panamaView").style.display = "";
+    document.getElementById("brandTitle").textContent = "Panama Terminal Performance";
+    document.getElementById("brandSubtitle").textContent = "Shared Planning Center — Panama · " + PERIOD_TYPES[currentType].label + " View";
+    document.getElementById("brandFlag").style.display = "none";
+    periodPicker.innerHTML = ""; // Panama uses its own self-contained period selector below
+
+    const pv = document.getElementById("panamaView");
+    const groups = panamaGroupsForType(currentType === "daily" ? "weekly" : currentType);
+    if (!groups.length){
+      pv.innerHTML = `<div class="empty-note">No Panama data uploaded yet. Use "Upload Panama Weekly" to add the first week.</div>`;
+      return;
+    }
+    if (!panamaPeriod || !groups.find(g=>g.key===panamaPeriod)) panamaPeriod = groups[groups.length-1].key;
+    const curGroup = groups.find(g => g.key === panamaPeriod);
+
+    pv.innerHTML = `
+      <div class="settings-toolbar" style="margin-bottom:16px;">
+        <select id="panamaPeriodSelect" class="priority-input" style="width:auto;"></select>
+      </div>
+      <div class="section-label">NETWORK ROLLUP · ${curGroup.key}</div>
+      <div class="volume-grid" id="panamaRollup"></div>
+      <div class="section-label">TERMINALS</div>
+      <div class="term-grid" id="panamaTerminals"></div>
+    `;
+    const sel = document.getElementById("panamaPeriodSelect");
+    groups.forEach(g => { const o = document.createElement("option"); o.value=g.key; o.textContent=g.label; sel.appendChild(o); });
+    sel.value = panamaPeriod;
+    sel.onchange = () => { panamaPeriod = sel.value; renderPanamaView(); };
+
+    const activeTerms = PANAMA_TERM_CODES.filter(t => curGroup.weekKeys.some(wk => PANAMA_DATA[t] && PANAMA_DATA[t][wk]));
+    const totalCalls = activeTerms.reduce((a,t)=>a+(panamaAvg(t,curGroup.weekKeys,"Calls")||0),0);
+    const totalMoves = activeTerms.reduce((a,t)=>a+(panamaAvg(t,curGroup.weekKeys,"Moves")||0),0);
+    const scores = activeTerms.map(t=>panamaAvg(t,curGroup.weekKeys,"Overall Score")).filter(v=>v!==null);
+    const avgScore = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+
+    const rollup = document.getElementById("panamaRollup");
+    [
+      {label:"Total Calls", value: fmtNum(totalCalls,0)},
+      {label:"Total Moves", value: fmtNum(totalMoves,0)},
+      {label:"SPC Panama Score", value: avgScore!==null ? fmtNum(avgScore,2) : "–"},
+      {label:"Terminals Reporting", value: activeTerms.length + " / " + PANAMA_TERM_CODES.length},
+    ].forEach(c => {
+      const el = document.createElement("div");
+      el.className = "vcard";
+      el.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div>`;
+      rollup.appendChild(el);
+    });
+
+    const termsGrid = document.getElementById("panamaTerminals");
+    activeTerms.forEach(t => {
+      const score = panamaAvg(t, curGroup.weekKeys, "Overall Score");
+      const el = document.createElement("div");
+      el.className = "term-card";
+      const kpiChips = PANAMA_KPI_ORDER.filter(k=>k!=="Overall Score"&&k!=="Calls"&&k!=="Moves").map(k => {
+        const v = panamaAvg(t, curGroup.weekKeys, k);
+        return v===null ? "" : `<span class="chip">${k}: ${panamaFmt(k,v)}</span>`;
+      }).filter(Boolean).join("");
+      el.innerHTML = `
+        <div class="head"><span class="code">${t}</span><span class="score-badge" style="background:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}22;color:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}">${score!==null?fmtNum(score,2):"–"}</span></div>
+        <div class="chips">${kpiChips}</div>
+      `;
+      termsGrid.appendChild(el);
+    });
+  }
+
   function renderNetworkView(){
     const nv = document.getElementById("networkView");
     const tv = document.getElementById("terminalView");
@@ -2386,6 +2551,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function renderContent(){
+    if (currentTerminal === "PANAMA") { renderPanamaView(); return; }
+    document.getElementById("panamaView").style.display = "none";
     if (currentTerminal === "ALL") renderNetworkView();
     else renderTerminalView();
   }
@@ -2508,6 +2675,96 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         catch(e){ alert("Could not remove: " + e.message); }
       };
     });
+  }
+
+  // ---------- Erase Data (admin only) ----------
+  const eraseDataBtn = document.getElementById("eraseDataBtn");
+  let showingErase = false;
+  eraseDataBtn.onclick = () => {
+    showingErase = !showingErase;
+    document.getElementById("mainApp").style.display = showingErase ? "none" : "";
+    document.getElementById("eraseView").style.display = showingErase ? "" : "none";
+    eraseDataBtn.textContent = showingErase ? "← Back to Dashboard" : "🗑 Erase Data";
+    if (showingErase) renderEraseView();
+  };
+
+  function renderEraseView(){
+    const ev = document.getElementById("eraseView");
+    const allTerms = [...TERM_CODES.map(t=>({code:t, kind:"Tangier"})), ...PANAMA_TERM_CODES.map(t=>({code:t, kind:"Panama"}))];
+    ev.innerHTML = `
+      <div class="settings-wrap">
+        <div class="section-label" style="color:#F2483D;">⚠ Erase Terminal Data</div>
+        <div class="footer-note" style="text-align:left; margin:10px 0 16px;">
+          This permanently deletes everything uploaded for the selected terminal — every year of vessel-call
+          data (Tangier) or every uploaded week (Panama), its KPI catalog, and its Settings overrides.
+          This cannot be undone. Use this to clear out test/fake data before uploading the real thing.
+        </div>
+        <div class="settings-toolbar">
+          <select id="eraseTermSelect" class="priority-input" style="width:220px;">
+            ${allTerms.map(t=>`<option value="${t.kind}:${t.code}">${t.code} (${t.kind})</option>`).join("")}
+          </select>
+          <button class="btn-secondary" id="eraseConfirmBtn" style="border-color:#F2483D; color:#F2483D;">Permanently Erase</button>
+        </div>
+        <div id="eraseStatus" style="margin-top:12px; font-family:var(--mono); font-size:12.5px;"></div>
+      </div>
+    `;
+    document.getElementById("eraseConfirmBtn").onclick = async () => {
+      const [kind, code] = document.getElementById("eraseTermSelect").value.split(":");
+      const typed = prompt(`This will permanently delete ALL data for ${code} (${kind}). Type the terminal code "${code}" exactly to confirm:`);
+      if (typed !== code){
+        document.getElementById("eraseStatus").textContent = typed === null ? "Cancelled." : "Typed text didn't match — nothing was deleted.";
+        return;
+      }
+      document.getElementById("eraseStatus").textContent = "Erasing " + code + "…";
+      try {
+        if (kind === "Tangier") await eraseTangierTerminal(code);
+        else await erasePanamaTerminal(code);
+        document.getElementById("eraseStatus").textContent = "✓ " + code + " erased completely.";
+        buildTerminalPills();
+        renderEraseView();
+      } catch(e){
+        document.getElementById("eraseStatus").textContent = "✗ Erase failed: " + e.message;
+      }
+    };
+  }
+
+  async function eraseTangierTerminal(term){
+    const yres = await storageGet("years:"+term, true);
+    const years = (yres && yres.value) ? JSON.parse(yres.value) : [];
+    for (const year of years){
+      try {
+        const monthsSnap = await db.collection("terminals").doc(term).collection("years").doc(String(year)).collection("months").get();
+        const batch = db.batch();
+        monthsSnap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      } catch(e){ /* continue */ }
+    }
+    await db.collection("terminals").doc(term).collection("meta").doc("catalog").delete().catch(()=>{});
+    await db.collection("terminals").doc(term).collection("meta").doc("years").delete().catch(()=>{});
+    await db.collection("terminals").doc(term).collection("meta").doc("settings").delete().catch(()=>{});
+    let known = [];
+    try { const kres = await storageGet("known_terminals", true); if (kres && kres.value) known = JSON.parse(kres.value); } catch(e){}
+    known = known.filter(t => t !== term);
+    await storageSet("known_terminals", JSON.stringify(known), true);
+
+    TERM_CODES = TERM_CODES.filter(t => t !== term);
+    delete DATA[term];
+    delete SETTINGS[term];
+    if (currentTerminal === term) currentTerminal = "ALL";
+  }
+
+  async function erasePanamaTerminal(code){
+    const weeksSnap = await db.collection("panama").doc(code).collection("weeks").get();
+    const batch = db.batch();
+    weeksSnap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    let known = [];
+    try { const kres = await storageGet("panama_known_terminals", true); if (kres && kres.value) known = JSON.parse(kres.value); } catch(e){}
+    known = known.filter(t => t !== code);
+    await storageSet("panama_known_terminals", JSON.stringify(known), true);
+
+    PANAMA_TERM_CODES = PANAMA_TERM_CODES.filter(t => t !== code);
+    delete PANAMA_DATA[code];
   }
 
   // ---------- Settings view ----------
@@ -2651,7 +2908,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   // ---------- Master render ----------
   function render(){
-    renderPeriodPicker();
+    if (currentTerminal !== "PANAMA") renderPeriodPicker();
     renderContent();
   }
 
@@ -2692,7 +2949,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     settingsBtn.style.display = (CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings"))) ? "" : "none";
     rolesBtn.style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("exportConfigBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
-    document.getElementById("exportConfigBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
+    document.getElementById("eraseDataBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
     if (allowed){
       TERM_CODES = TERM_CODES.filter(t => allowed.includes(t));
