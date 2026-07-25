@@ -644,6 +644,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div id="storageWarningBanner" style="display:none; background:rgba(242,72,61,0.14); border:1px solid rgba(242,72,61,0.35); border-radius:10px; padding:10px 16px; margin-bottom:14px; font-size:12.5px; color:#F2483D; font-family:var(--mono);"></div>
 
   <div id="mainApp">
+  <div class="tabs" id="mainSectionTabs" style="margin-bottom:10px;"></div>
+  <div class="tabs" id="globalSubTabs" style="margin-bottom:14px;"></div>
   <div class="terminal-row" id="terminalRow"></div>
 
   <div class="period-row" id="periodRow">
@@ -651,6 +653,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <div class="period-picker" id="periodPicker"></div>
   </div>
 
+  <div id="globalReportView" style="display:none"></div>
   <div id="networkView"></div>
   <div id="terminalView" style="display:none"></div>
   <div id="panamaView" style="display:none"></div>
@@ -1240,6 +1243,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const SUB_PERIOD = { monthly:"weekly", quarterly:"monthly", yearly:"quarterly" };
   const SUB_KEYFN = { daily: dayKeyOf, weekly: weekKeyOf, monthly: monthKeyOf, quarterly: quarterKeyOf };
 
+  // Top-level nav: "global" (SPCs / All Panama Terminals / All Tangier Terminals) or "tangier"
+  // (the 13 individual SPC Tangier terminal buttons). currentTerminal drives which body renders:
+  // "SPCS" = new Global Report, "PANAMA" = Panama aggregate, "ALL" = Tangier network aggregate,
+  // any other value = one specific Tangier terminal code.
+  let currentSection = "global";
+  let currentGlobalSub = "tangier"; // "spcs" | "panama" | "tangier" — which Global sub-view is active
+  let globalReportPeriod = null; // SPCs view has its own self-contained period selector, like Panama
+  let globalReportFilter = "both"; // "both" | "tangier" | "panama" — Tangier|Panama filter toggle
   let currentTerminal = "ALL";
   let currentType = "weekly";
   let currentPeriod = null;
@@ -1484,6 +1495,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
   }
 
+  // Persists just a terminal's KPI catalog (used when a KPI is manually registered/removed in
+  // Settings, without touching its vessel-call data or years list).
+  async function persistCatalogForTerm(term){
+    try { await storageSet("catalog:"+term, JSON.stringify(DATA[term].kpis), true); }
+    catch(e){ console.error("Could not persist catalog for", term, e); }
+  }
+
   async function persistUploadResult(term, rowsByYear, catalog, isFirstUpload){
     if (isFirstUpload){
       await storageSet("catalog:"+term, JSON.stringify(catalog), true);
@@ -1532,7 +1550,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       catalog.forEach((k,i) => {
         if (k.key === "Vessel Score") return;
         if (!SETTINGS[term][k.key]){
-          SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, weightOverride:null };
+          SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
         }
       });
     }
@@ -1673,7 +1691,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       DATA[term].kpis.forEach((k,i) => {
         if (k.key === "Vessel Score") return;
         if (!SETTINGS[term][k.key]){
-          SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, weightOverride:null };
+          SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
         }
       });
     });
@@ -1700,17 +1718,22 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     return targetFor(kpi, year);
   }
-  function effectiveWeight(kpi, term){
-    const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
-    if (s.weightOverride !== undefined && s.weightOverride !== null && s.weightOverride !== '') return Number(s.weightOverride);
-    return kpi.weight;
-  }
-  function activeSortedKpis(term, scope){
-    // scope: "terminal" (default) or "global" — the two independent activation flags from PS5.
-    scope = scope || "terminal";
+  function effectiveActive(term, kpiKey, scope, year){
+    const s = (SETTINGS[term] && SETTINGS[term][kpiKey]) || {};
     const flagKey = scope === "global" ? "activeGlobal" : "activeTerminal";
+    const byYearKey = scope === "global" ? "activeGlobalByYear" : "activeTerminalByYear";
+    if (year !== undefined && year !== null && s[byYearKey] && s[byYearKey][year] !== undefined && s[byYearKey][year] !== null){
+      return !!s[byYearKey][year];
+    }
+    return s[flagKey] !== false;
+  }
+  function activeSortedKpis(term, scope, year){
+    // scope: "terminal" (default) or "global" — the two independent activation flags from PS5.
+    // year: optional — when given, a per-year override (set in Settings) takes precedence over
+    // the KPI's flat default for that terminal.
+    scope = scope || "terminal";
     return DATA[term].kpis.filter(k=>k.key!=="Vessel Score").filter(k=>{
-      const s = SETTINGS[term][k.key]; return !s || s[flagKey] !== false;
+      return effectiveActive(term, k.key, scope, year);
     }).sort((a,b)=>{
       const pa = (SETTINGS[term][a.key]||{}).priority || 999;
       const pb = (SETTINGS[term][b.key]||{}).priority || 999;
@@ -1718,30 +1741,73 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
   }
 
-  // ---------- UI: terminal pills ----------
+  // ---------- UI: top-level nav ----------
+  // "Global" -> second row: SPCs (new Global Report) / All Panama Terminals / All Tangier Terminals.
+  // "SPC Tangier" -> the 13 individual Tangier terminal buttons (POD + flag), each opening its own
+  // per-vessel-call dashboard. Panama never gets its own top-level pill and never appears under
+  // "SPC Tangier" — it only ever shows inside the Global structure (per spec).
+  const mainSectionTabsEl = document.getElementById("mainSectionTabs");
+  const globalSubTabsEl = document.getElementById("globalSubTabs");
+  function buildMainNav(){
+    const restricted = !!allowedTerminalsFor(CURRENT_USER);
+    if (restricted){
+      // Terminal-scoped accounts only ever see their own terminal — no Global structure at all.
+      mainSectionTabsEl.style.display = "none";
+      globalSubTabsEl.style.display = "none";
+      currentSection = "tangier";
+      return;
+    }
+    mainSectionTabsEl.style.display = "";
+    mainSectionTabsEl.innerHTML = "";
+    [["global","Global"],["tangier","SPC Tangier"]].forEach(([key,label]) => {
+      const btn = document.createElement("button");
+      btn.className = "tab" + (currentSection===key ? " active" : "");
+      btn.textContent = label;
+      btn.onclick = () => {
+        currentSection = key;
+        currentPeriod = null;
+        if (key === "tangier"){
+          currentTerminal = TERM_CODES[0] || "ALL";
+        } else {
+          currentTerminal = currentGlobalSub === "spcs" ? "SPCS" : currentGlobalSub === "panama" ? "PANAMA" : "ALL";
+          if ((currentTerminal === "SPCS" || currentTerminal === "PANAMA") && currentType === "daily") currentType = "weekly";
+        }
+        buildMainNav(); buildTerminalPills(); updateTabs(); render();
+      };
+      mainSectionTabsEl.appendChild(btn);
+    });
+
+    if (currentSection === "global"){
+      globalSubTabsEl.style.display = "";
+      globalSubTabsEl.innerHTML = "";
+      [["spcs","SPCs","SPCS"],["panama","All Panama Terminals","PANAMA"],["tangier","All Tangier Terminals","ALL"]].forEach(([key,label,termVal]) => {
+        const btn = document.createElement("button");
+        btn.className = "tab" + (currentGlobalSub===key ? " active" : "");
+        btn.textContent = label;
+        btn.onclick = () => {
+          currentGlobalSub = key;
+          currentTerminal = termVal;
+          currentPeriod = null;
+          if ((key === "spcs" || key === "panama") && currentType === "daily") currentType = "weekly"; // SPCs/Panama: no Daily
+          buildMainNav(); updateTabs(); render();
+        };
+        globalSubTabsEl.appendChild(btn);
+      });
+    } else {
+      globalSubTabsEl.style.display = "none";
+    }
+  }
+
+  // ---------- UI: SPC Tangier terminal pills (only shown under the "SPC Tangier" header) ----------
   const terminalRow = document.getElementById("terminalRow");
   function buildTerminalPills(){
     terminalRow.innerHTML = "";
     const restricted = !!allowedTerminalsFor(CURRENT_USER);
-    if (!restricted){
-      const allBtn = document.createElement("button");
-      allBtn.className = "term-pill" + (currentTerminal==="ALL"?" active":"");
-      allBtn.textContent = "All Tangier Terminals";
-      allBtn.onclick = () => { currentTerminal = "ALL"; currentPeriod=null; render(); buildTerminalPills(); };
-      terminalRow.appendChild(allBtn);
-
-      if (PANAMA_TERM_CODES.length){
-        const panBtn = document.createElement("button");
-        panBtn.className = "term-pill" + (currentTerminal==="PANAMA"?" active":"");
-        panBtn.textContent = "🌎 Panama";
-        panBtn.onclick = () => {
-          currentTerminal = "PANAMA"; currentPeriod=null;
-          if (currentType === "daily") currentType = "weekly"; // Panama has no daily granularity
-          render(); buildTerminalPills(); updateTabs();
-        };
-        terminalRow.appendChild(panBtn);
-      }
+    if (currentSection !== "tangier" && !restricted){
+      terminalRow.style.display = "none";
+      return;
     }
+    terminalRow.style.display = "";
     TERM_CODES.forEach(term => {
       const btn = document.createElement("button");
       btn.className = "term-pill" + (currentTerminal===term?" active":"");
@@ -1765,7 +1831,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function updateTabs(){
     [...tabsEl.children].forEach(b => {
       b.classList.toggle("active", b.dataset.type===currentType);
-      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA") ? "none" : "";
+      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS") ? "none" : "";
     });
   }
 
@@ -2221,6 +2287,186 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
   }
 
+  // ---------- Render: SPCs Global Report (Network Rollup x3 + Terminals Performance) ----------
+  // NOTE: SPC Calls/Moves Adherence % are intentionally shown as "—" everywhere in this view —
+  // the Adherence upload/calculation engine (spec in OPR_Adherence_Calculation_Spec.md) hasn't
+  // been built yet. Nothing here fakes that number; it will populate once that engine lands.
+  // Trend-of-previous-2-periods for Score/Adherence is not yet built in this pass either.
+  function renderGlobalReportView(){
+    ["networkView","terminalView","panamaView"].forEach(id => document.getElementById(id).style.display = "none");
+    const gv = document.getElementById("globalReportView");
+    gv.style.display = "";
+    document.getElementById("brandTitle").textContent = "Global SPC Report";
+    document.getElementById("brandSubtitle").textContent = "Shared Planning Center — Global · " + PERIOD_TYPES[currentType].label + " View";
+    document.getElementById("brandFlag").style.display = "none";
+    periodPicker.innerHTML = ""; // self-contained period selector below, same pattern as Panama
+
+    const def = PERIOD_TYPES[currentType];
+    const allTangierRows = TERM_CODES.flatMap(t => DATA[t].rows);
+    const tangierGroups = groupByKeyFn(allTangierRows, def.keyFn);
+    const tangierPeriods = Object.keys(tangierGroups).sort();
+    if (!globalReportPeriod || !tangierGroups[globalReportPeriod]) globalReportPeriod = tangierPeriods[tangierPeriods.length-1] || null;
+
+    const panamaGroupsList = panamaGroupsForType(currentType);
+    const panamaGroup = panamaGroupsList.length ? panamaGroupsList[panamaGroupsList.length-1] : null;
+
+    if (!tangierPeriods.length && !panamaGroup){
+      gv.innerHTML = `<div class="empty-note">No data uploaded yet for either Tangier or Panama.</div>`;
+      return;
+    }
+
+    gv.innerHTML = `
+      <div class="settings-toolbar" style="margin-bottom:16px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <select id="globalReportPeriodSelect" class="priority-input" style="width:auto;"></select>
+        <div class="tabs" id="globalReportFilterTabs"></div>
+      </div>
+      <div class="section-label">NETWORK ROLLUP — GLOBAL · ${globalReportPeriod||'–'}</div>
+      <div class="network-grid" id="grGlobalCards"></div>
+      <div class="section-label">NETWORK ROLLUP — TANGIER · ${globalReportPeriod||'–'}</div>
+      <div class="network-grid" id="grTangierCards"></div>
+      <div class="section-label">NETWORK ROLLUP — PANAMA · ${panamaGroup ? panamaGroup.key : '–'}</div>
+      <div class="network-grid" id="grPanamaCards"></div>
+      <div class="section-label">TERMINALS PERFORMANCE</div>
+      <div class="term-grid" id="grTermGrid"></div>
+    `;
+
+    const psel = document.getElementById("globalReportPeriodSelect");
+    tangierPeriods.forEach(p => { const o=document.createElement("option"); o.value=p; o.textContent=p; psel.appendChild(o); });
+    if (!tangierPeriods.length){ const o=document.createElement("option"); o.textContent="No Tangier data yet"; psel.appendChild(o); }
+    psel.value = globalReportPeriod;
+    psel.onchange = () => { globalReportPeriod = psel.value; renderGlobalReportView(); };
+
+    const filterTabs = document.getElementById("globalReportFilterTabs");
+    [["both","Tangier | Panama"],["tangier","Tangier only"],["panama","Panama only"]].forEach(([key,label]) => {
+      const btn = document.createElement("button");
+      btn.className = "tab" + (globalReportFilter===key ? " active" : "");
+      btn.textContent = label;
+      btn.onclick = () => { globalReportFilter = key; renderGlobalReportView(); };
+      filterTabs.appendChild(btn);
+    });
+
+    // --- Tangier side (per-terminal, then summed) ---
+    let tMoves=0, tCalls=0, tScoreSum=0, tScoreCount=0, tActive=0;
+    const termSummaries = [];
+    TERM_CODES.forEach(term => {
+      const rows = DATA[term].rows;
+      const groups = groupByKeyFn(rows, def.keyFn);
+      const periodRows = globalReportPeriod ? (groups[globalReportPeriod] || []) : [];
+      const vols = volumeAgg(periodRows);
+      if (periodRows.length) tActive++;
+      tMoves += vols["Total Moves Planned"];
+      tCalls += vols["__calls"];
+      const kpis = DATA[term].kpis;
+      const scoreKpi = kpis.find(k=>k.key==="Vessel Score");
+      const scoreVal = scoreKpi ? getValue(scoreKpi, periodRows, currentType) : null;
+      const scoreTgt = scoreKpi && periodRows.length ? effectiveTarget(scoreKpi, term, periodRows[0]._year) : (scoreKpi ? latestTarget(scoreKpi) : null);
+      if (scoreVal !== null && scoreVal !== undefined){ tScoreSum += scoreVal; tScoreCount++; }
+      termSummaries.push({term, vols, kpis, scoreKpi, scoreVal, scoreTgt, periodRows});
+    });
+    const tAvgScore = tScoreCount ? tScoreSum/tScoreCount : null;
+
+    // --- Panama side (reusing the same math as renderPanamaView) ---
+    let pMoves=0, pCalls=0, pScoreSum=0, pScoreCount=0;
+    const panamaSummaries = [];
+    if (panamaGroup){
+      PANAMA_TERM_CODES.forEach(t => {
+        const hasData = panamaGroup.weekKeys.some(wk => PANAMA_DATA[t] && PANAMA_DATA[t][wk]);
+        if (!hasData) return;
+        const calls = panamaAvg(t, panamaGroup.weekKeys, "Calls") || 0;
+        const moves = panamaAvg(t, panamaGroup.weekKeys, "Moves") || 0;
+        const score = panamaAvg(t, panamaGroup.weekKeys, "Overall Score");
+        pCalls += calls; pMoves += moves;
+        if (score !== null){ pScoreSum += score; pScoreCount++; }
+        panamaSummaries.push({term:t, calls, moves, score});
+      });
+    }
+    const pAvgScore = pScoreCount ? pScoreSum/pScoreCount : null;
+    const gScoreCount = tScoreCount + pScoreCount;
+    const gAvgScore = gScoreCount ? (tScoreSum+pScoreSum)/gScoreCount : null;
+
+    function fillCards(containerId, items){
+      const el = document.getElementById(containerId);
+      items.forEach(c => {
+        const d = document.createElement("div");
+        d.className = "ncard";
+        d.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.sub||''}</div>`;
+        el.appendChild(d);
+      });
+    }
+    fillCards("grGlobalCards", [
+      {label:"Total Moves Planned", value: fmtNum(tMoves+pMoves)},
+      {label:"Total Calls Planned", value: fmtNum(tCalls+pCalls)},
+      {label:"SPC Score", value: gAvgScore!==null ? fmtNum(gAvgScore,2) : "–"},
+      {label:"SPC Calls Adherence %", value:"—", sub:"Needs Adherence engine"},
+      {label:"SPC Moves Adherence %", value:"—", sub:"Needs Adherence engine"},
+    ]);
+    fillCards("grTangierCards", [
+      {label:"Total Moves Planned", value: fmtNum(tMoves)},
+      {label:"Total Calls Planned", value: fmtNum(tCalls)},
+      {label:"SPC Score", value: tAvgScore!==null ? fmtNum(tAvgScore,2) : "–"},
+      {label:"SPC Calls Adherence %", value:"—", sub:"Needs Adherence engine"},
+      {label:"SPC Moves Adherence %", value:"—", sub:"Needs Adherence engine"},
+    ]);
+    fillCards("grPanamaCards", [
+      {label:"Total Moves Planned", value: fmtNum(pMoves)},
+      {label:"Total Calls Planned", value: fmtNum(pCalls)},
+      {label:"SPC Score", value: pAvgScore!==null ? fmtNum(pAvgScore,2) : "–"},
+      {label:"SPC Calls Adherence %", value:"—", sub:"Needs Adherence engine"},
+      {label:"SPC Moves Adherence %", value:"—", sub:"Needs Adherence engine"},
+    ]);
+
+    // --- Terminals Performance, filtered by the Tangier|Panama toggle ---
+    const grid = document.getElementById("grTermGrid");
+    const showTangier = globalReportFilter !== "panama";
+    const showPanama = globalReportFilter !== "tangier";
+    if (showTangier){
+      termSummaries.slice().sort((a,b) => (b.scoreVal||0)-(a.scoreVal||0)).forEach(ts => {
+        const status = statusFor(ts.scoreKpi, ts.scoreVal, ts.scoreTgt, ts.term);
+        const color = STATUS_COLOR[status];
+        const topKpis = activeSortedKpis(ts.term, "global", ts.periodRows.length ? ts.periodRows[0]._year : undefined).slice(0,4);
+        const chips = topKpis.map(k => {
+          const v = getValue(k, ts.periodRows, currentType);
+          const tgt = ts.periodRows.length ? effectiveTarget(k, ts.term, ts.periodRows[0]._year) : latestTarget(k);
+          const st = statusFor(k, v, tgt, ts.term);
+          return `<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,ts.term)}</span>`;
+        }).join("");
+        const card = document.createElement("div");
+        card.className = "term-card";
+        card.innerHTML = `
+          <div class="head"><span class="code">${ASSETS.flags[ts.term] ? `<img src="${ASSETS.flags[ts.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : ''}${ts.term}</span><span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(ts.scoreVal,1)} / ${fmtNum(ts.scoreTgt,1)}</span></div>
+          <div class="stat-row"><span>Moves</span><span class="v">${fmtNum(ts.vols["Total Moves Planned"])}</span></div>
+          <div class="stat-row"><span>Calls</span><span class="v">${fmtNum(ts.vols["__calls"])}</span></div>
+          <div class="stat-row"><span>Calls Adherence</span><span class="v">—</span></div>
+          <div class="stat-row"><span>Moves Adherence</span><span class="v">—</span></div>
+          <div class="chips">${chips}</div>
+        `;
+        card.onclick = () => { currentSection="tangier"; currentTerminal = ts.term; currentPeriod=null; buildMainNav(); buildTerminalPills(); render(); };
+        grid.appendChild(card);
+      });
+    }
+    if (showPanama && panamaGroup){
+      panamaSummaries.forEach(ps => {
+        const status = ps.score!==null && ps.score>=4 ? 'good' : ps.score!==null && ps.score>=3 ? 'watch' : 'bad';
+        const color = STATUS_COLOR[status];
+        const kpiChips = PANAMA_KPI_ORDER.filter(k=>k!=="Overall Score"&&k!=="Calls"&&k!=="Moves").map(k => {
+          const v = panamaAvg(ps.term, panamaGroup.weekKeys, k);
+          return v===null ? "" : `<span class="chip">${k}: ${panamaFmt(k,v)}</span>`;
+        }).filter(Boolean).join("");
+        const card = document.createElement("div");
+        card.className = "term-card";
+        card.innerHTML = `
+          <div class="head"><span class="code">🌎 ${ps.term}</span><span class="score-badge" style="background:${color}22;color:${color}">${ps.score!==null?fmtNum(ps.score,2):"–"}</span></div>
+          <div class="stat-row"><span>Moves</span><span class="v">${fmtNum(ps.moves)}</span></div>
+          <div class="stat-row"><span>Calls</span><span class="v">${fmtNum(ps.calls)}</span></div>
+          <div class="stat-row"><span>Calls Adherence</span><span class="v">—</span></div>
+          <div class="stat-row"><span>Moves Adherence</span><span class="v">—</span></div>
+          <div class="chips">${kpiChips}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+  }
+
   function renderNetworkView(){
     const nv = document.getElementById("networkView");
     const tv = document.getElementById("terminalView");
@@ -2279,7 +2525,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       .forEach(ts => {
         const status = statusFor(ts.scoreKpi, ts.scoreVal, ts.scoreTgt, ts.term);
         const color = STATUS_COLOR[status];
-        const topKpis = activeSortedKpis(ts.term, "global").slice(0,4);
+        const topKpis = activeSortedKpis(ts.term, "global", ts.periodRows.length ? ts.periodRows[0]._year : undefined).slice(0,4);
         const chips = topKpis.map(k => {
           const v = getValue(k, ts.periodRows, currentType);
           const tgt = ts.periodRows.length ? effectiveTarget(k, ts.term, ts.periodRows[0]._year) : latestTarget(k);
@@ -2294,7 +2540,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <div class="stat-row"><span>Calls</span><span class="v">${fmtNum(ts.vols["__calls"])}</span></div>
           <div class="chips">${chips}</div>
         `;
-        card.onclick = () => { currentTerminal = ts.term; currentPeriod=null; buildTerminalPills(); render(); };
+        card.onclick = () => { currentSection="tangier"; currentTerminal = ts.term; currentPeriod=null; buildMainNav(); buildTerminalPills(); render(); };
         termGrid.appendChild(card);
       });
   }
@@ -2329,7 +2575,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     const vols = volumeAgg(curRows);
     const scoreKpi = kpis.find(k=>k.key==="Vessel Score");
-    const otherKpis = activeSortedKpis(currentTerminal);
+    const otherKpis = activeSortedKpis(currentTerminal, "terminal", curRows[0]._year);
     const curYear = curRows[0]._year;
     const PERIOD_NOUN = { daily:"day", weekly:"week", monthly:"month", quarterly:"quarter", yearly:"year" };
 
@@ -2551,6 +2797,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function renderContent(){
+    if (currentTerminal === "SPCS") { renderGlobalReportView(); return; }
+    document.getElementById("globalReportView").style.display = "none";
     if (currentTerminal === "PANAMA") { renderPanamaView(); return; }
     document.getElementById("panamaView").style.display = "none";
     if (currentTerminal === "ALL") renderNetworkView();
@@ -2801,18 +3049,31 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const sv = document.getElementById("settingsView");
     sv.innerHTML = `
       <div class="settings-wrap">
-        <div class="section-label">KPI Settings — targets, weights, activation & priority</div>
+        <div class="section-label">KPI Settings — targets, activation & priority</div>
         <div class="settings-toolbar">
           <select id="settingsTermSelect"></select>
           <select id="settingsYearSelect"></select>
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
         <table class="settings-table">
-          <thead><tr><th>KPI</th><th>Weight</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal</th><th>Show on Global</th><th>Priority</th></tr></thead>
+          <thead><tr><th>KPI</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal (${settingsYear||''})</th><th>Show on Global (${settingsYear||''})</th><th>Priority</th><th></th></tr></thead>
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          Targets and weights are read from the terminal's Excel by default and can differ year to year — edit either field to override just that year for this terminal. Priority controls ordering (lowest shown first) in scorecards and in the Global "All Terminals" chip summary. "Show on Terminal" controls this terminal's own dashboard; "Show on Global" independently controls whether it appears in the Global view — the two can differ. Changes save automatically.
+          Targets are read from the terminal's Excel by default and can differ year to year — edit the Target field to override just the selected year for this terminal. "Show on Terminal" / "Show on Global" are also per-year now — switching them only changes ${settingsYear||'the selected year'}; other years keep whatever they were set to (or the default, if never overridden). Priority controls ordering (lowest shown first) in scorecards and in the Global chip summary. Changes save automatically to Firestore.
+        </div>
+        <div class="section-label">Register a new KPI</div>
+        <div class="footer-note" style="text-align:left; margin-bottom:10px;">
+          For a KPI that isn't in ${settingsTerm}'s Excel at all: upload the Excel once it has the new column added (the parser will pick it up automatically), or — if you just need to register it now so it can be targeted/activated ahead of the next upload — add its exact column name here. Its value will always come from the uploaded Excel; this just registers it in Settings.
+        </div>
+        <div class="settings-toolbar">
+          <input type="text" id="newKpiName" class="priority-input" placeholder="Exact KPI/column name" style="width:260px;">
+          <select id="newKpiDirection" class="priority-input" style="width:auto;">
+            <option value="higher">Higher = good</option>
+            <option value="lower">Lower = good</option>
+          </select>
+          <button class="btn-secondary" id="newKpiAddBtn">Register KPI</button>
+          <span id="newKpiStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
       </div>
     `;
@@ -2825,6 +3086,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     years.forEach(y => { const o=document.createElement("option"); o.value=y; o.textContent=y; ysel.appendChild(o); });
     ysel.value = settingsYear;
     ysel.onchange = () => { settingsYear = ysel.value; renderSettingsView(); };
+
+    const newKpiBtn = document.getElementById("newKpiAddBtn");
+    newKpiBtn.onclick = () => {
+      const nameInp = document.getElementById("newKpiName");
+      const dirSel = document.getElementById("newKpiDirection");
+      const statusEl = document.getElementById("newKpiStatus");
+      const name = nameInp.value.trim();
+      if (!name){ statusEl.textContent = "Enter a KPI/column name first."; return; }
+      if (DATA[settingsTerm].kpis.some(k=>k.key===name)){ statusEl.textContent = "A KPI with that exact name already exists for " + settingsTerm + "."; return; }
+      const newKpi = { key:name, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:false, direction: dirSel.value, registeredManually:true };
+      DATA[settingsTerm].kpis.push(newKpi);
+      SETTINGS[settingsTerm][name] = { activeTerminal:true, activeGlobal:true, priority: DATA[settingsTerm].kpis.length, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}, direction: dirSel.value };
+      saveSettingsForTerm(settingsTerm);
+      persistCatalogForTerm(settingsTerm);
+      nameInp.value = "";
+      statusEl.textContent = "✓ Registered — set its target below. Values will populate once its column appears in an uploaded Excel.";
+      renderSettingsTable();
+    };
 
     renderSettingsTable();
   }
@@ -2841,20 +3120,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tbody.innerHTML = "";
     const kpis = DATA[settingsTerm].kpis.filter(k=>k.key!=="Vessel Score");
     kpis.forEach(k => {
-      const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, weightOverride:null, direction:null};
+      const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}, direction:null};
       const isPct = effectiveIsPercent(k, settingsTerm);
       const effTarget = effectiveTarget(k, settingsTerm, settingsYear);
-      const effWeight = effectiveWeight(k, settingsTerm);
       const effDir = effectiveDirection(k, settingsTerm);
       const targetDisplay = effTarget!==null && effTarget!==undefined ? (isPct ? (effTarget*100).toFixed(2) : effTarget) : '';
-      const weightDisplay = effWeight!==null && effWeight!==undefined ? (effWeight*100).toFixed(2) : '';
+      const activeTerminalYear = effectiveActive(settingsTerm, k.key, "terminal", settingsYear);
+      const activeGlobalYear = effectiveActive(settingsTerm, k.key, "global", settingsYear);
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}</td>
-        <td>
-          <input type="number" step="0.01" class="priority-input weight-input" value="${weightDisplay}" data-key="${k.key}" style="width:64px;">
-          <span class="weight-badge">%</span>
-        </td>
+        <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}${k.registeredManually ? ' <span class="weight-badge" title="Registered manually, not yet in the uploaded Excel">manual</span>' : ''}</td>
         <td>
           <input type="number" step="0.01" class="priority-input target-input" value="${targetDisplay}" data-key="${k.key}" style="width:72px;">
           <span class="weight-badge">${isPct ? '%' : ''}</span>
@@ -2865,33 +3140,35 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
             <option value="lower" ${effDir==='lower'?'selected':''}>Lower = good</option>
           </select>
         </td>
-        <td><label class="toggle"><input type="checkbox" ${s.activeTerminal!==false?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
-        <td><label class="toggle"><input type="checkbox" ${s.activeGlobal!==false?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
+        <td><label class="toggle"><input type="checkbox" ${activeTerminalYear?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
+        <td><label class="toggle"><input type="checkbox" ${activeGlobalYear?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
         <td><input type="number" class="priority-input" value="${s.priority}" min="1" data-key="${k.key}"></td>
+        <td>${k.registeredManually ? `<button class="btn-secondary remove-kpi-btn" data-key="${k.key}" style="border-color:#F2483D; color:#F2483D; padding:4px 8px; font-size:11px;">Remove</button>` : ''}</td>
       `;
       tbody.appendChild(tr);
     });
     tbody.querySelectorAll(".active-terminal-toggle").forEach(cb => {
-      cb.onchange = () => { SETTINGS[settingsTerm][cb.dataset.key].activeTerminal = cb.checked; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      cb.onchange = () => {
+        const s = SETTINGS[settingsTerm][cb.dataset.key];
+        if (!s.activeTerminalByYear) s.activeTerminalByYear = {};
+        s.activeTerminalByYear[settingsYear] = cb.checked;
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+      };
     });
     tbody.querySelectorAll(".active-global-toggle").forEach(cb => {
-      cb.onchange = () => { SETTINGS[settingsTerm][cb.dataset.key].activeGlobal = cb.checked; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      cb.onchange = () => {
+        const s = SETTINGS[settingsTerm][cb.dataset.key];
+        if (!s.activeGlobalByYear) s.activeGlobalByYear = {};
+        s.activeGlobalByYear[settingsYear] = cb.checked;
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+      };
     });
     tbody.querySelectorAll(".direction-select").forEach(sel => {
       sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
-    tbody.querySelectorAll(".priority-input:not(.weight-input):not(.target-input)").forEach(inp => {
+    tbody.querySelectorAll(".priority-input:not(.target-input)").forEach(inp => {
       if (inp.classList.contains("direction-select")) return;
       inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
-    });
-    tbody.querySelectorAll(".weight-input").forEach(inp => {
-      inp.onchange = () => {
-        const kpi = DATA[settingsTerm].kpis.find(k=>k.key===inp.dataset.key);
-        const isPct = effectiveIsPercent(kpi, settingsTerm);
-        const v = inp.value === '' ? null : (isPct ? Number(inp.value)/100 : Number(inp.value));
-        SETTINGS[settingsTerm][inp.dataset.key].weightOverride = v;
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved");
-      };
     });
     tbody.querySelectorAll(".target-input").forEach(inp => {
       inp.onchange = () => {
@@ -2901,14 +3178,26 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (!s.targetOverrides) s.targetOverrides = {};
         if (inp.value === '') delete s.targetOverrides[settingsYear];
         else s.targetOverrides[settingsYear] = isPct ? Number(inp.value)/100 : Number(inp.value);
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render();
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+      };
+    });
+    tbody.querySelectorAll(".remove-kpi-btn").forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.dataset.key;
+        if (!confirm(`Remove manually-registered KPI "${key}" from ${settingsTerm}? This only removes it from Settings/the catalog — it does nothing to any Excel column.`)) return;
+        DATA[settingsTerm].kpis = DATA[settingsTerm].kpis.filter(k=>k.key!==key);
+        delete SETTINGS[settingsTerm][key];
+        saveSettingsForTerm(settingsTerm);
+        persistCatalogForTerm(settingsTerm);
+        renderSettingsTable();
       };
     });
   }
 
-  // ---------- Master render ----------
+  
+// ---------- Master render ----------
   function render(){
-    if (currentTerminal !== "PANAMA") renderPeriodPicker();
+    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS") renderPeriodPicker();
     renderContent();
   }
 
@@ -2968,6 +3257,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     initSettingsDefaults();
     await loadAllSettingsFromStorage();
     applyRoleToUI();
+    buildMainNav();
     buildTerminalPills();
     if (allowedTerminalsFor(CURRENT_USER) && TERM_CODES.length){
       currentTerminal = TERM_CODES[0]; // terminal-scoped users land straight on their own terminal
