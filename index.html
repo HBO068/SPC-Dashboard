@@ -1728,7 +1728,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
-    // Capture the report wrapper only: header + dashboard + footer. The sidebar and browser chrome are excluded.
+    // Capture the report wrapper only: header + dashboard + footer.
+    // The cloned DOM is simplified for export without changing the live dashboard:
+    // keep title/subtitle/flag, hide Global/SPC Tangier navigation, show only the selected terminal,
+    // and keep the period controls directly underneath.
     const target = document.querySelector(".main-area .wrap");
     if (!target) throw new Error("Report area was not found.");
     const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim() || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
@@ -1736,7 +1739,47 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const height = Math.ceil(Math.max(target.scrollHeight, target.getBoundingClientRect().height));
     return window.html2canvas(target, {
       backgroundColor:bg, scale:2, useCORS:true, logging:false,
-      width, height, windowWidth:width, windowHeight:height, scrollX:0, scrollY:0
+      width, height, windowWidth:width, windowHeight:height, scrollX:0, scrollY:0,
+      onclone:(doc) => {
+        const wrap = doc.querySelector(".main-area .wrap") || doc.querySelector(".wrap");
+        if (wrap){
+          wrap.style.margin = "0";
+          wrap.style.maxWidth = "none";
+          wrap.style.width = "100%";
+        }
+
+        // Export header: remove navigation that is useful only on screen.
+        const mainTabs = doc.getElementById("mainSectionTabs");
+        const globalTabs = doc.getElementById("globalSubTabs");
+        if (mainTabs) mainTabs.style.display = "none";
+        if (globalTabs) globalTabs.style.display = "none";
+
+        // Keep only the currently selected terminal pill.
+        const row = doc.getElementById("terminalRow");
+        if (row){
+          row.style.display = "flex";
+          row.style.marginTop = "16px";
+          row.style.marginBottom = "16px";
+          row.style.justifyContent = "flex-start";
+          row.querySelectorAll(".term-pill").forEach(btn => {
+            btn.style.display = btn.classList.contains("active") ? "inline-flex" : "none";
+          });
+        }
+
+        // Keep Daily/Weekly/Monthly/... and selected period visible and aligned under the terminal.
+        const periodRow = doc.getElementById("periodRow");
+        if (periodRow){
+          periodRow.style.display = "flex";
+          periodRow.style.marginTop = "0";
+          periodRow.style.marginBottom = "18px";
+        }
+
+        // Never export app-only warnings/settings overlays if they happen to be open.
+        ["settingsView","rolesView","eraseView","storageWarningBanner"].forEach(id => {
+          const el = doc.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
     });
   }
   document.getElementById("printPdfBtn").onclick = async () => {
