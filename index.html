@@ -1809,18 +1809,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         return cs.display !== "none" && cs.visibility !== "hidden" && r.width > 2 && r.height > 2;
       });
 
+      // getBoundingClientRect() is viewport-relative (it shifts with scroll), but html2canvas
+      // is set up below to render the FULL document starting at its top (via windowWidth/
+      // windowHeight + scrollX/scrollY), so the crop box below must be in DOCUMENT-relative
+      // coordinates. Adding the current scroll offset converts one to the other. Without this,
+      // the capture is only correct when scrolled to the very top of the page (where the two
+      // coordinate spaces happen to coincide) — which was the reported bug.
       const wrapRect = wrap.getBoundingClientRect();
-      let left = wrapRect.left;
-      let top = wrapRect.top;
-      let right = wrapRect.left;
-      let bottom = wrapRect.top;
+      let left = wrapRect.left + window.scrollX;
+      let top = wrapRect.top + window.scrollY;
+      let right = wrapRect.left + window.scrollX;
+      let bottom = wrapRect.top + window.scrollY;
 
       candidates.forEach(el => {
         const r = el.getBoundingClientRect();
-        left = Math.min(left, r.left);
-        top = Math.min(top, r.top);
-        right = Math.max(right, r.right);
-        bottom = Math.max(bottom, r.bottom);
+        left = Math.min(left, r.left + window.scrollX);
+        top = Math.min(top, r.top + window.scrollY);
+        right = Math.max(right, r.right + window.scrollX);
+        bottom = Math.max(bottom, r.bottom + window.scrollY);
       });
 
       // Include the wrap's own left/top padding, but do not include unused width to the right.
