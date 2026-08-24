@@ -471,14 +471,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .tl-bar-wrap{ flex:1; position:relative; height:18px; background:var(--border-soft); border-radius:5px; overflow:hidden;}
   .tl-bar{ position:absolute; top:0; bottom:0; border-radius:5px; background:linear-gradient(90deg, var(--blue), var(--teal)); }
   .tl-score{ width:64px; flex-shrink:0; text-align:right; font-family:var(--mono); font-size:12px;}
-  .vscore-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin-top:2px; }
-  .vscore-card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:grid; grid-template-columns:1fr 76px; grid-template-rows:auto auto; gap:4px 8px; align-items:center; min-height:86px; }
-  .vscore-card .vname{ grid-column:1; grid-row:1; font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .vscore-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:10px; margin-top:2px; }
+  .vscore-card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:grid; grid-template-columns:minmax(0,1fr) 76px; grid-template-rows:auto auto; gap:4px 8px; align-items:center; min-height:92px; }
+  .vscore-card .vname{ grid-column:1; grid-row:1; font-family:var(--mono); font-size:11.5px; font-weight:700; color:var(--text); white-space:normal; overflow-wrap:anywhere; line-height:1.25;}
   .vscore-card .vvisit{ grid-column:1; grid-row:2; font-size:10.5px; color:var(--text-faint); font-family:var(--mono);}
   .vscore-card .vscore-badge{ display:none; }
   .vscore-mini{ grid-column:2; grid-row:1 / span 2; position:relative; width:72px; height:48px; align-self:center; justify-self:end;}
   .vscore-mini canvas{ width:72px !important; height:48px !important;}
   .vscore-mini-value{ position:absolute; left:0; right:0; bottom:0; text-align:center; font-family:var(--mono); font-size:12px; font-weight:700; line-height:1;}
+
+  .app-loading-overlay{position:fixed; inset:0; z-index:9998; display:flex; align-items:center; justify-content:center; background:rgba(4,22,31,.88); backdrop-filter:blur(2px);}
+  .app-loading-card{min-width:300px; max-width:460px; padding:22px 26px; border:1px solid var(--border); border-radius:14px; background:var(--panel); color:var(--text); text-align:center; box-shadow:0 18px 50px rgba(0,0,0,.3);}
+  .app-loading-title{font-family:var(--display); font-size:15px; font-weight:700; margin-bottom:7px;}
+  .app-loading-sub{font-family:var(--mono); color:var(--text-faint); font-size:11px;}
+  .app-loading-dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--teal); margin-right:7px; animation:spcPulse 1s ease-in-out infinite alternate;}
+  @keyframes spcPulse{from{opacity:.3; transform:scale(.8)}to{opacity:1; transform:scale(1.15)}}
 
   .table-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:6px 6px 10px; overflow-x:auto;}
   table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:900px;}
@@ -1076,8 +1083,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     "alternation":"Alternation"
   };
   function targetLabelToKpi(label){
-    let x=norm(label).toLowerCase();
-    x=x.replace(/\btarget\b/g,"").replace(/\(\s*%\s*\)/g,"").replace(/%/g,"").replace(/\s+/g," ").trim();
+    const raw=norm(label).toLowerCase();
+    // Planning Turnaround has TWO different targets in the target workbook:
+    // (%) is used for Daily/Weekly/Monthly/Quarterly/Yearly period scorecards,
+    // while (h) is used only for the per-vessel Planning Turnaround Time (h) KPI.
+    if (raw.includes("planning turnaround")){
+      if (/\(\s*h\s*\)/i.test(raw)) return "Planning Turnaround Time (h)";
+      if (raw.includes("%") || /\(\s*%\s*\)/.test(raw)) return "Planning Turnaround Time (%)";
+    }
+    let x=raw.replace(/\btarget\b/g,"").replace(/\(\s*%\s*\)/g,"").replace(/%/g,"").replace(/\s+/g," ").trim();
     if (KPI_ALIASES[x]) return KPI_ALIASES[x];
     for (const [alias,key] of Object.entries(KPI_ALIASES)){ if (x===alias || x.startsWith(alias+" ")) return key; }
     return null;
@@ -1493,29 +1507,31 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
     });
 
-    for (const term of TERM_CODES){
+    // Load terminal metadata and years concurrently. This avoids the long blank wait after login
+    // caused by waiting for every terminal/year Firestore read one after another.
+    await Promise.all(TERM_CODES.map(async term => {
       let years = [];
       try {
         const yres = await storageGet("years:"+term, true);
         if (yres && yres.value) years = JSON.parse(yres.value);
-      } catch(e){ continue; }
-      if (!years.length) continue;
+      } catch(e){ return; }
+      if (!years.length) return;
 
       try {
         const cres = await storageGet("catalog:"+term, true);
         if (cres && cres.value) DATA[term].kpis = JSON.parse(cres.value);
       } catch(e){ /* keep bootstrap catalog */ }
 
-      for (const year of years){
-        try {
-          const rawRows = await firestoreGetYearRows(term, year);
-          if (rawRows){
-            const yearRows = normalizeRows(rawRows);
-            DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(yearRows);
-          }
-        } catch(e){ /* skip this year */ }
-      }
-    }
+      const loadedYears = await Promise.all(years.map(async year => {
+        try { return [year, await firestoreGetYearRows(term, year)]; }
+        catch(e){ return [year, null]; }
+      }));
+      loadedYears.forEach(([year,rawRows]) => {
+        if (!rawRows) return;
+        const yearRows = normalizeRows(rawRows);
+        DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(yearRows);
+      });
+    }));
   }
 
   // ---------- Panama weekly data (separate model — one aggregated row per terminal per week,
@@ -1559,7 +1575,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const kres = await storageGet("panama_known_terminals", true);
       if (kres && kres.value) known = JSON.parse(kres.value);
     } catch(e){ return; }
-    for (const code of known){
+    await Promise.all(known.map(async code => {
       if (!PANAMA_TERM_CODES.includes(code)) PANAMA_TERM_CODES.push(code);
       try {
         const snap = await db.collection("panama").doc(code).collection("weeks").get();
@@ -1568,7 +1584,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           snap.forEach(doc => { PANAMA_DATA[code][doc.id] = doc.data(); });
         }
       } catch(e){ console.error("loadPanamaDataFromStorage failed for", code, e); }
-    }
+    }));
   }
 
   // Persists just a terminal's KPI catalog (used when a KPI is manually registered/removed in
@@ -1827,12 +1843,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const res=await storageGet("target_known_terminals", true);
       if(res && res.value) known=JSON.parse(res.value);
     } catch(e){ console.error("Could not load target terminal list",e); }
-    for(const term of known){
+    await Promise.all(known.map(async term => {
       try {
         const res=await storageGet("targets:"+term, true);
         if(res && res.value) IMPORTED_TARGETS[term]=JSON.parse(res.value);
       } catch(e){ console.error("Could not load targets for",term,e); }
-    }
+    }));
   }
   async function persistImportedTargets(targetsByTerm){
     let known=[];
@@ -1873,14 +1889,21 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     try { await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); }
     catch(e){ console.error("Could not save settings for", term, e); }
   }
-  function effectiveTarget(kpi, term, year){
+  function effectiveTarget(kpi, term, year, mode){
+    mode = mode || "period";
+    const isPlanningHours = kpi && kpi.key === "Planning Turnaround Time (h)";
+    const lookupKey = isPlanningHours && mode !== "vessel" ? "Planning Turnaround Time (%)" : kpi.key;
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
-    if (s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
+    // The normal Settings target override is the PERIOD target. For Planning Turnaround Time (h),
+    // the vessel-hour target comes from the dedicated Targets Excel row and is kept separate.
+    if (mode !== "vessel" && s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
       return Number(s.targetOverrides[year]);
     }
-    const imported = IMPORTED_TARGETS[term] && IMPORTED_TARGETS[term][kpi.key];
+    const imported = IMPORTED_TARGETS[term] && IMPORTED_TARGETS[term][lookupKey];
     const importedTarget = targetFromMap(imported, year);
     if (importedTarget !== null) return importedTarget;
+    // Legacy fallback only. For Planning Turnaround vessel hours this allows older stored catalogs
+    // to keep working if no dedicated targets file has yet been uploaded.
     return targetFor(kpi, year);
   }
   function effectiveActive(term, kpiKey, scope, year){
@@ -2282,7 +2305,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
       const data = rowsSorted.map(x=>x.v);
       const valueLabels = rowsSorted.map(x=>fmtVal(k, x.v));
-      const target = effectiveTarget(k, currentTerminal, curYear);
+      const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
       const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
       const canvas = document.getElementById("vmini_"+i);
       const ctx = canvas.getContext("2d");
@@ -2316,7 +2339,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         .filter(x => !isNaN(x.v))
         .sort((a,b)=>b.v-a.v);
       const maxAbs = Math.max(1e-9, ...rowsSorted.map(x=>Math.abs(x.v)));
-      const target = effectiveTarget(k, currentTerminal, curYear);
+      const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
       const card = document.createElement("div");
       card.className = "vr-card";
       const rowsHtml = rowsSorted.map(x => {
@@ -2964,16 +2987,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const callRows = [...curRows].sort((a,b)=>a._etb-b._etb);
       callRows.forEach((r, idx) => {
         const score = r["Vessel Score"];
-        const target = scoreKpi ? effectiveTarget(scoreKpi, currentTerminal, r._year) : null;
+        const target = scoreKpi ? effectiveTarget(scoreKpi, currentTerminal, r._year, "vessel") : null;
         const status = statusFor(scoreKpi, score, target);
         const color = STATUS_COLOR[status];
         const visitDate = r._etb.toLocaleDateString(undefined,{month:'short', day:'2-digit', timeZone:'UTC'});
         const card = document.createElement("div");
         card.className = "vscore-card";
         const gaugeId = "vscoreGauge_" + idx;
+        const visitId = r["Id visit"] === null || r["Id visit"] === undefined ? "–" : String(r["Id visit"]);
+        const vesselName = r["Vessel Name"] || "";
         card.innerHTML = `
-          <div class="vname" title="${r["Vessel Name"]}">${r["Vessel Name"]}</div>
-          <div class="vvisit">${visitDate}${r["Service"] ? " · " + r["Service"] : ""}</div>
+          <div class="vname" title="${vesselName.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}">${visitId.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+          <div class="vvisit">${visitDate}${r["Service"] ? " · " + String(r["Service"]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""}</div>
           <div class="vscore-mini"><canvas id="${gaugeId}"></canvas><div class="vscore-mini-value" style="color:${color}">${fmtNum(score,1)}</div></div>
         `;
         vsGrid.appendChild(card);
@@ -2995,7 +3020,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       tbody.innerHTML = "";
       callRows.forEach(r => {
         const score = r["Vessel Score"];
-        const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
+        const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year, "vessel"):null);
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${r["Vessel Name"]}</td><td>${r["Service"]||""}</td><td>${r["Line op"]||""}</td>
@@ -3275,7 +3300,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; clearing that override returns to the uploaded target. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
+          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; clearing that override returns to the uploaded period target. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
         </div>
         <div class="section-label">Register a new KPI</div>
         <div class="footer-note" style="text-align:left; margin-bottom:10px;">
@@ -3465,6 +3490,22 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   // ---------- Init ----------
+  function setAppLoading(show, message){
+    let el=document.getElementById("appLoadingOverlay");
+    if (show){
+      if(!el){
+        el=document.createElement("div");
+        el.id="appLoadingOverlay";
+        el.className="app-loading-overlay";
+        el.innerHTML='<div class="app-loading-card"><div class="app-loading-title"><span class="app-loading-dot"></span>Loading dashboard data</div><div class="app-loading-sub" id="appLoadingMessage"></div></div>';
+        document.body.appendChild(el);
+      }
+      const msg=document.getElementById("appLoadingMessage");
+      if(msg) msg.textContent=message || "Reading your saved terminal data and targets…";
+      el.style.display="flex";
+    } else if(el){ el.remove(); }
+  }
+
   async function initApp(){
     // Rebuild terminal scope on every login before role filtering; avoids a terminal-scoped login permanently shrinking the list.
     TERM_CODES = Object.keys(BUNDLE.terminals);
@@ -3474,9 +3515,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       banner.style.display = "";
       banner.innerHTML = "⚠ Could not connect to the database. Uploads and Settings changes will not be saved.";
     }
-    await loadUploadedDataFromStorage();
-    await loadPanamaDataFromStorage();
-    await loadImportedTargetsFromStorage();
+    // These three datasets are independent, so load them in parallel.
+    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage()]);
     initSettingsDefaults();
     await loadAllSettingsFromStorage();
     applyRoleToUI();
@@ -3527,7 +3567,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         }
         CURRENT_USER = role;
         document.getElementById("loginScreen").style.display = "none";
-        await initApp();
+        setAppLoading(true, "Loading terminal data, targets and settings…");
+        try { await initApp(); }
+        finally { setAppLoading(false); }
       } else {
         CURRENT_USER = null;
         document.getElementById("loginScreen").style.display = "flex";
