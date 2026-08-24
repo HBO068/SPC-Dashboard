@@ -471,6 +471,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .tl-bar-wrap{ flex:1; position:relative; height:18px; background:var(--border-soft); border-radius:5px; overflow:hidden;}
   .tl-bar{ position:absolute; top:0; bottom:0; border-radius:5px; background:linear-gradient(90deg, var(--blue), var(--teal)); }
   .tl-score{ width:64px; flex-shrink:0; text-align:right; font-family:var(--mono); font-size:12px;}
+  .vscore-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin-top:2px; }
+  .vscore-card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:5px; }
+  .vscore-card .vname{ font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .vscore-card .vvisit{ font-size:10.5px; color:var(--text-faint); font-family:var(--mono);}
+  .vscore-card .vscore-badge{ align-self:flex-start; font-family:var(--mono); font-weight:700; font-size:15px; padding:3px 10px; border-radius:999px; margin-top:2px;}
 
   .table-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:6px 6px 10px; overflow-x:auto;}
   table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:900px;}
@@ -677,9 +682,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   "appId": "1:457382985063:web:f05709e636749d3e84c3c2"
 };</script>
 <script>// excel_parser.js — parses an SPC Tangier terminal .xlsm workbook entirely client-side:
-// finds the Dashboards Data + Setups sheets, builds the KPI catalog (targets/weights per year,
-// period-column matching, sum-vs-constant classification from the actual cell formulas), and
-// extracts vessel-call rows grouped by year. Mirrors the Python pipeline used to seed this dashboard.
+// reads ONLY the Dashboards Data sheet (Setups is never read — targets live in Settings only),
+// auto-discovers the KPI catalog against the canonical company-wide KPI list, classifies each
+// KPI as sum-vs-constant from the actual cell formulas, and extracts vessel-call rows grouped by
+// year. Numeric fields are read from a raw (non-date-coerced) parse so a corrupted cell format
+// can never be misread as a date/epoch-ms number.
 
 (function(root, factory){
   if (typeof module === "object" && module.exports) {
@@ -891,20 +898,38 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return result;
   }
 
+  // ---------- Canonical KPI catalog (company-wide, per Section 5 of the requirements doc) ----------
+  // Discovered directly against each terminal's own Dashboards Data headers — a terminal that
+  // doesn't track a given KPI (e.g. no CI Adherence column) simply doesn't get it. Targets are
+  // never seeded from Excel: they start empty and are set entirely in Settings (or the future
+  // dedicated Targets upload), so uploading dashboard data can never touch Settings or targets.
+  const CANONICAL_KPI_NAMES = [
+    "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
+    "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
+    "Yard Mirroring", "Loading Points", "Twins Planning", "Dual Cycling",
+    "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score"
+  ];
+
   // ---------- Main entry point ----------
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsm file
   // XLSX: the SheetJS library object (window.XLSX in browser)
   function parseWorkbook(workbookArrayBuffer, XLSX){
+    // Two parses of the same buffer: cellDates:true (for ETB/ETD, and for reading each KPI's
+    // formula to classify SUM vs MAX) and a fully raw parse used for every other cell value.
+    // This is the fix for the "% or Number becomes Date" corruption bug: if a KPI cell's format
+    // got silently flipped to a date/time format, the cellDates parse would hand back a JS Date
+    // object (which, if ever coerced to a number, reads as an epoch-millisecond timestamp — the
+    // huge nonsense values seen in the dashboard). Reading numeric KPI fields from the raw parse
+    // instead makes the dashboard immune to that Excel-side formatting corruption entirely.
     const wb = XLSX.read(workbookArrayBuffer, {type:"array", cellFormula:true, cellDates:true, cellNF:true, cellText:false});
+    const wbRaw = XLSX.read(workbookArrayBuffer, {type:"array", cellFormula:false, cellDates:false, cellNF:false, cellText:false, raw:true});
     const dataSheetName = wb.SheetNames.find(n => /dashboards? data/i.test(n)) || wb.SheetNames.find(n=>/data/i.test(n));
-    const setupsSheetName = wb.SheetNames.find(n => /setups?/i.test(n));
     if (!dataSheetName) throw new Error("Could not find a 'Dashboards Data' sheet in this file.");
-    if (!setupsSheetName) throw new Error("Could not find a 'Setups' sheet in this file.");
+    // The Setups sheet is intentionally never read — see comment above.
 
     const dataSheet = wb.Sheets[dataSheetName];
-    const setupsSheet = wb.Sheets[setupsSheetName];
+    const dataSheetRaw = wbRaw.Sheets[dataSheetName];
     const dataRange = XLSX.utils.decode_range(dataSheet['!ref']);
-    const setupsRange = XLSX.utils.decode_range(setupsSheet['!ref']);
 
     const headerRow = findHeaderRow(dataSheet, XLSX);
     if (!headerRow) throw new Error("Could not find the header row (a 'Year' column) in the Dashboards Data sheet. This file may not match the expected template.");
@@ -919,20 +944,16 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       throw new Error("This file is missing expected columns: " + missingCore.join(", ") + ". Upload cancelled — no data was changed.");
     }
 
-    const setupsData = parseSetups(setupsSheet, XLSX, setupsRange.e.r+1);
-    if (setupsData.error) throw new Error("Could not read the Setups sheet: " + setupsData.error);
-
-    // Build KPI catalog
+    // Build KPI catalog directly from this terminal's own Dashboards Data headers.
     const seenCols = new Set();
     const kpiMap = {};
-    setupsData.targets.forEach(t => {
-      if (/\(%\)/.test(t.label) && /planning turnaround/i.test(t.label)) return; // secondary target, same KPI as (h)
-      const base = baseFromLabel(t.label);
-      const {col, score} = findBaseColumn(base, rawHeaders);
+    CANONICAL_KPI_NAMES.forEach(name => {
+      const {col} = findBaseColumn(name, rawHeaders);
       if (!col || seenCols.has(col)) return;
       seenCols.add(col);
       const periodCols = findPeriodVariants(col, rawHeaders);
       const periodAgg = {};
+      let isPercent = false;
       Object.keys(periodCols).forEach(period => {
         const pcol = periodCols[period];
         if (!pcol){ periodAgg[period] = null; return; }
@@ -940,18 +961,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         const sampleRow = headerRow + 1;
         const cell = getCell(dataSheet, sampleRow, pcolIdx, XLSX);
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
+        if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      kpiMap[col] = {key: col, targets_by_year: t.by_year, weight: null, period_cols: periodCols, period_agg: periodAgg, isPercent: !!t.isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
+      kpiMap[col] = {key: col, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
     });
 
-    // Planning Turnaround Time: use the '%' compliance-rate columns/target instead of '(h)' hours.
+    // Planning Turnaround Time: use the '%' compliance-rate columns instead of '(h)' hours at
+    // the period level (confirmed KPI rule) — the '(h)' base column stays for per-vessel display.
     const ptKey = Object.keys(kpiMap).find(k => k.toLowerCase().startsWith("planning turnaround"));
     if (ptKey){
-      const pctTargetRow = setupsData.targets.find(t => /\(%\)/.test(t.label) && /planning turnaround/i.test(t.label));
-      if (pctTargetRow){ kpiMap[ptKey].targets_by_year = pctTargetRow.by_year; kpiMap[ptKey].isPercent = !!pctTargetRow.isPercent; }
       const pctCols = findPctPeriodCols(rawHeaders);
       if (Object.values(pctCols).some(Boolean)){
         kpiMap[ptKey].period_cols = pctCols;
+        kpiMap[ptKey].isPercent = true;
         const periodAgg = {};
         Object.keys(pctCols).forEach(period => {
           const pcol = pctCols[period];
@@ -964,17 +986,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         kpiMap[ptKey].period_agg = periodAgg;
       }
     }
-    setupsData.weights.forEach(w => {
-      if (w.label === "Weight" || w.value === null || w.value === undefined) return;
-      const base = baseFromLabel(w.label);
-      const baseNorm = base.toLowerCase();
-      let bestKey = null, bestScore = 0;
-      Object.keys(kpiMap).forEach(key => {
-        const s = similarity(baseNorm, key.toLowerCase());
-        if (s > bestScore){ bestScore = s; bestKey = key; }
-      });
-      if (bestKey && bestScore >= 0.55) kpiMap[bestKey].weight = w.value;
-    });
     const catalog = Object.values(kpiMap);
 
     // Extract rows
@@ -986,6 +997,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       "Load Planned","Discharge Planned","Total Moves Planned","Total TEU Planned",
       "Restows (20' Moves)","Restows (40'/45' Moves)","Call Seize"
     ];
+    const DATE_FIELDS = new Set(["ETB","ETD"]); // only real dates are read via the cellDates parse
     const fieldsNeeded = new Set(CORE_FIELDS);
     catalog.forEach(k => {
       fieldsNeeded.add(k.key);
@@ -994,16 +1006,25 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     const colIdx = {};
     fieldsNeeded.forEach(f => { if (headers[f]) colIdx[f] = headers[f]; });
 
+    const ERROR_VALUE_RE = /^#(N\/A|REF!|VALUE!|DIV\/0!|NULL!|NAME\?|NUM!)$/i;
     const idVisitCol = colIdx["Id visit"];
     const rowsByYear = {};
     const termCounts = {};
+    const errorCells = []; // #N/A / other Excel errors found while reading — surfaced as a warning, upload still proceeds
     for (let r = headerRow+1; r <= maxRow; r++){
       const idCell = getCell(dataSheet, r, idVisitCol, XLSX);
       if (!idCell || !idCell.v) continue;
+      const vesselCell = colIdx["Vessel Name"] ? getCell(dataSheetRaw, r, colIdx["Vessel Name"], XLSX) : null;
       const row = {};
       Object.keys(colIdx).forEach(f => {
-        const c = getCell(dataSheet, r, colIdx[f], XLSX);
-        row[f] = (c && c.v !== undefined) ? c.v : null;
+        const c = DATE_FIELDS.has(f) ? getCell(dataSheet, r, colIdx[f], XLSX) : getCell(dataSheetRaw, r, colIdx[f], XLSX);
+        let v = (c && c.v !== undefined) ? c.v : null;
+        const isErrorCell = (c && c.t === 'e') || (typeof v === 'string' && ERROR_VALUE_RE.test(v.trim()));
+        if (isErrorCell){
+          errorCells.push({ row: r, field: f, vessel: (vesselCell && vesselCell.v) || idCell.v || null });
+          v = null;
+        }
+        row[f] = v;
       });
       const yr = String(row["Year"]);
       if (!rowsByYear[yr]) rowsByYear[yr] = [];
@@ -1017,10 +1038,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if (!terminal) throw new Error("Could not detect a Terminal code from the data (the 'Terminal' column looks empty).");
 
     const totalRows = Object.values(rowsByYear).reduce((a,arr)=>a+arr.length,0);
-    return { terminal, catalog, rowsByYear, years: Object.keys(rowsByYear).sort(), totalRows };
+    return { terminal, catalog, rowsByYear, years: Object.keys(rowsByYear).sort(), totalRows, errorCells };
   }
 
-  return { parseWorkbook, classifyFormula, findPeriodVariants, findBaseColumn, parseSetups, norm };
+  return { parseWorkbook, classifyFormula, findPeriodVariants, findBaseColumn, norm };
 });
 </script>
 <script>window.__BUNDLE__ = {"terminals": {}};
@@ -1611,9 +1632,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const uploadBtn = document.getElementById("uploadBtn");
   const uploadFile = document.getElementById("uploadFile");
   const uploadStatusEl = document.getElementById("uploadStatus");
-  function setUploadStatus(msg, isError){
+  function setUploadStatus(msg, level){
     uploadStatusEl.textContent = msg;
-    uploadStatusEl.style.color = isError ? "#F2483D" : "#3ED17E";
+    // Backward-compatible: existing calls pass a boolean (true=error/red, false=ok/green).
+    // New calls can pass the string "warn" for a non-fatal amber notice (e.g. #N/A cells found).
+    const color = level === "warn" ? "#F5C518" : level ? "#F2483D" : "#3ED17E";
+    uploadStatusEl.style.color = color;
   }
   uploadBtn.onclick = () => uploadFile.click();
   uploadFile.onchange = async (e) => {
@@ -1634,7 +1658,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       currentPeriod = null;
       render();
       const kpiNote = isFirstUpload ? "KPI setup created" : "KPI/Settings left untouched";
-      setUploadStatus(`✓ ${result.terminal}: ${result.years.join(", ")} updated (${result.totalRows} calls) — ${kpiNote}`, false);
+      let msg = `✓ ${result.terminal}: ${result.years.join(", ")} updated (${result.totalRows} calls) — ${kpiNote}`;
+      if (result.errorCells && result.errorCells.length){
+        const n = result.errorCells.length;
+        const sample = result.errorCells.slice(0,3).map(e => `${e.field}${e.vessel?" ("+e.vessel+")":""}`).join("; ");
+        msg += ` — ⚠ ${n} error cell${n>1?'s':''} found (#N/A / #REF! / etc.) and skipped: ${sample}${n>3?", …":""}`;
+        setUploadStatus(msg, "warn");
+      } else {
+        setUploadStatus(msg, false);
+      }
     } catch(err){
       console.error("Upload failed:", err);
       setUploadStatus("✗ Upload failed: " + err.message, true);
@@ -2008,10 +2040,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const labels = subGroups.map(g=>g.key);
     const data = subGroups.map(g=> scoreKpi ? getValue(scoreKpi, g.rows, subPeriod) : null);
     const targetData = subGroups.map(g => scoreKpi ? effectiveTarget(scoreKpi, currentTerminal, g.rows[0]._year) : null);
+    const statusColors = data.map((v,i) => v===null||v===undefined ? "#7E9AA8" : STATUS_COLOR[statusFor(scoreKpi, v, targetData[i])]);
+    const lastColor = statusColors[statusColors.length-1] || "#3ED17E";
     scoreTrendChart = new Chart(ctx, {
       type:"line",
       data:{ labels, datasets:[
-        { label:"Vessel Score", data, borderColor:"#3ED17E", backgroundColor:"rgba(62,209,126,0.12)", fill:true, tension:0.35, pointRadius:2 },
+        { label:"Vessel Score", data, borderColor: lastColor,
+          segment:{ borderColor: (c) => statusColors[c.p1DataIndex] || lastColor },
+          backgroundColor: lastColor + "1F", pointBackgroundColor: statusColors, pointBorderColor: statusColors,
+          fill:true, tension:0.35, pointRadius:3 },
         { label:"Target", data: targetData, borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, fill:false, tension:0 }
       ]},
       options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:"index", intersect:false },
@@ -2029,11 +2066,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (trendCharts[containerId]) trendCharts[containerId].destroy();
     const labels = subGroups.map(g=>g.key);
     const data = subGroups.map(g=> getValue(kpi, g.rows, subPeriod));
+    const targetData = subGroups.map(g=>effectiveTarget(kpi, currentTerminal, g.rows[0]._year));
+    const statusColors = data.map((v,i) => v===null||v===undefined ? "#7E9AA8" : STATUS_COLOR[statusFor(kpi, v, targetData[i])]);
+    const lastColor = statusColors[statusColors.length-1] || "#4FA6E8";
     trendCharts[containerId] = new Chart(ctx, {
       type:"line",
       data:{ labels, datasets:[
-        { data, borderColor:"#4FA6E8", backgroundColor:"rgba(79,166,232,0.16)", fill:true, tension:0.35, pointRadius:2, borderWidth:2 },
-        { data: subGroups.map(g=>effectiveTarget(kpi, currentTerminal, g.rows[0]._year)), borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false, tension:0 }
+        { data, borderColor: lastColor, segment:{ borderColor:(c)=>statusColors[c.p1DataIndex]||lastColor },
+          backgroundColor: lastColor+"1F", pointBackgroundColor: statusColors, pointBorderColor: statusColors,
+          fill:true, tension:0.35, pointRadius:2, borderWidth:2 },
+        { data: targetData, borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false, tension:0 }
       ]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
         scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
@@ -2047,6 +2089,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   function vesselShortId(r){ return r["Id visit"] || r["Vessel Name"] || "?"; }
 
+  const GENERAL_MINI_KPI_ORDER = ["Port Hours Saved %", "Planning Turnaround Time (h)", "Stowage Quality"];
+  const barValueLabelPlugin = {
+    id: "barValueLabel",
+    afterDatasetsDraw(chart){
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, dsIndex) => {
+        if (dataset.type === "line") return; // skip the dashed target line
+        const meta = chart.getDatasetMeta(dsIndex);
+        meta.data.forEach((bar, i) => {
+          const label = dataset.valueLabels ? dataset.valueLabels[i] : null;
+          if (label === null || label === undefined) return;
+          ctx.save();
+          ctx.fillStyle = "#D8E7EC";
+          ctx.font = "600 10px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(label, bar.x, bar.y - 5);
+          ctx.restore();
+        });
+      });
+    }
+  };
   function renderVesselBreakdown(curRows, scoreKpi, otherKpis, curYear){
     destroyVesselMiniCharts();
     const miniGrid = document.getElementById("vesselMiniGrid");
@@ -2055,9 +2118,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     miniGrid.innerHTML = "";
     rankedGrid.innerHTML = "";
 
-    // Mini vertical-bar charts: Vessel Score + first 2 priority KPIs, one bar per vessel call.
-    const miniKpis = [scoreKpi, ...otherKpis.slice(0,2)].filter(Boolean);
-    const rankedKpis = otherKpis.slice(2);
+    // Mini vertical-bar charts: general KPIs only (Port Hours Saved % / Planning Turnaround Time %
+    // / Stowage Quality) — whichever of these this terminal actually tracks. Vessel Score moved to
+    // its own compact per-vessel card grid above, so it's never duplicated here.
+    const miniKpis = GENERAL_MINI_KPI_ORDER.map(name => otherKpis.find(k=>k.key===name)).filter(Boolean);
+    const rankedKpis = otherKpis.filter(k => !GENERAL_MINI_KPI_ORDER.includes(k.key));
 
     miniKpis.forEach((k,i) => {
       const id = "vmini_"+i;
@@ -2074,6 +2139,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
       const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
       const data = rowsSorted.map(x=>x.v);
+      const valueLabels = rowsSorted.map(x=>fmtVal(k, x.v));
       const target = effectiveTarget(k, currentTerminal, curYear);
       const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
       const canvas = document.getElementById("vmini_"+i);
@@ -2081,9 +2147,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       vesselMiniCharts["vmini_"+i] = new Chart(ctx, {
         type:"bar",
         data:{ labels, datasets:[
-          { data, backgroundColor: colors, borderRadius:3, barPercentage:0.7 },
+          { data, backgroundColor: colors, borderRadius:3, barPercentage:0.7, valueLabels },
           { type:"line", data: labels.map(()=>target), borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false }
         ]},
+        plugins: [barValueLabelPlugin],
         options:{ responsive:true, maintainAspectRatio:false,
           plugins:{ legend:{ display:false },
             tooltip:{
@@ -2279,8 +2346,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const v = panamaAvg(t, curGroup.weekKeys, k);
         return v===null ? "" : `<span class="chip">${k}: ${panamaFmt(k,v)}</span>`;
       }).filter(Boolean).join("");
+      const flagHtml = ASSETS.flags[t] ? `<img src="${ASSETS.flags[t]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : '';
       el.innerHTML = `
-        <div class="head"><span class="code">${t}</span><span class="score-badge" style="background:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}22;color:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}">${score!==null?fmtNum(score,2):"–"}</span></div>
+        <div class="head"><span class="code">${flagHtml}${t}</span><span class="score-badge" style="background:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}22;color:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}">${score!==null?fmtNum(score,2):"–"}</span></div>
         <div class="chips">${kpiChips}</div>
       `;
       termsGrid.appendChild(el);
@@ -2650,10 +2718,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // (no "Berth Plan" divider header — the timeline flows straight on from the ranked KPI panels).
     const showVesselBreakdown = (currentType === "daily" || currentType === "weekly");
     const vesselSectionHtml = showVesselBreakdown ? `
+      <div class="section-label">Vessel Score — vessels of the ${PERIOD_NOUN[currentType]}</div>
+      <div class="vscore-grid" id="vesselScoreGrid"></div>
+
       <div class="section-label">Vessel KPIs — vessels of the ${PERIOD_NOUN[currentType]}</div>
       <div class="charts-grid" id="vesselMiniGrid"></div>
       <div class="vessel-ranked-grid" id="vesselRankedGrid"></div>
-      <div class="timeline-card" style="margin-top:14px;"><div class="timeline-scroll"><div id="timelineRows"></div></div></div>
 
       <div class="section-label">Vessel Call Detail</div>
       <div class="table-card">
@@ -2746,30 +2816,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (showVesselBreakdown){
       renderVesselBreakdown(curRows, scoreKpi, otherKpis, curYear);
 
-      const tlEl = document.getElementById("timelineRows");
-      tlEl.innerHTML = "";
+      const vsGrid = document.getElementById("vesselScoreGrid");
+      vsGrid.innerHTML = "";
       const callRows = [...curRows].sort((a,b)=>a._etb-b._etb);
-      if (callRows.length){
-        const minT = Math.min(...callRows.map(r=>r._etb.getTime()));
-        const maxT = Math.max(...callRows.map(r=>r._etd ? r._etd.getTime() : r._etb.getTime()));
-        const span = Math.max(1, maxT-minT);
-        callRows.forEach(r => {
-          const start = r._etb.getTime();
-          const end = r._etd ? r._etd.getTime() : start;
-          const left = ((start-minT)/span)*100;
-          const width = Math.max(0.6, ((end-start)/span)*100);
-          const score = r["Vessel Score"];
-          const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
-          const row = document.createElement("div");
-          row.className = "tl-row";
-          row.innerHTML = `
-            <div class="tl-name">${r["Vessel Name"]}<span class="svc">${r["Service"]||""}</span></div>
-            <div class="tl-bar-wrap"><div class="tl-bar" style="left:${left}%;width:${width}%;background:${STATUS_COLOR[status]}"></div></div>
-            <div class="tl-score" style="color:${STATUS_COLOR[status]}">${fmtNum(score,1)}</div>
-          `;
-          tlEl.appendChild(row);
-        });
-      }
+      callRows.forEach(r => {
+        const score = r["Vessel Score"];
+        const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year):null);
+        const color = STATUS_COLOR[status];
+        const visitDate = r._etb.toLocaleDateString(undefined,{month:'short', day:'2-digit', timeZone:'UTC'});
+        const card = document.createElement("div");
+        card.className = "vscore-card";
+        card.innerHTML = `
+          <div class="vname" title="${r["Vessel Name"]}">${r["Vessel Name"]}</div>
+          <div class="vvisit">${visitDate}${r["Service"] ? " · " + r["Service"] : ""}</div>
+          <div class="vscore-badge" style="background:${color}22;color:${color}">${fmtNum(score,1)}</div>
+        `;
+        vsGrid.appendChild(card);
+      });
+
 
       const tbody = document.getElementById("tableBody");
       tbody.innerHTML = "";
