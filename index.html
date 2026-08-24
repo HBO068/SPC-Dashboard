@@ -1926,9 +1926,47 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     for(const [term,incoming] of Object.entries(targetsByTerm)){
       ensureTargetTerminalRegistered(term);
       IMPORTED_TARGETS[term]=IMPORTED_TARGETS[term]||{};
-      // Each KPI row in the uploaded target file is authoritative for that KPI's year map.
-      Object.entries(incoming).forEach(([kpiKey,byYear])=>{ IMPORTED_TARGETS[term][kpiKey]=Object.assign({},byYear); });
+      SETTINGS[term]=SETTINGS[term]||{};
+      let settingsChanged=false;
+
+      // The uploaded Targets Excel is authoritative for every KPI/year it actually contains.
+      // Re-uploading the file must therefore refresh the displayed target immediately.
+      // Only target overrides for those uploaded KPI/year cells are cleared; direction,
+      // visibility, activation and priority remain completely manual and untouched.
+      Object.entries(incoming).forEach(([kpiKey,byYear])=>{
+        IMPORTED_TARGETS[term][kpiKey]=Object.assign({},byYear);
+
+        const settingsKey = kpiKey === "Planning Turnaround Time (%)"
+          ? "Planning Turnaround Time (h)"
+          : kpiKey;
+        SETTINGS[term][settingsKey]=SETTINGS[term][settingsKey] || {
+          activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{},
+          activeTerminalByYear:{}, activeGlobalByYear:{}
+        };
+        const st=SETTINGS[term][settingsKey];
+        const uploadedYears=Object.keys(byYear||{});
+
+        if(kpiKey === "Planning Turnaround Time (h)"){
+          st.vesselTargetOverrides=st.vesselTargetOverrides||{};
+          uploadedYears.forEach(y=>{
+            if(Object.prototype.hasOwnProperty.call(st.vesselTargetOverrides,y)){
+              delete st.vesselTargetOverrides[y];
+              settingsChanged=true;
+            }
+          });
+        } else {
+          st.targetOverrides=st.targetOverrides||{};
+          uploadedYears.forEach(y=>{
+            if(Object.prototype.hasOwnProperty.call(st.targetOverrides,y)){
+              delete st.targetOverrides[y];
+              settingsChanged=true;
+            }
+          });
+        }
+      });
+
       await storageSet("targets:"+term, JSON.stringify(IMPORTED_TARGETS[term]), true);
+      if(settingsChanged) await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true);
       if(!known.includes(term)) known.push(term);
     }
     await storageSet("target_known_terminals", JSON.stringify(known.sort()), true);
@@ -3385,7 +3423,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; clearing that override returns to the uploaded period target. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
+          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; uploading a Targets Excel again replaces that year's target with the newly uploaded value. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
         </div>
         <div class="section-label">Register a new KPI</div>
         <div class="footer-note" style="text-align:left; margin-bottom:10px;">
@@ -3556,7 +3594,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         hourTr.innerHTML = `
           <td class="kpi-key-cell">Planning Turnaround Time (h)</td>
           <td>
-            <input type="number" step="0.01" class="vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;">
+            <input type="number" step="0.01" class="priority-input target-input vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;">
             <span class="weight-badge">h</span>
           </td>
           <td>
