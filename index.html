@@ -524,6 +524,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   ::-webkit-scrollbar{ height:8px; width:8px;} ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px;} ::-webkit-scrollbar-track{ background:transparent;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="loginScreen" style="position:fixed; inset:0; z-index:1000; background:#08161F; display:flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif;">
@@ -1475,6 +1476,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (isPct) return (v*100).toFixed(1)+"%";
     return fmtNum(v,2);
   }
+  function vesselDisplayKpi(kpi){
+    if (kpi && kpi.key === "Planning Turnaround Time (h)") return Object.assign({}, kpi, {isPercent:false});
+    return kpi;
+  }
   function statusFor(kpi, value, target, termOverride){
     if (value===null || value===undefined || target===null || target===undefined || isNaN(value) || isNaN(target) || target===0){
       return "watch";
@@ -1687,21 +1692,51 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   document.addEventListener("click", () => { printMenu.style.display = "none"; });
   printMenu.onclick = (e) => e.stopPropagation();
 
-  document.getElementById("printPdfBtn").onclick = () => {
+  function exportPeriodName(){
+    return ({daily:"Day", weekly:"Week", monthly:"Month", quarterly:"Quarter", yearly:"Year"})[currentType] || "Report";
+  }
+  function exportTerminalName(){
+    if (currentTerminal === "ALL") return "Tangier";
+    if (currentTerminal === "PANAMA") return "Panama";
+    if (currentTerminal === "SPCS") return "Global";
+    return currentTerminal || "Report";
+  }
+  function exportBaseName(){
+    const period = currentPeriod || globalReportPeriod || "Current";
+    return `SPC-${exportTerminalName()} Performance - ${exportPeriodName()} ${period}`.replace(/[\/:*?"<>|]/g,"-");
+  }
+  async function captureCurrentReport(){
+    if (!window.html2canvas) throw new Error("Image export library did not load.");
+    // Capture the report wrapper only: header + dashboard + footer. The sidebar and browser chrome are excluded.
+    const target = document.querySelector(".main-area .wrap");
+    if (!target) throw new Error("Report area was not found.");
+    const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim() || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
+    const width = Math.ceil(Math.max(target.scrollWidth, target.getBoundingClientRect().width));
+    const height = Math.ceil(Math.max(target.scrollHeight, target.getBoundingClientRect().height));
+    return window.html2canvas(target, {
+      backgroundColor:bg, scale:2, useCORS:true, logging:false,
+      width, height, windowWidth:width, windowHeight:height, scrollX:0, scrollY:0
+    });
+  }
+  document.getElementById("printPdfBtn").onclick = async () => {
     printMenu.style.display = "none";
-    window.print(); // uses the @media print rules already defined — user picks "Save as PDF" in their browser's print dialog
+    try {
+      if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export library did not load. Refresh once and try again.");
+      const canvas = await captureCurrentReport();
+      const { jsPDF } = window.jspdf;
+      const wPt = canvas.width * 0.375; // canvas is rendered at scale 2; CSS px -> PDF points
+      const hPt = canvas.height * 0.375;
+      const pdf = new jsPDF({ orientation:wPt>=hPt?"landscape":"portrait", unit:"pt", format:[wPt,hPt], compress:true });
+      pdf.addImage(canvas.toDataURL("image/jpeg",0.96), "JPEG", 0, 0, wPt, hPt, undefined, "FAST");
+      pdf.save(exportBaseName() + ".pdf");
+    } catch(e){ alert("Could not export PDF: " + e.message); }
   };
   document.getElementById("printImageBtn").onclick = async () => {
     printMenu.style.display = "none";
-    if (!window.html2canvas){ alert("Image export library did not load. Please refresh and try again."); return; }
-    const target = document.getElementById("mainApp").style.display === "none"
-      ? (document.getElementById("settingsView").style.display !== "none" ? document.getElementById("settingsView") : document.getElementById("rolesView"))
-      : document.getElementById("mainApp");
     try {
-      const canvas = await window.html2canvas(target, { backgroundColor: "#08161F", scale: 2 });
+      const canvas = await captureCurrentReport();
       const link = document.createElement("a");
-      const label = (currentTerminal === "ALL" ? "AllTerminals" : currentTerminal) + "_" + currentType + "_" + (currentPeriod||"export");
-      link.download = "SPC_" + label.replace(/[^a-zA-Z0-9_-]/g,"") + ".png";
+      link.download = exportBaseName() + ".png";
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch(e){ alert("Could not export image: " + e.message); }
@@ -1768,7 +1803,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const buf=await file.arrayBuffer();
       const result=window.TargetsParser.parseWorkbook(buf, window.XLSX);
       await persistImportedTargets(result.targets);
-      if(showingSettings && settingsTerm) renderSettingsView();
+      initSettingsDefaults();
+      await loadAllSettingsFromStorage();
+      buildTerminalPills();
+      if(showingSettings) {
+        if(!settingsTerm || !TERM_CODES.includes(settingsTerm)) settingsTerm = Object.keys(result.targets)[0] || settingsTerm;
+        renderSettingsView();
+      }
       render();
       let msg=`✓ Targets updated: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Direction, visibility and priority were not changed.`;
       if(result.unrecognized.length){
@@ -1837,12 +1878,19 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (candidate === null) candidate = years[0];
     return Number(ty[String(candidate)] ?? ty[candidate]);
   }
+  function ensureTargetTerminalRegistered(term){
+    if (!term) return;
+    if (!TERM_CODES.includes(term)) TERM_CODES.push(term);
+    if (!DATA[term]) DATA[term] = { rows: [], kpis: [] };
+    SETTINGS[term] = SETTINGS[term] || {};
+  }
   async function loadImportedTargetsFromStorage(){
     let known=[];
     try {
       const res=await storageGet("target_known_terminals", true);
       if(res && res.value) known=JSON.parse(res.value);
     } catch(e){ console.error("Could not load target terminal list",e); }
+    known.forEach(ensureTargetTerminalRegistered);
     await Promise.all(known.map(async term => {
       try {
         const res=await storageGet("targets:"+term, true);
@@ -1855,6 +1903,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const knownRes=await storageGet("target_known_terminals", true);
     if(knownRes && knownRes.value) known=JSON.parse(knownRes.value);
     for(const [term,incoming] of Object.entries(targetsByTerm)){
+      ensureTargetTerminalRegistered(term);
       IMPORTED_TARGETS[term]=IMPORTED_TARGETS[term]||{};
       // Each KPI row in the uploaded target file is authoritative for that KPI's year map.
       Object.entries(incoming).forEach(([kpiKey,byYear])=>{ IMPORTED_TARGETS[term][kpiKey]=Object.assign({},byYear); });
@@ -1896,6 +1945,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     // The normal Settings target override is the PERIOD target. For Planning Turnaround Time (h),
     // the vessel-hour target comes from the dedicated Targets Excel row and is kept separate.
+    if (mode === "vessel" && isPlanningHours && s.vesselTargetOverrides && s.vesselTargetOverrides[year] !== undefined && s.vesselTargetOverrides[year] !== null && s.vesselTargetOverrides[year] !== '') {
+      return Number(s.vesselTargetOverrides[year]);
+    }
     if (mode !== "vessel" && s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
       return Number(s.targetOverrides[year]);
     }
@@ -2304,7 +2356,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
       const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
       const data = rowsSorted.map(x=>x.v);
-      const valueLabels = rowsSorted.map(x=>fmtVal(k, x.v));
+      const displayKpi = vesselDisplayKpi(k);
+      const valueLabels = rowsSorted.map(x=>fmtVal(displayKpi, x.v));
       const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
       const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
       const canvas = document.getElementById("vmini_"+i);
@@ -2321,7 +2374,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
             tooltip:{
               callbacks:{
                 title: (items) => items.length ? vesselNames[items[0].dataIndex] : "",
-                label: (item) => item.datasetIndex === 1 ? "Target: " + fmtVal(k.key, item.raw) : prettyLabel(k.key) + ": " + fmtVal(k.key, item.raw)
+                label: (item) => item.datasetIndex === 1 ? "Target: " + fmtVal(displayKpi, item.raw) : prettyLabel(k.key) + ": " + fmtVal(displayKpi, item.raw)
               }
             }
           },
@@ -2350,7 +2403,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         return `<div class="vr-row" title="${vesselName}">
           <div class="vname">${vesselShortId(x.r)}</div>
           <div class="vbar-wrap"><div class="vbar" style="width:${widthPct}%; background:${color}"></div></div>
-          <div class="vval" style="color:${color}">${fmtVal(k, x.v)}</div>
+          <div class="vval" style="color:${color}">${fmtVal(vesselDisplayKpi(k), x.v)}</div>
         </div>`;
       }).join("");
       card.innerHTML = `<div class="label">${prettyLabel(k.key)}</div>${rowsHtml}`;
@@ -3272,17 +3325,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // older years even if this terminal's currently-loaded data doesn't span back that far.
     const ys = new Set();
     for (let y = 2020; y <= 2032; y++) ys.add(String(y));
-    DATA[term].rows.forEach(r => ys.add(r._year));
-    DATA[term].kpis.forEach(k => Object.keys(k.targets_by_year||{}).forEach(y=>ys.add(y)));
+    (DATA[term]?.rows || []).forEach(r => ys.add(r._year));
+    (DATA[term]?.kpis || []).forEach(k => Object.keys(k.targets_by_year||{}).forEach(y=>ys.add(y)));
     Object.values(IMPORTED_TARGETS[term]||{}).forEach(byYear => Object.keys(byYear||{}).forEach(y=>ys.add(y)));
     return [...ys].sort();
   }
 
   function renderSettingsView(){
-    if (!settingsTerm) settingsTerm = TERM_CODES[0];
+    if (!settingsTerm) settingsTerm = TERM_CODES[0] || Object.keys(IMPORTED_TARGETS)[0] || Object.keys(SETTINGS)[0];
+    ensureTargetTerminalRegistered(settingsTerm);
     const years = yearsForTerm(settingsTerm);
     if (!settingsYear || !years.includes(settingsYear)){
-      const dataYears = [...new Set(DATA[settingsTerm].rows.map(r=>r._year))].sort();
+      const dataYears = [...new Set((DATA[settingsTerm]?.rows || []).map(r=>r._year))].sort();
       settingsYear = dataYears.length ? dataYears[dataYears.length-1] : String(new Date().getFullYear());
     }
     const sv = document.getElementById("settingsView");
@@ -3320,7 +3374,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       </div>
     `;
     const sel = document.getElementById("settingsTermSelect");
-    TERM_CODES.forEach(t => { const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); });
+    const settingsTerminalCodes = [...new Set([...TERM_CODES, ...Object.keys(IMPORTED_TARGETS), ...Object.keys(SETTINGS)])].sort();
+    settingsTerminalCodes.forEach(t => { ensureTargetTerminalRegistered(t); const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); });
     sel.value = settingsTerm;
     sel.onchange = () => { settingsTerm = sel.value; settingsYear = null; renderSettingsView(); };
 
@@ -3413,10 +3468,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     setTimeout(()=>{ if (el) el.textContent = ""; }, 1500);
   }
 
+  function settingsKpisForTerm(term){
+    const out = [...((DATA[term] && DATA[term].kpis) || [])];
+    const targetKeys = Object.keys(IMPORTED_TARGETS[term] || {});
+    targetKeys.forEach(rawKey => {
+      // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
+      const key = rawKey === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : rawKey;
+      if (out.some(k=>k.key===key)) return;
+      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
+      const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
+      out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
+    });
+    out.forEach((k,i)=>{
+      SETTINGS[term] = SETTINGS[term] || {};
+      if(!SETTINGS[term][k.key]) SETTINGS[term][k.key] = {activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}};
+    });
+    return out;
+  }
   function renderSettingsTable(){
     const tbody = document.getElementById("settingsTbody");
     tbody.innerHTML = "";
-    const kpis = DATA[settingsTerm].kpis;
+    const kpis = settingsKpisForTerm(settingsTerm);
     kpis.forEach(k => {
       const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}, direction:null};
       const isPct = effectiveIsPercent(k, settingsTerm);
@@ -3444,6 +3516,26 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <td>${k.registeredManually ? `<button class="btn-secondary remove-kpi-btn" data-key="${k.key}" style="border-color:#F2483D; color:#F2483D; padding:4px 8px; font-size:11px;">Remove</button>` : ''}</td>
       `;
       tbody.appendChild(tr);
+      if (k.key === "Planning Turnaround Time (h)") {
+        const hourTarget = effectiveTarget(k, settingsTerm, settingsYear, "vessel");
+        const hourTr = document.createElement("tr");
+        hourTr.className = "vessel-target-row";
+        hourTr.innerHTML = `
+          <td class="kpi-key-cell">Planning Turnaround Time (h) <span class="weight-badge">per vessel</span></td>
+          <td><input type="number" step="0.01" class="priority-input vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;"><span class="weight-badge">h</span></td>
+          <td><span class="weight-badge">${effectiveDirection(k,settingsTerm)==='lower'?'Lower = good':'Higher = good'}</span></td>
+          <td colspan="4"><span class="weight-badge">Used only for the per-vessel Planning Turnaround Time (h) chart</span></td>`;
+        tbody.appendChild(hourTr);
+      }
+    });
+    tbody.querySelectorAll(".vessel-target-input").forEach(inp => {
+      inp.onchange = () => {
+        const s = SETTINGS[settingsTerm][inp.dataset.key];
+        if (!s.vesselTargetOverrides) s.vesselTargetOverrides = {};
+        if (inp.value === '') delete s.vesselTargetOverrides[settingsYear];
+        else s.vesselTargetOverrides[settingsYear] = Number(inp.value);
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved vessel-hours target (" + settingsYear + ")"); render();
+      };
     });
     tbody.querySelectorAll(".active-terminal-toggle").forEach(cb => {
       cb.onchange = () => {
@@ -3573,6 +3665,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     // These three datasets are independent, so load them in parallel.
     await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage()]);
+    Object.keys(IMPORTED_TARGETS).forEach(ensureTargetTerminalRegistered);
     initSettingsDefaults();
     await loadAllSettingsFromStorage();
     applyRoleToUI();
