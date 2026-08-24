@@ -3181,9 +3181,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="settings-wrap">
         <div class="section-label" style="color:#F2483D;">⚠ Erase Terminal Data</div>
         <div class="footer-note" style="text-align:left; margin:10px 0 16px;">
-          This permanently deletes everything uploaded for the selected terminal — every year of vessel-call
-          data (Tangier) or every uploaded week (Panama), its KPI catalog, and its Settings overrides.
-          This cannot be undone. Use this to clear out test/fake data before uploading the real thing.
+          This permanently deletes only the uploaded operational data for the selected terminal — every year of vessel-call
+          data (Tangier) or every uploaded week (Panama). KPI targets, imported Targets Excel values, Direction, visibility,
+          priority and other Settings are kept untouched. Configuration can only be reset separately from Settings.
+          This cannot be undone for the operational data being erased.
         </div>
         <div class="settings-toolbar">
           <select id="eraseTermSelect" class="priority-input" style="width:220px;">
@@ -3196,7 +3197,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     `;
     document.getElementById("eraseConfirmBtn").onclick = async () => {
       const [kind, code] = document.getElementById("eraseTermSelect").value.split(":");
-      const typed = prompt(`This will permanently delete ALL data for ${code} (${kind}). Type the terminal code "${code}" exactly to confirm:`);
+      const typed = prompt(`This will permanently delete the uploaded operational data for ${code} (${kind}) while keeping its Targets and Settings. Type the terminal code "${code}" exactly to confirm:`);
       if (typed !== code){
         document.getElementById("eraseStatus").textContent = typed === null ? "Cancelled." : "Typed text didn't match — nothing was deleted.";
         return;
@@ -3205,7 +3206,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       try {
         if (kind === "Tangier") await eraseTangierTerminal(code);
         else await erasePanamaTerminal(code);
-        document.getElementById("eraseStatus").textContent = "✓ " + code + " erased completely.";
+        document.getElementById("eraseStatus").textContent = "✓ " + code + " operational data erased. Targets and Settings were preserved.";
         buildTerminalPills();
         renderEraseView();
       } catch(e){
@@ -3215,28 +3216,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   async function eraseTangierTerminal(term){
+    // DATA ONLY: targets/catalog/settings are deliberately independent and must survive a data erase.
     const yres = await storageGet("years:"+term, true);
     const years = (yres && yres.value) ? JSON.parse(yres.value) : [];
     for (const year of years){
       try {
         const monthsSnap = await db.collection("terminals").doc(term).collection("years").doc(String(year)).collection("months").get();
-        const batch = db.batch();
-        monthsSnap.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      } catch(e){ /* continue */ }
+        const docs = [];
+        monthsSnap.forEach(doc => docs.push(doc));
+        // Firestore batches are limited; delete safely in chunks while leaving configuration untouched.
+        for (let i=0; i<docs.length; i+=400){
+          const batch = db.batch();
+          docs.slice(i,i+400).forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      } catch(e){ console.error("Could not erase operational rows for", term, year, e); throw e; }
     }
-    await db.collection("terminals").doc(term).collection("meta").doc("catalog").delete().catch(()=>{});
+    // Clear only the years registry. Do NOT delete catalog, settings, targets or known_terminals.
     await db.collection("terminals").doc(term).collection("meta").doc("years").delete().catch(()=>{});
-    await db.collection("terminals").doc(term).collection("meta").doc("settings").delete().catch(()=>{});
-    let known = [];
-    try { const kres = await storageGet("known_terminals", true); if (kres && kres.value) known = JSON.parse(kres.value); } catch(e){}
-    known = known.filter(t => t !== term);
-    await storageSet("known_terminals", JSON.stringify(known), true);
 
-    TERM_CODES = TERM_CODES.filter(t => t !== term);
-    delete DATA[term];
-    delete SETTINGS[term];
-    if (currentTerminal === term) currentTerminal = "ALL";
+    if (DATA[term]) DATA[term].rows = [];
+    currentPeriod = null;
   }
 
   async function erasePanamaTerminal(code){
@@ -3293,6 +3293,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <select id="settingsTermSelect"></select>
           <select id="settingsYearSelect"></select>
           <button class="btn-secondary" id="settingsUploadTargetsBtn" type="button">🎯 Upload Targets Excel</button>
+          <button class="btn-secondary" id="settingsRefreshDashboardBtn" type="button">↻ Refresh Dashboard</button>
+          <button class="btn-secondary" id="settingsResetConfigBtn" type="button" style="display:none; border-color:#F2483D; color:#F2483D;">Reset Settings & Targets</button>
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
         <table class="settings-table">
@@ -3328,6 +3330,60 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     ysel.onchange = () => { settingsYear = ysel.value; renderSettingsView(); };
     const settingsUploadTargetsBtn = document.getElementById("settingsUploadTargetsBtn");
     if (settingsUploadTargetsBtn) settingsUploadTargetsBtn.onclick = () => uploadTargetsFile.click();
+
+    // Refresh only the application view; never reload the browser, so Firebase auth/session is retained.
+    const settingsRefreshDashboardBtn = document.getElementById("settingsRefreshDashboardBtn");
+    if (settingsRefreshDashboardBtn) settingsRefreshDashboardBtn.onclick = async () => {
+      settingsRefreshDashboardBtn.disabled = true;
+      const oldText = settingsRefreshDashboardBtn.textContent;
+      settingsRefreshDashboardBtn.textContent = "Refreshing…";
+      try {
+        // Ensure the latest in-memory settings have completed their database write before rendering.
+        await saveSettingsForTerm(settingsTerm);
+        buildMainNav();
+        buildTerminalPills();
+        currentPeriod = null;
+        showingSettings = false;
+        document.getElementById("settingsView").style.display = "none";
+        document.getElementById("mainApp").style.display = "";
+        settingsBtn.textContent = "⚙ Settings";
+        render();
+      } catch(e){
+        flashSaveStatus("Refresh failed: " + (e.message || e));
+      } finally {
+        settingsRefreshDashboardBtn.disabled = false;
+        settingsRefreshDashboardBtn.textContent = oldText;
+      }
+    };
+
+    // Configuration deletion is intentionally separate from operational-data deletion.
+    const settingsResetConfigBtn = document.getElementById("settingsResetConfigBtn");
+    if (settingsResetConfigBtn && CURRENT_USER && CURRENT_USER.role === "admin"){
+      settingsResetConfigBtn.style.display = "";
+      settingsResetConfigBtn.onclick = async () => {
+        const typed = prompt(`This resets Settings AND imported Targets for ${settingsTerm}, but keeps its operational data. Type "${settingsTerm}" exactly to confirm:`);
+        if (typed !== settingsTerm){ flashSaveStatus(typed === null ? "Cancelled." : "Typed text didn't match — nothing changed."); return; }
+        settingsResetConfigBtn.disabled = true;
+        try {
+          // Remove only configuration documents. Operational month/year data is untouched.
+          await db.collection("terminals").doc(settingsTerm).collection("meta").doc("settings").delete().catch(()=>{});
+          await db.collection("terminals").doc(settingsTerm).collection("meta").doc("targets").delete().catch(()=>{});
+          SETTINGS[settingsTerm] = {};
+          IMPORTED_TARGETS[settingsTerm] = {};
+          // Recreate local defaults from the preserved KPI catalog so Settings remains usable.
+          (DATA[settingsTerm].kpis || []).forEach((k,i) => {
+            SETTINGS[settingsTerm][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
+          });
+          await saveSettingsForTerm(settingsTerm);
+          flashSaveStatus("Settings & Targets reset");
+          renderSettingsView();
+        } catch(e){
+          flashSaveStatus("Reset failed: " + (e.message || e));
+        } finally {
+          settingsResetConfigBtn.disabled = false;
+        }
+      };
+    }
 
     const newKpiBtn = document.getElementById("newKpiAddBtn");
     newKpiBtn.onclick = () => {
