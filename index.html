@@ -1466,6 +1466,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (s.direction === "higher" || s.direction === "lower") return s.direction;
     return kpi.direction || "higher";
   }
+  function effectiveVesselDirection(kpi, term){
+    const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
+    if (s.vesselDirection === "higher" || s.vesselDirection === "lower") return s.vesselDirection;
+    return effectiveDirection(kpi, term);
+  }
+  function effectiveVesselActive(term, kpiKey, scope, year){
+    const s = (SETTINGS[term] && SETTINGS[term][kpiKey]) || {};
+    const byYearKey = scope === "global" ? "vesselActiveGlobalByYear" : "vesselActiveTerminalByYear";
+    const flatKey = scope === "global" ? "vesselActiveGlobal" : "vesselActiveTerminal";
+    if (year !== undefined && year !== null && s[byYearKey] && s[byYearKey][year] !== undefined && s[byYearKey][year] !== null){
+      return !!s[byYearKey][year];
+    }
+    return s[flatKey] !== false;
+  }
+  function effectiveVesselPriority(term, kpiKey){
+    const s = (SETTINGS[term] && SETTINGS[term][kpiKey]) || {};
+    const v = Number(s.vesselPriority);
+    if (Number.isFinite(v) && v > 0) return v;
+    const p = Number(s.priority);
+    return Number.isFinite(p) && p > 0 ? p : 999;
+  }
   // fmtVal/statusFor take the actual KPI object (not just its name) so they can read the
   // real, Excel-detected "is this a percent" flag and the admin-set "which way is good"
   // direction — both overridable per terminal in Settings — instead of guessing from the name.
@@ -1480,12 +1501,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (kpi && kpi.key === "Planning Turnaround Time (h)") return Object.assign({}, kpi, {isPercent:false});
     return kpi;
   }
-  function statusFor(kpi, value, target, termOverride){
+  function statusFor(kpi, value, target, termOverride, mode){
     if (value===null || value===undefined || target===null || target===undefined || isNaN(value) || isNaN(target) || target===0){
       return "watch";
     }
     const term = termOverride || currentTerminal;
-    const dir = typeof kpi === "object" ? effectiveDirection(kpi, term) : "higher";
+    const dir = typeof kpi === "object" ? (mode === "vessel" ? effectiveVesselDirection(kpi, term) : effectiveDirection(kpi, term)) : "higher";
     if (dir === "higher") {
       if (value >= target) return "good";
       if (value >= target*0.85) return "watch";
@@ -2338,7 +2359,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // Mini vertical-bar charts: general KPIs only (Port Hours Saved % / Planning Turnaround Time %
     // / Stowage Quality) — whichever of these this terminal actually tracks. Vessel Score moved to
     // its own compact per-vessel card grid above, so it's never duplicated here.
-    const miniKpis = GENERAL_MINI_KPI_ORDER.map(name => otherKpis.find(k=>k.key===name)).filter(Boolean);
+    const miniKpis = GENERAL_MINI_KPI_ORDER
+      .map(name => otherKpis.find(k=>k.key===name))
+      .filter(Boolean)
+      .filter(k => k.key !== "Planning Turnaround Time (h)" || effectiveVesselActive(currentTerminal, k.key, "terminal", curYear))
+      .sort((a,b) => {
+        const pa = a.key === "Planning Turnaround Time (h)" ? effectiveVesselPriority(currentTerminal, a.key) : (SETTINGS[currentTerminal]?.[a.key]?.priority || 999);
+        const pb = b.key === "Planning Turnaround Time (h)" ? effectiveVesselPriority(currentTerminal, b.key) : (SETTINGS[currentTerminal]?.[b.key]?.priority || 999);
+        return pa-pb;
+      });
     const rankedKpis = otherKpis.filter(k => !GENERAL_MINI_KPI_ORDER.includes(k.key));
 
     miniKpis.forEach((k,i) => {
@@ -2359,7 +2388,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const displayKpi = vesselDisplayKpi(k);
       const valueLabels = rowsSorted.map(x=>fmtVal(displayKpi, x.v));
       const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
-      const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target)]);
+      const colors = rowsSorted.map(x => STATUS_COLOR[statusFor(k, x.v, target, currentTerminal, "vessel")]);
       const canvas = document.getElementById("vmini_"+i);
       const ctx = canvas.getContext("2d");
       vesselMiniCharts["vmini_"+i] = new Chart(ctx, {
@@ -3518,13 +3547,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       tbody.appendChild(tr);
       if (k.key === "Planning Turnaround Time (h)") {
         const hourTarget = effectiveTarget(k, settingsTerm, settingsYear, "vessel");
+        const vesselDir = effectiveVesselDirection(k, settingsTerm);
+        const vesselActiveTerminal = effectiveVesselActive(settingsTerm, k.key, "terminal", settingsYear);
+        const vesselActiveGlobal = effectiveVesselActive(settingsTerm, k.key, "global", settingsYear);
+        const vesselPriority = effectiveVesselPriority(settingsTerm, k.key);
         const hourTr = document.createElement("tr");
         hourTr.className = "vessel-target-row";
         hourTr.innerHTML = `
-          <td class="kpi-key-cell">Planning Turnaround Time (h) <span class="weight-badge">per vessel</span></td>
-          <td><input type="number" step="0.01" class="priority-input vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;"><span class="weight-badge">h</span></td>
-          <td><span class="weight-badge">${effectiveDirection(k,settingsTerm)==='lower'?'Lower = good':'Higher = good'}</span></td>
-          <td colspan="4"><span class="weight-badge">Used only for the per-vessel Planning Turnaround Time (h) chart</span></td>`;
+          <td class="kpi-key-cell">Planning Turnaround Time (h)</td>
+          <td>
+            <input type="number" step="0.01" class="vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;">
+            <span class="weight-badge">h</span>
+          </td>
+          <td>
+            <select class="priority-input vessel-direction-select" data-key="${k.key}" style="width:auto;">
+              <option value="higher" ${vesselDir==='higher'?'selected':''}>Higher = good</option>
+              <option value="lower" ${vesselDir==='lower'?'selected':''}>Lower = good</option>
+            </select>
+          </td>
+          <td><label class="toggle"><input type="checkbox" ${vesselActiveTerminal?'checked':''} data-key="${k.key}" class="vessel-active-terminal-toggle"><span class="slider"></span></label></td>
+          <td><label class="toggle"><input type="checkbox" ${vesselActiveGlobal?'checked':''} data-key="${k.key}" class="vessel-active-global-toggle"><span class="slider"></span></label></td>
+          <td><input type="number" class="priority-input vessel-priority-input" value="${vesselPriority}" min="1" data-key="${k.key}"></td>
+          <td></td>`;
         tbody.appendChild(hourTr);
       }
     });
@@ -3536,6 +3580,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         else s.vesselTargetOverrides[settingsYear] = Number(inp.value);
         saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved vessel-hours target (" + settingsYear + ")"); render();
       };
+    });
+    tbody.querySelectorAll(".vessel-direction-select").forEach(sel => {
+      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].vesselDirection = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+    });
+    tbody.querySelectorAll(".vessel-active-terminal-toggle").forEach(cb => {
+      cb.onchange = () => {
+        const s = SETTINGS[settingsTerm][cb.dataset.key];
+        if (!s.vesselActiveTerminalByYear) s.vesselActiveTerminalByYear = {};
+        s.vesselActiveTerminalByYear[settingsYear] = cb.checked;
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+      };
+    });
+    tbody.querySelectorAll(".vessel-active-global-toggle").forEach(cb => {
+      cb.onchange = () => {
+        const s = SETTINGS[settingsTerm][cb.dataset.key];
+        if (!s.vesselActiveGlobalByYear) s.vesselActiveGlobalByYear = {};
+        s.vesselActiveGlobalByYear[settingsYear] = cb.checked;
+        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+      };
+    });
+    tbody.querySelectorAll(".vessel-priority-input").forEach(inp => {
+      inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].vesselPriority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
     tbody.querySelectorAll(".active-terminal-toggle").forEach(cb => {
       cb.onchange = () => {
@@ -3556,7 +3622,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tbody.querySelectorAll(".direction-select").forEach(sel => {
       sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
-    tbody.querySelectorAll(".priority-input:not(.target-input)").forEach(inp => {
+    tbody.querySelectorAll(".priority-input:not(.target-input):not(.vessel-direction-select):not(.vessel-priority-input)").forEach(inp => {
       if (inp.classList.contains("direction-select")) return;
       inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
     });
