@@ -1728,59 +1728,102 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
-    // Capture the report wrapper only: header + dashboard + footer.
-    // The cloned DOM is simplified for export without changing the live dashboard:
-    // keep title/subtitle/flag, hide Global/SPC Tangier navigation, show only the selected terminal,
-    // and keep the period controls directly underneath.
-    const target = document.querySelector(".main-area .wrap");
-    if (!target) throw new Error("Report area was not found.");
+    // Build an off-screen export clone with exact content bounds so PDF and image stay perfectly aligned.
+    const source = document.querySelector(".main-area .wrap");
+    if (!source) throw new Error("Report area was not found.");
     const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim() || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
-    const width = Math.ceil(Math.max(target.scrollWidth, target.getBoundingClientRect().width));
-    const height = Math.ceil(Math.max(target.scrollHeight, target.getBoundingClientRect().height));
-    return window.html2canvas(target, {
-      backgroundColor:bg, scale:2, useCORS:true, logging:false,
-      width, height, windowWidth:width, windowHeight:height, scrollX:0, scrollY:0,
-      onclone:(doc) => {
-        const wrap = doc.querySelector(".main-area .wrap") || doc.querySelector(".wrap");
-        if (wrap){
-          wrap.style.margin = "0";
-          wrap.style.maxWidth = "none";
-          wrap.style.width = "100%";
-        }
 
-        // Export header: remove navigation that is useful only on screen.
-        const mainTabs = doc.getElementById("mainSectionTabs");
-        const globalTabs = doc.getElementById("globalSubTabs");
-        if (mainTabs) mainTabs.style.display = "none";
-        if (globalTabs) globalTabs.style.display = "none";
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.left = "-100000px";
+    host.style.top = "0";
+    host.style.margin = "0";
+    host.style.padding = "0";
+    host.style.background = bg;
+    host.style.zIndex = "-1";
 
-        // Keep only the currently selected terminal pill.
-        const row = doc.getElementById("terminalRow");
-        if (row){
-          row.style.display = "flex";
-          row.style.marginTop = "16px";
-          row.style.marginBottom = "16px";
-          row.style.justifyContent = "flex-start";
-          row.querySelectorAll(".term-pill").forEach(btn => {
-            btn.style.display = btn.classList.contains("active") ? "inline-flex" : "none";
-          });
-        }
+    const clone = source.cloneNode(true);
+    clone.style.margin = "0";
+    clone.style.maxWidth = "none";
+    clone.style.width = "auto";
+    clone.style.height = "auto";
+    clone.style.display = "inline-block";
+    clone.style.boxSizing = "border-box";
+    host.appendChild(clone);
+    document.body.appendChild(host);
 
-        // Keep Daily/Weekly/Monthly/... and selected period visible and aligned under the terminal.
-        const periodRow = doc.getElementById("periodRow");
-        if (periodRow){
-          periodRow.style.display = "flex";
-          periodRow.style.marginTop = "0";
-          periodRow.style.marginBottom = "18px";
-        }
+    try {
+      // Export header: remove navigation that is useful only on screen.
+      const mainTabs = clone.querySelector("#mainSectionTabs");
+      const globalTabs = clone.querySelector("#globalSubTabs");
+      if (mainTabs) mainTabs.style.display = "none";
+      if (globalTabs) globalTabs.style.display = "none";
 
-        // Never export app-only warnings/settings overlays if they happen to be open.
-        ["settingsView","rolesView","eraseView","storageWarningBanner"].forEach(id => {
-          const el = doc.getElementById(id);
-          if (el) el.style.display = "none";
+      // Keep only the currently selected terminal pill.
+      const row = clone.querySelector("#terminalRow");
+      if (row){
+        row.style.display = "flex";
+        row.style.marginTop = "16px";
+        row.style.marginBottom = "16px";
+        row.style.justifyContent = "flex-start";
+        row.querySelectorAll(".term-pill").forEach(btn => {
+          btn.style.display = btn.classList.contains("active") ? "inline-flex" : "none";
         });
       }
-    });
+
+      // Keep Daily/Weekly/Monthly/... and selected period visible and aligned under the terminal.
+      const periodRow = clone.querySelector("#periodRow");
+      if (periodRow){
+        periodRow.style.display = "flex";
+        periodRow.style.marginTop = "0";
+        periodRow.style.marginBottom = "18px";
+      }
+
+      // Never export app-only warnings/settings overlays if they happen to be open.
+      ["settingsView","rolesView","eraseView","storageWarningBanner"].forEach(id => {
+        const el = clone.querySelector(`#${id}`);
+        if (el) el.style.display = "none";
+      });
+
+      // Give the clone a moment to lay out before measuring its true content bounds.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const base = clone.getBoundingClientRect();
+      let maxRight = 0;
+      let maxBottom = 0;
+      clone.querySelectorAll("*").forEach(el => {
+        const cs = getComputedStyle(el);
+        if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return;
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return;
+        maxRight = Math.max(maxRight, r.right - base.left);
+        maxBottom = Math.max(maxBottom, r.bottom - base.top);
+      });
+
+      const exportWidth = Math.ceil(maxRight + 8);
+      const exportHeight = Math.ceil(maxBottom + 8);
+      clone.style.width = exportWidth + "px";
+      clone.style.height = exportHeight + "px";
+      host.style.width = exportWidth + "px";
+      host.style.height = exportHeight + "px";
+
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      return await window.html2canvas(clone, {
+        backgroundColor:bg,
+        scale:2,
+        useCORS:true,
+        logging:false,
+        scrollX:0,
+        scrollY:0,
+        width: exportWidth,
+        height: exportHeight,
+        windowWidth: exportWidth,
+        windowHeight: exportHeight
+      });
+    } finally {
+      host.remove();
+    }
   }
   document.getElementById("printPdfBtn").onclick = async () => {
     printMenu.style.display = "none";
