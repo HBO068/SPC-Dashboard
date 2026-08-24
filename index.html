@@ -1729,6 +1729,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
 
+    // The capture logic below (measured via getBoundingClientRect(), combined with the
+    // scrollX/scrollY/windowWidth/windowHeight passed to html2canvas) only produces a
+    // correct crop region when the page is scrolled to the very top. Rather than depend on
+    // exactly matching html2canvas's internal coordinate math for arbitrary scroll positions,
+    // we scroll to the top before measuring/capturing (which is the known-correct state),
+    // then restore wherever the user actually was once the capture is done.
+    const savedScrollX = window.scrollX, savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
     // IMPORTANT: capture the LIVE v7 dashboard so Chart.js canvases and the selected
     // period remain exactly as the user sees them. We only hide export-only navigation,
     // measure the real report bounds, capture that rectangle, then restore everything.
@@ -1809,24 +1819,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         return cs.display !== "none" && cs.visibility !== "hidden" && r.width > 2 && r.height > 2;
       });
 
-      // getBoundingClientRect() is viewport-relative (it shifts with scroll), but html2canvas
-      // is set up below to render the FULL document starting at its top (via windowWidth/
-      // windowHeight + scrollX/scrollY), so the crop box below must be in DOCUMENT-relative
-      // coordinates. Adding the current scroll offset converts one to the other. Without this,
-      // the capture is only correct when scrolled to the very top of the page (where the two
-      // coordinate spaces happen to coincide) — which was the reported bug.
       const wrapRect = wrap.getBoundingClientRect();
-      let left = wrapRect.left + window.scrollX;
-      let top = wrapRect.top + window.scrollY;
-      let right = wrapRect.left + window.scrollX;
-      let bottom = wrapRect.top + window.scrollY;
+      let left = wrapRect.left;
+      let top = wrapRect.top;
+      let right = wrapRect.left;
+      let bottom = wrapRect.top;
 
       candidates.forEach(el => {
         const r = el.getBoundingClientRect();
-        left = Math.min(left, r.left + window.scrollX);
-        top = Math.min(top, r.top + window.scrollY);
-        right = Math.max(right, r.right + window.scrollX);
-        bottom = Math.max(bottom, r.bottom + window.scrollY);
+        left = Math.min(left, r.left);
+        top = Math.min(top, r.top);
+        right = Math.max(right, r.right);
+        bottom = Math.max(bottom, r.bottom);
       });
 
       // Include the wrap's own left/top padding, but do not include unused width to the right.
@@ -1852,6 +1856,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       });
     } finally {
       restoreStyles();
+      window.scrollTo(savedScrollX, savedScrollY);
     }
   }
   document.getElementById("printPdfBtn").onclick = async () => {
