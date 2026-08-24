@@ -1729,102 +1729,123 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
 
-    // IMPORTANT: capture the LIVE rendered dashboard, not a cloned DOM.
-    // Cloned <canvas> elements lose their Chart.js pixels and cloned form controls can lose
-    // their current selected value. Temporarily simplify the live report for export, capture it,
-    // then restore every changed style immediately afterwards.
-    const target = document.querySelector(".main-area .wrap");
-    if (!target) throw new Error("Report area was not found.");
-    const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim() || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
+    // IMPORTANT: capture the LIVE v7 dashboard so Chart.js canvases and the selected
+    // period remain exactly as the user sees them. We only hide export-only navigation,
+    // measure the real report bounds, capture that rectangle, then restore everything.
+    const wrap = document.querySelector(".main-area .wrap");
+    if (!wrap) throw new Error("Report area was not found.");
 
-    const changes = [];
-    const rememberStyle = (el, prop, value) => {
+    const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim()
+      || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
+
+    const saved = [];
+    const saveStyle = (el) => {
       if (!el) return;
-      changes.push([el, prop, el.style[prop]]);
-      el.style[prop] = value;
+      saved.push([el, el.getAttribute("style")]);
+    };
+    const restoreStyles = () => {
+      saved.reverse().forEach(([el, style]) => {
+        if (style === null) el.removeAttribute("style");
+        else el.setAttribute("style", style);
+      });
     };
 
-    try {
-      // Hide navigation that is screen-only.
-      rememberStyle(document.getElementById("mainSectionTabs"), "display", "none");
-      rememberStyle(document.getElementById("globalSubTabs"), "display", "none");
-      rememberStyle(document.getElementById("storageWarningBanner"), "display", "none");
-      rememberStyle(document.getElementById("settingsView"), "display", "none");
-      rememberStyle(document.getElementById("rolesView"), "display", "none");
-      rememberStyle(document.getElementById("eraseView"), "display", "none");
+    const mainTabs = document.getElementById("mainSectionTabs");
+    const globalTabs = document.getElementById("globalSubTabs");
+    const terminalRow = document.getElementById("terminalRow");
+    const periodRow = document.getElementById("periodRow");
+    const settingsView = document.getElementById("settingsView");
+    const rolesView = document.getElementById("rolesView");
+    const eraseView = document.getElementById("eraseView");
+    const storageWarning = document.getElementById("storageWarningBanner");
 
-      // Export header: keep only the currently selected terminal pill.
-      const row = document.getElementById("terminalRow");
-      if (row){
-        rememberStyle(row, "display", "flex");
-        rememberStyle(row, "marginTop", "16px");
-        rememberStyle(row, "marginBottom", "16px");
-        rememberStyle(row, "justifyContent", "flex-start");
-        row.querySelectorAll(".term-pill").forEach(btn => {
-          if (!btn.classList.contains("active")) rememberStyle(btn, "display", "none");
+    [mainTabs, globalTabs, terminalRow, periodRow, settingsView, rolesView, eraseView, storageWarning]
+      .forEach(saveStyle);
+
+    const terminalButtons = terminalRow ? Array.from(terminalRow.querySelectorAll(".term-pill")) : [];
+    terminalButtons.forEach(saveStyle);
+
+    try {
+      // Simplified export header requested by the user.
+      if (mainTabs) mainTabs.style.display = "none";
+      if (globalTabs) globalTabs.style.display = "none";
+      if (settingsView) settingsView.style.display = "none";
+      if (rolesView) rolesView.style.display = "none";
+      if (eraseView) eraseView.style.display = "none";
+      if (storageWarning) storageWarning.style.display = "none";
+
+      if (terminalRow){
+        terminalRow.style.display = "flex";
+        terminalRow.style.marginTop = "16px";
+        terminalRow.style.marginBottom = "16px";
+        terminalRow.style.justifyContent = "flex-start";
+        terminalButtons.forEach(btn => {
+          btn.style.display = btn.classList.contains("active") ? "inline-flex" : "none";
         });
       }
-
-      // Keep the LIVE period controls. This preserves the actual selected week/month/etc.
-      const periodRow = document.getElementById("periodRow");
       if (periodRow){
-        rememberStyle(periodRow, "display", "flex");
-        rememberStyle(periodRow, "marginTop", "0");
-        rememberStyle(periodRow, "marginBottom", "18px");
+        periodRow.style.display = "flex";
+        periodRow.style.marginTop = "0";
+        periodRow.style.marginBottom = "18px";
       }
 
-      // Remove the normal centered/max-width wrapper only during the capture.
-      rememberStyle(target, "margin", "0");
-      rememberStyle(target, "maxWidth", "none");
-
-      // Let the live layout settle after hiding the screen-only elements.
+      // Let the live layout settle. No cloning, no width changes, no rerendering.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      // Measure the TRUE visible report bounds. Ignore hidden overlays and fixed/off-screen content.
-      const base = target.getBoundingClientRect();
-      let maxRight = 0;
-      let maxBottom = 0;
-      const nodes = [target, ...target.querySelectorAll("*")];
-      nodes.forEach(el => {
+      // Measure only the real report sections. This removes the large unused right side
+      // without changing the dashboard's own layout.
+      const candidates = [
+        wrap.querySelector(".topbar"),
+        terminalRow,
+        periodRow,
+        document.getElementById("globalReportView"),
+        document.getElementById("networkView"),
+        document.getElementById("terminalView"),
+        document.getElementById("panamaView"),
+        wrap.querySelector(".footer-note")
+      ].filter(Boolean).filter(el => {
         const cs = getComputedStyle(el);
-        if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return;
-        if (cs.position === "fixed") return;
         const r = el.getBoundingClientRect();
-        if (r.width < 1 || r.height < 1) return;
-        const right = r.right - base.left;
-        const bottom = r.bottom - base.top;
-        if (right > 0) maxRight = Math.max(maxRight, right);
-        if (bottom > 0) maxBottom = Math.max(maxBottom, bottom);
+        return cs.display !== "none" && cs.visibility !== "hidden" && r.width > 2 && r.height > 2;
       });
 
-      const exportWidth = Math.ceil(maxRight + 8);
-      const exportHeight = Math.ceil(maxBottom + 8);
+      const wrapRect = wrap.getBoundingClientRect();
+      let left = wrapRect.left;
+      let top = wrapRect.top;
+      let right = wrapRect.left;
+      let bottom = wrapRect.top;
 
-      // Fix the wrapper to the measured report width. Existing Chart.js canvases stay intact;
-      // html2canvas reads the live bitmap rather than empty cloned canvases.
-      rememberStyle(target, "width", exportWidth + "px");
-      rememberStyle(target, "boxSizing", "border-box");
+      candidates.forEach(el => {
+        const r = el.getBoundingClientRect();
+        left = Math.min(left, r.left);
+        top = Math.min(top, r.top);
+        right = Math.max(right, r.right);
+        bottom = Math.max(bottom, r.bottom);
+      });
 
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // Include the wrap's own left/top padding, but do not include unused width to the right.
+      const pad = 8;
+      const captureX = Math.max(0, Math.floor(left - pad));
+      const captureY = Math.max(0, Math.floor(top - pad));
+      const captureW = Math.ceil(right - captureX + pad);
+      const captureH = Math.ceil(bottom - captureY + pad);
 
-      return await window.html2canvas(target, {
+      return await window.html2canvas(document.body, {
         backgroundColor: bg,
         scale: 2,
         useCORS: true,
         logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        width: exportWidth,
-        height: exportHeight,
-        windowWidth: exportWidth,
-        windowHeight: exportHeight
+        x: captureX,
+        y: captureY,
+        width: captureW,
+        height: captureH,
+        scrollX: -window.scrollX,
+        scrollY: -window.scrollY,
+        windowWidth: document.documentElement.clientWidth,
+        windowHeight: Math.max(document.documentElement.clientHeight, document.body.scrollHeight)
       });
     } finally {
-      // Restore the live dashboard exactly as it was before export.
-      for (let i = changes.length - 1; i >= 0; i--){
-        const [el, prop, oldValue] = changes[i];
-        el.style[prop] = oldValue;
-      }
+      restoreStyles();
     }
   }
   document.getElementById("printPdfBtn").onclick = async () => {
