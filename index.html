@@ -1540,6 +1540,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Number(v).toLocaleString(undefined, {maximumFractionDigits: decimals===undefined?0:decimals});
   }
   function effectiveIsPercent(kpi, term){
+    // Unit invariants: Vessel Score is always a plain numeric score, never a percentage.
+    // This guard also repairs legacy/stale Settings metadata that may have stored isPercent=true.
+    if (kpi && kpi.key === "Vessel Score") return false;
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     if (s.isPercent !== undefined && s.isPercent !== null) return s.isPercent;
     return !!kpi.isPercent;
@@ -2140,6 +2143,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         };
         const st=SETTINGS[term][settingsKey];
         const uploadedYears=Object.keys(byYear||{});
+
+        // Unit metadata comes from the KPI definition in the Targets file, not from old Settings.
+        // Vessel Score is always numeric. Percentage-target KPIs are stored as percentages by Excel.
+        if(kpiKey === "Vessel Score"){
+          if(st.isPercent !== false){ st.isPercent=false; settingsChanged=true; }
+        }
 
         if(kpiKey === "Planning Turnaround Time (h)"){
           st.vesselTargetOverrides=st.vesselTargetOverrides||{};
