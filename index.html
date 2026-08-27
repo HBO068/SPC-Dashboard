@@ -919,7 +919,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   const CANONICAL_KPI_NAMES = [
     "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
     "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
-    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Dual Cycling",
+    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Twin Yard Flow Adherence", "Dual Cycling",
     "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score"
   ];
 
@@ -1074,6 +1074,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     "loading points":"Loading Points",
     "twins planning":"Twins Planning",
     "twin planning":"Twin Planning",
+    "twin yard flow adherence":"Twin Yard Flow Adherence",
+    "twin yard flow":"Twin Yard Flow Adherence",
     "port hours":"Port Hours Saved %",
     "port hours saved":"Port Hours Saved %",
     "port hours saved %":"Port Hours Saved %",
@@ -2584,7 +2586,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           ctx.fillStyle = "#D8E7EC";
           ctx.font = "600 10px monospace";
           ctx.textAlign = "center";
-          ctx.fillText(label, bar.x, bar.y - 5);
+          ctx.textBaseline = dataset.data[i] < 0 ? "top" : "bottom";
+          ctx.fillText(label, bar.x, dataset.data[i] < 0 ? bar.y + 5 : bar.y - 5);
           ctx.restore();
         });
       });
@@ -2621,8 +2624,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
     miniKpis.forEach((k,i) => {
       const rowsSorted = [...curRows]
-        .map(r => ({ r, v: Number(r[k.key]) }))
-        .filter(x => !isNaN(x.v))
+        .map(r => ({ r, raw: r[k.key] }))
+        .filter(x => x.raw !== null && x.raw !== undefined && x.raw !== "")
+        .map(x => ({ r:x.r, v:Number(x.raw) }))
+        .filter(x => Number.isFinite(x.v))
         .sort((a,b)=>b.v-a.v);
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
       const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
@@ -2650,8 +2655,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
             }
           },
           layout:{ padding:{ top:26, right:8, bottom:4, left:2 } },
-          scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
-                   y:{ grace:"18%", ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
+          scales:{
+            x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
+            y:{
+              suggestedMin: Math.min(0, ...data, Number.isFinite(Number(target)) ? Number(target) : 0),
+              suggestedMax: Math.max(0, ...data, Number.isFinite(Number(target)) ? Number(target) : 0),
+              grace:"18%",
+              ticks:{ color:chartTickColor(), font:{size:9} },
+              grid:{ color:chartGridColor() }
+            }
+          }
         }
       });
     });
@@ -2659,8 +2672,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // Ranked horizontal bar panels for the remaining KPIs, one row per vessel call, sorted descending.
     rankedKpis.forEach(k => {
       const rowsSorted = [...curRows]
-        .map(r => ({ r, v: Number(r[k.key]) }))
-        .filter(x => !isNaN(x.v))
+        .map(r => ({ r, raw: r[k.key] }))
+        .filter(x => x.raw !== null && x.raw !== undefined && x.raw !== "")
+        .map(x => ({ r:x.r, v:Number(x.raw) }))
+        .filter(x => Number.isFinite(x.v))
         .sort((a,b)=>b.v-a.v);
       const maxAbs = Math.max(1e-9, ...rowsSorted.map(x=>Math.abs(x.v)));
       const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
@@ -3746,7 +3761,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
       const key = rawKey === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : rawKey;
       if (out.some(k=>k.key===key)) return;
-      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling","P.O.W Operational Overlap","Yard Picking Sequence Adherence"].includes(rawKey);
+      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Twin Yard Flow Adherence","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling","P.O.W Operational Overlap","Yard Picking Sequence Adherence"].includes(rawKey);
       const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
       out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
     });
