@@ -1428,6 +1428,52 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }).filter(r => r._etb);
   }
 
+  // Keep the operational KPI catalog synchronized with fields that are actually present in stored vessel rows.
+  // This is important for KPIs introduced after a terminal had already been configured in Settings/Targets:
+  // Settings may know the KPI, but the terminal dashboard renders from DATA[term].kpis.
+  function reconcileOperationalCatalogFromRows(term){
+    const t = DATA[term];
+    if (!t || !Array.isArray(t.rows) || !t.rows.length) return false;
+    t.kpis = Array.isArray(t.kpis) ? t.kpis : [];
+    const sampleKeys = [...new Set(t.rows.slice(0,50).flatMap(r => Object.keys(r || {})))];
+    const nk = s => String(s == null ? "" : s).replace(/\s+/g," ").trim().toLowerCase();
+    const findKey = wanted => sampleKeys.find(k => nk(k) === nk(wanted)) || null;
+    const findPeriod = (prefix, base) => sampleKeys.find(k => nk(k) === nk(prefix + " " + base)) || null;
+
+    let changed = false;
+    const base = findKey("Twin Yard Flow Adherence");
+    if (base){
+      const periodCols = {};
+      ["Daily","Weekly","Monthly","Quarterly","Yearly"].forEach(p => {
+        periodCols[p.toLowerCase()] = findPeriod(p, "Twin Yard Flow Adherence");
+      });
+      const fresh = {
+        key: base,
+        targets_by_year: {},
+        period_cols: periodCols,
+        period_agg: {daily:"sum",weekly:"sum",monthly:"sum",quarterly:"sum",yearly:"sum"},
+        isPercent: true,
+        direction: "higher"
+      };
+      const idx = t.kpis.findIndex(k => nk(k.key) === nk(base));
+      if (idx < 0){
+        t.kpis.push(fresh);
+        changed = true;
+      } else {
+        const old = t.kpis[idx] || {};
+        const repaired = Object.assign({}, old, fresh, {targets_by_year:Object.assign({}, old.targets_by_year||{})});
+        const before = JSON.stringify(old);
+        const after = JSON.stringify(repaired);
+        if (before !== after){ t.kpis[idx] = repaired; changed = true; }
+      }
+      SETTINGS[term] = SETTINGS[term] || {};
+      if (!SETTINGS[term][base]){
+        SETTINGS[term][base] = {activeTerminal:true,activeGlobal:true,priority:t.kpis.length,targetOverrides:{},activeTerminalByYear:{},activeGlobalByYear:{}};
+      }
+    }
+    return changed;
+  }
+
   const DATA = {};
   TERM_CODES.forEach(term => {
     const t = BUNDLE.terminals[term];
@@ -1657,6 +1703,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const yearRows = normalizeRows(rawRows);
         DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(yearRows);
       });
+      reconcileOperationalCatalogFromRows(term);
     }));
   }
 
@@ -1772,6 +1819,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
     DATA[term].kpis = mergedCatalog;
     if (!SETTINGS[term]) SETTINGS[term] = {};
+    reconcileOperationalCatalogFromRows(term);
     mergedCatalog.forEach((k,i) => {
       if (!SETTINGS[term][k.key]){
         SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
@@ -1999,6 +2047,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // Persist first. If Firestore fails, the on-screen dashboard remains on the previously confirmed data.
       await persistUploadResult(result.terminal, result.rowsByYear, mergedCatalog);
       mergeUploadIntoMemory(result.terminal, result.rowsByYear, mergedCatalog);
+      // Persist any catalog repair discovered from the freshly uploaded operational row fields.
+      await persistCatalogForTerm(result.terminal);
       initSettingsDefaults();
       buildTerminalPills();
       currentTerminal = result.terminal;
