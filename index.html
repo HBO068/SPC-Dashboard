@@ -976,33 +976,20 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
         if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      // Twin Yard Flow Adherence is a percentage KPI in EGPSD and its period columns are
-      // weighted contributions that must be SUMMED for Daily/Weekly/Monthly/Quarterly/Yearly.
+      // EGPSD Twin Yard Flow Adherence is a percentage KPI. Its period columns are weighted
+      // contributions and must be summed. Use normalized exact header matching so the double
+      // spaces that exist in the workbook headers cannot prevent detection.
       if (norm(col).toLowerCase() === "twin yard flow adherence") {
         isPercent = true;
-        Object.keys(periodCols).forEach(period => {
-          if (periodCols[period]) periodAgg[period] = "sum";
+        PREFIXES.forEach(prefix => {
+          const p = prefix.toLowerCase();
+          const exactPeriod = rawHeaders.find(h => h && norm(h).toLowerCase() === (p + " twin yard flow adherence"));
+          if (exactPeriod) periodCols[p] = exactPeriod;
+          if (periodCols[p]) periodAgg[p] = "sum";
         });
       }
       kpiMap[col] = {key: col, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
     });
-
-    // Hard safety-net for EGPSD: do not depend on fuzzy matching for Twin Yard Flow Adherence.
-    // If the exact base column exists, register it explicitly and wire its five period columns.
-    const tyfBase = rawHeaders.find(h => norm(h).toLowerCase() === "twin yard flow adherence");
-    if (tyfBase && !kpiMap[tyfBase]) {
-      const periodCols = findPeriodVariants(tyfBase, rawHeaders);
-      const periodAgg = {};
-      Object.keys(periodCols).forEach(period => { periodAgg[period] = periodCols[period] ? "sum" : null; });
-      kpiMap[tyfBase] = {
-        key: tyfBase,
-        targets_by_year: {},
-        period_cols: periodCols,
-        period_agg: periodAgg,
-        isPercent: true,
-        direction: "higher"
-      };
-    }
 
     // Planning Turnaround Time: use the '%' compliance-rate columns instead of '(h)' hours at
     // the period level (confirmed KPI rule) — the '(h)' base column stays for per-vessel display.
@@ -1738,15 +1725,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const oldByKey = Object.fromEntries(existing.map(k=>[k.key,k]));
     const merged = freshCatalog.map(k => {
       const old=oldByKey[k.key];
-      const out = old ? Object.assign({}, old, k, {targets_by_year:Object.assign({},old.targets_by_year||{})}) : Object.assign({}, k);
-      if (norm(out.key).toLowerCase() === "twin yard flow adherence") {
-        out.isPercent = true;
-        out.period_agg = Object.assign({}, out.period_agg || {});
-        ["daily","weekly","monthly","quarterly","yearly"].forEach(p => {
-          if (out.period_cols && out.period_cols[p]) out.period_agg[p] = "sum";
-        });
-      }
-      return out;
+      return old ? Object.assign({}, old, k, {targets_by_year:Object.assign({},old.targets_by_year||{})}) : k;
     });
     // Keep KPIs intentionally registered in Settings even if this particular workbook does not have the column yet.
     existing.filter(k=>k.registeredManually && !merged.some(n=>n.key===k.key)).forEach(k=>merged.push(k));
