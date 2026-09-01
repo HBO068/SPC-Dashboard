@@ -456,6 +456,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .charts-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
   @media (max-width:1100px){ .charts-grid{ grid-template-columns:repeat(2,1fr);} }
   @media (max-width:640px){ .charts-grid{ grid-template-columns:1fr;} }
+  /* Vessel KPIs mini-chart cluster only: split evenly based on how many charts are actually
+     present (Port Hours Saved % / Planning Turnaround Time % / Stowage Quality — whichever this
+     terminal has active via Settings), instead of the fixed 3-column grid above, which would leave
+     a visible empty gap when a KPI is toggled off. 2 active KPIs split 50/50, 3 split 33/33/33,
+     and it reverts automatically the moment a toggle brings a KPI back — pure CSS, no JS needed. */
+  #vesselMiniGrid{ grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)) !important; }
   .chart-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px 16px 12px; min-height:245px;}
   .chart-card .label{ font-size:11px; color:var(--text-faint); letter-spacing:0.6px; text-transform:uppercase; font-weight:600; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;}
   .chart-card .label .cur{ font-family:var(--mono); color:var(--text); font-size:12.5px; font-weight:600;}
@@ -919,7 +925,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   const CANONICAL_KPI_NAMES = [
     "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
     "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
-    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Twin Yard Flow Adherence", "Dual Cycling",
+    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Dual Cycling",
     "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score"
   ];
 
@@ -976,18 +982,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
         if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      // EGPSD Twin Yard Flow Adherence is a percentage KPI. Its period columns are weighted
-      // contributions and must be summed. Use normalized exact header matching so the double
-      // spaces that exist in the workbook headers cannot prevent detection.
-      if (norm(col).toLowerCase() === "twin yard flow adherence") {
-        isPercent = true;
-        PREFIXES.forEach(prefix => {
-          const p = prefix.toLowerCase();
-          const exactPeriod = rawHeaders.find(h => h && norm(h).toLowerCase() === (p + " twin yard flow adherence"));
-          if (exactPeriod) periodCols[p] = exactPeriod;
-          if (periodCols[p]) periodAgg[p] = "sum";
-        });
-      }
       kpiMap[col] = {key: col, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
     });
 
@@ -1070,10 +1064,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 });
 
 // targets_parser.js — dedicated source-of-truth parser for Terminal Targets.xlsx.
-// Named Excel TABLES are authoritative when present: each table name is the terminal code
-// (NGAPP, JOAQJ, SEGOT, etc.) and every row in that table is treated as a target KPI row.
-// Legacy sheet-block parsing remains as a fallback for older target files.
-// This parser never changes direction, activation or priority; it only returns targets by terminal/KPI/year.
+// It never changes direction, activation or priority. It only returns target values by terminal/KPI/year.
 (function(root){
   function norm(v){ return v===null || v===undefined ? "" : String(v).replace(/\s+/g," ").trim(); }
   const KPI_ALIASES = {
@@ -1085,112 +1076,41 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     "rtg moves before gantry":"RTG Moves Before Gantry",
     "loading points":"Loading Points",
     "twins planning":"Twins Planning",
-    "twin planning":"Twin Planning",
-    "twin yard flow adherence":"Twin Yard Flow Adherence",
-    "twin yard flow":"Twin Yard Flow Adherence",
+    "twin planning":"Twins Planning",
     "port hours":"Port Hours Saved %",
-    "port hours saved":"Port Hours Saved %",
     "port hours saved %":"Port Hours Saved %",
-    "p.o.w operational overlap":"P.O.W Operational Overlap",
-    "pow operational overlap":"P.O.W Operational Overlap",
-    "yard picking sequence adherence":"Yard Picking Sequence Adherence",
+    "planning turnaround":"Planning Turnaround Time (h)",
+    "planning turnaround time (h)":"Planning Turnaround Time (h)",
     "dual cycling":"Dual Cycling",
     "vessel score":"Vessel Score",
     "rows evacuation":"Rows Evacuation",
     "stacks evacuation":"Stacks Evacuation",
-    "stack evacuation":"Stack Evacuation",
     "average traveling distance":"Average Traveling Distance",
     "yard mirroring":"Yard Mirroring",
     "alternation":"Alternation"
   };
   function targetLabelToKpi(label){
-    const original=norm(label);
-    const raw=original.toLowerCase();
-    // Planning Turnaround has TWO separate targets.
+    const raw=norm(label).toLowerCase();
+    // Planning Turnaround has TWO different targets in the target workbook:
+    // (%) is used for Daily/Weekly/Monthly/Quarterly/Yearly period scorecards,
+    // while (h) is used only for the per-vessel Planning Turnaround Time (h) KPI.
     if (raw.includes("planning turnaround")){
       if (/\(\s*h\s*\)/i.test(raw)) return "Planning Turnaround Time (h)";
       if (raw.includes("%") || /\(\s*%\s*\)/.test(raw)) return "Planning Turnaround Time (%)";
     }
     let x=raw.replace(/\btarget\b/g,"").replace(/\(\s*%\s*\)/g,"").replace(/%/g,"").replace(/\s+/g," ").trim();
     if (KPI_ALIASES[x]) return KPI_ALIASES[x];
-    for (const [alias,key] of Object.entries(KPI_ALIASES)){
-      if (x===alias || x.startsWith(alias+" ")) return key;
-    }
-    // Inside a named terminal table every non-empty first-column row is a KPI target row.
-    // Do not silently drop a KPI just because it is new to the hard-coded alias list.
-    const generic=original
-      .replace(/\btarget\b/ig,"")
-      .replace(/\(\s*%\s*\)/g,"")
-      .replace(/\s+/g," ")
-      .trim();
-    return generic || null;
+    for (const [alias,key] of Object.entries(KPI_ALIASES)){ if (x===alias || x.startsWith(alias+" ")) return key; }
+    return null;
   }
-  function zipEntryText(entry){
-    if(!entry) return "";
-    if(typeof entry === "string") return entry;
-    if(typeof entry.asText === "function") { try { return entry.asText(); } catch(e){} }
-    const content=entry.content || entry.data || entry;
-    if(typeof content === "string") return content;
-    try {
-      if(content instanceof Uint8Array) return new TextDecoder("utf-8").decode(content);
-      if(content && content.buffer instanceof ArrayBuffer) return new TextDecoder("utf-8").decode(new Uint8Array(content.buffer, content.byteOffset||0, content.byteLength||content.length));
-      if(content instanceof ArrayBuffer) return new TextDecoder("utf-8").decode(new Uint8Array(content));
-    } catch(e){}
-    return "";
-  }
-  function namedTargetTables(wb){
-    const out=[];
-    const files=wb && wb.files ? wb.files : {};
-    Object.keys(files).forEach(path=>{
-      if(!/^xl\/tables\/table\d+\.xml$/i.test(path)) return;
-      const xml=zipEntryText(files[path]);
-      if(!xml) return;
-      try {
-        const doc=new DOMParser().parseFromString(xml,"application/xml");
-        const table=doc.documentElement;
-        const name=norm(table.getAttribute("displayName") || table.getAttribute("name")).toUpperCase();
-        const ref=norm(table.getAttribute("ref"));
-        if(/^[A-Z0-9]{5}$/.test(name) && ref) out.push({terminal:name,ref,path});
-      } catch(e){ console.warn("Could not read target table",path,e); }
-    });
-    return out;
-  }
-  function cellValue(ws, r, c, XLSX){
-    const cell=ws[XLSX.utils.encode_cell({r,c})];
-    return cell ? cell.v : null;
-  }
-  function parseNamedTables(wb, ws, XLSX, tables){
-    const targets={}, unrecognized=[];
-    tables.forEach(tbl=>{
-      const range=XLSX.utils.decode_range(tbl.ref);
-      const term=tbl.terminal;
-      const years=[];
-      for(let c=range.s.c+1;c<=range.e.c;c++){
-        const n=Number(cellValue(ws,range.s.r,c,XLSX));
-        years.push(Number.isInteger(n) && n>=1900 && n<=2200 ? String(n) : null);
-      }
-      targets[term]={};
-      for(let r=range.s.r+1;r<=range.e.r;r++){
-        const label=norm(cellValue(ws,r,range.s.c,XLSX));
-        if(!label) continue;
-        const kpiKey=targetLabelToKpi(label);
-        if(!kpiKey){ unrecognized.push({row:r+1,label,terminal:term,table:tbl.terminal}); continue; }
-        const byYear={};
-        years.forEach((y,idx)=>{
-          if(!y) return;
-          const raw=cellValue(ws,r,range.s.c+1+idx,XLSX);
-          if(raw===null || raw===undefined || raw==="" || raw==="*") return;
-          const n=Number(raw);
-          if(Number.isFinite(n)) byYear[y]=n;
-        });
-        targets[term][kpiKey]=byYear;
-      }
-    });
-    return {targets,unrecognized};
-  }
-  function parseLegacyBlocks(ws, XLSX){
+  function parseWorkbook(buf, XLSX){
+    const wb=XLSX.read(buf,{type:"array",cellDates:false,raw:true});
+    const sheetName=wb.SheetNames.find(n=>/^targets$/i.test(n)) || wb.SheetNames[0];
+    if(!sheetName) throw new Error("No worksheet was found in the targets file.");
+    const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
-    const targets={}, unrecognized=[];
+    const targets={};
+    const unrecognized=[];
     let currentTerm=null, years=[];
     for(let i=0;i<rows.length;i++){
       const row=rows[i]||[];
@@ -1213,23 +1133,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         const n=Number(raw);
         if(Number.isFinite(n)) byYear[y]=n;
       });
-      targets[currentTerm][kpiKey]=byYear;
+      targets[currentTerm][kpiKey]=byYear; // row is authoritative for this KPI; blanks/* mean no target for that year
     }
-    return {targets,unrecognized};
-  }
-  function parseWorkbook(buf, XLSX){
-    // bookFiles:true exposes the table XML so terminal table names can be read directly.
-    const wb=XLSX.read(buf,{type:"array",cellDates:false,raw:true,bookFiles:true});
-    const sheetName=wb.SheetNames.find(n=>/^targets$/i.test(n)) || wb.SheetNames[0];
-    if(!sheetName) throw new Error("No worksheet was found in the targets file.");
-    const ws=wb.Sheets[sheetName];
-    const tables=namedTargetTables(wb);
-    const parsed=tables.length ? parseNamedTables(wb,ws,XLSX,tables) : parseLegacyBlocks(ws,XLSX);
-    const targets=parsed.targets, unrecognized=parsed.unrecognized;
     const terminalCount=Object.keys(targets).length;
     const kpiCount=Object.values(targets).reduce((n,m)=>n+Object.keys(m).length,0);
-    if(!terminalCount || !kpiCount) throw new Error("No terminal target tables/blocks were recognized.");
-    return {targets, terminalCount, kpiCount, unrecognized, source:tables.length?"named tables":"legacy blocks", tables:tables.map(t=>t.terminal)};
+    if(!terminalCount || !kpiCount) throw new Error("No terminal target blocks were recognized. Expected a terminal code row, then a KPIs/year row, then target rows.");
+    return {targets, terminalCount, kpiCount, unrecognized};
   }
   root.TargetsParser={parseWorkbook,targetLabelToKpi};
 })(typeof self!=="undefined"?self:this);
@@ -1428,52 +1337,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }).filter(r => r._etb);
   }
 
-  // Keep the operational KPI catalog synchronized with fields that are actually present in stored vessel rows.
-  // This is important for KPIs introduced after a terminal had already been configured in Settings/Targets:
-  // Settings may know the KPI, but the terminal dashboard renders from DATA[term].kpis.
-  function reconcileOperationalCatalogFromRows(term){
-    const t = DATA[term];
-    if (!t || !Array.isArray(t.rows) || !t.rows.length) return false;
-    t.kpis = Array.isArray(t.kpis) ? t.kpis : [];
-    const sampleKeys = [...new Set(t.rows.slice(0,50).flatMap(r => Object.keys(r || {})))];
-    const nk = s => String(s == null ? "" : s).replace(/\s+/g," ").trim().toLowerCase();
-    const findKey = wanted => sampleKeys.find(k => nk(k) === nk(wanted)) || null;
-    const findPeriod = (prefix, base) => sampleKeys.find(k => nk(k) === nk(prefix + " " + base)) || null;
-
-    let changed = false;
-    const base = findKey("Twin Yard Flow Adherence");
-    if (base){
-      const periodCols = {};
-      ["Daily","Weekly","Monthly","Quarterly","Yearly"].forEach(p => {
-        periodCols[p.toLowerCase()] = findPeriod(p, "Twin Yard Flow Adherence");
-      });
-      const fresh = {
-        key: base,
-        targets_by_year: {},
-        period_cols: periodCols,
-        period_agg: {daily:"sum",weekly:"sum",monthly:"sum",quarterly:"sum",yearly:"sum"},
-        isPercent: true,
-        direction: "higher"
-      };
-      const idx = t.kpis.findIndex(k => nk(k.key) === nk(base));
-      if (idx < 0){
-        t.kpis.push(fresh);
-        changed = true;
-      } else {
-        const old = t.kpis[idx] || {};
-        const repaired = Object.assign({}, old, fresh, {targets_by_year:Object.assign({}, old.targets_by_year||{})});
-        const before = JSON.stringify(old);
-        const after = JSON.stringify(repaired);
-        if (before !== after){ t.kpis[idx] = repaired; changed = true; }
-      }
-      SETTINGS[term] = SETTINGS[term] || {};
-      if (!SETTINGS[term][base]){
-        SETTINGS[term][base] = {activeTerminal:true,activeGlobal:true,priority:t.kpis.length,targetOverrides:{},activeTerminalByYear:{},activeGlobalByYear:{}};
-      }
-    }
-    return changed;
-  }
-
   const DATA = {};
   TERM_CODES.forEach(term => {
     const t = BUNDLE.terminals[term];
@@ -1600,9 +1463,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Number(v).toLocaleString(undefined, {maximumFractionDigits: decimals===undefined?0:decimals});
   }
   function effectiveIsPercent(kpi, term){
-    // Unit invariants: Vessel Score is always a plain numeric score, never a percentage.
-    // This guard also repairs legacy/stale Settings metadata that may have stored isPercent=true.
-    if (kpi && kpi.key === "Vessel Score") return false;
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     if (s.isPercent !== undefined && s.isPercent !== null) return s.isPercent;
     return !!kpi.isPercent;
@@ -1703,7 +1563,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const yearRows = normalizeRows(rawRows);
         DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(yearRows);
       });
-      reconcileOperationalCatalogFromRows(term);
     }));
   }
 
@@ -1819,7 +1678,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
     DATA[term].kpis = mergedCatalog;
     if (!SETTINGS[term]) SETTINGS[term] = {};
-    reconcileOperationalCatalogFromRows(term);
     mergedCatalog.forEach((k,i) => {
       if (!SETTINGS[term][k.key]){
         SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
@@ -1876,6 +1734,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
+
+    // The capture logic below (measured via getBoundingClientRect(), combined with the
+    // scrollX/scrollY/windowWidth/windowHeight passed to html2canvas) only produces a
+    // correct crop region when the page is scrolled to the very top. Rather than depend on
+    // exactly matching html2canvas's internal coordinate math for arbitrary scroll positions,
+    // we scroll to the top before measuring/capturing (which is the known-correct state),
+    // then restore wherever the user actually was once the capture is done.
+    const savedScrollX = window.scrollX, savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     // IMPORTANT: capture the LIVE v7 dashboard so Chart.js canvases and the selected
     // period remain exactly as the user sees them. We only hide export-only navigation,
@@ -1940,60 +1808,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // Let the live layout settle. No cloning, no width changes, no rerendering.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      // Measure only the real report sections. This removes the large unused right side
-      // without changing the dashboard's own layout.
-      const candidates = [
-        wrap.querySelector(".topbar"),
-        terminalRow,
-        periodRow,
-        document.getElementById("globalReportView"),
-        document.getElementById("networkView"),
-        document.getElementById("terminalView"),
-        document.getElementById("panamaView"),
-        wrap.querySelector(".footer-note")
-      ].filter(Boolean).filter(el => {
-        const cs = getComputedStyle(el);
-        const r = el.getBoundingClientRect();
-        return cs.display !== "none" && cs.visibility !== "hidden" && r.width > 2 && r.height > 2;
-      });
-
-      const wrapRect = wrap.getBoundingClientRect();
-      let left = wrapRect.left;
-      let top = wrapRect.top;
-      let right = wrapRect.left;
-      let bottom = wrapRect.top;
-
-      candidates.forEach(el => {
-        const r = el.getBoundingClientRect();
-        left = Math.min(left, r.left);
-        top = Math.min(top, r.top);
-        right = Math.max(right, r.right);
-        bottom = Math.max(bottom, r.bottom);
-      });
-
-      // Include the wrap's own left/top padding, but do not include unused width to the right.
-      const pad = 8;
-      const captureX = Math.max(0, Math.floor(left - pad));
-      const captureY = Math.max(0, Math.floor(top - pad));
-      const captureW = Math.ceil(right - captureX + pad);
-      const captureH = Math.ceil(bottom - captureY + pad);
-
-      return await window.html2canvas(document.body, {
+      // Capture the .wrap element directly — html2canvas measures and positions it itself,
+      // which is far more reliable than hand-computing a crop rectangle from a union of child
+      // elements' getBoundingClientRect() (that approach caused both the scroll bug and the
+      // off-center/extra-blank-space bug). We're already scrolled to the top at this point, so
+      // scrollX/scrollY are simply 0 here — no compensation math needed.
+      return await window.html2canvas(wrap, {
         backgroundColor: bg,
         scale: 2,
         useCORS: true,
         logging: false,
-        x: captureX,
-        y: captureY,
-        width: captureW,
-        height: captureH,
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
+        scrollX: 0,
+        scrollY: 0,
         windowWidth: document.documentElement.clientWidth,
         windowHeight: Math.max(document.documentElement.clientHeight, document.body.scrollHeight)
       });
     } finally {
       restoreStyles();
+      window.scrollTo(savedScrollX, savedScrollY);
     }
   }
   document.getElementById("printPdfBtn").onclick = async () => {
@@ -2047,8 +1879,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // Persist first. If Firestore fails, the on-screen dashboard remains on the previously confirmed data.
       await persistUploadResult(result.terminal, result.rowsByYear, mergedCatalog);
       mergeUploadIntoMemory(result.terminal, result.rowsByYear, mergedCatalog);
-      // Persist any catalog repair discovered from the freshly uploaded operational row fields.
-      await persistCatalogForTerm(result.terminal);
       initSettingsDefaults();
       buildTerminalPills();
       currentTerminal = result.terminal;
@@ -2091,7 +1921,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         renderSettingsView();
       }
       render();
-      let msg=`✓ Targets updated from ${result.source || "Excel"}: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Direction, visibility and priority were not changed.`;
+      let msg=`✓ Targets updated: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Direction, visibility and priority were not changed.`;
       if(result.unrecognized.length){
         msg += ` ⚠ ${result.unrecognized.length} unrecognized target label(s) skipped.`;
         setUploadStatus(msg,"warn");
@@ -2184,10 +2014,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(knownRes && knownRes.value) known=JSON.parse(knownRes.value);
     for(const [term,incoming] of Object.entries(targetsByTerm)){
       ensureTargetTerminalRegistered(term);
-      // Each named terminal table is authoritative for that terminal on every upload.
-      // This removes stale target rows that no longer exist in the latest table, while leaving
-      // all manual Settings (direction / activation / priority) intact.
-      IMPORTED_TARGETS[term]={};
+      IMPORTED_TARGETS[term]=IMPORTED_TARGETS[term]||{};
       SETTINGS[term]=SETTINGS[term]||{};
       let settingsChanged=false;
 
@@ -2207,12 +2034,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         };
         const st=SETTINGS[term][settingsKey];
         const uploadedYears=Object.keys(byYear||{});
-
-        // Unit metadata comes from the KPI definition in the Targets file, not from old Settings.
-        // Vessel Score is always numeric. Percentage-target KPIs are stored as percentages by Excel.
-        if(kpiKey === "Vessel Score"){
-          if(st.isPercent !== false){ st.isPercent=false; settingsChanged=true; }
-        }
 
         if(kpiKey === "Planning Turnaround Time (h)"){
           st.vesselTargetOverrides=st.vesselTargetOverrides||{};
@@ -2637,21 +2458,32 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const barValueLabelPlugin = {
     id: "barValueLabel",
     afterDatasetsDraw(chart){
-      const { ctx } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
       chart.data.datasets.forEach((dataset, dsIndex) => {
         if (dataset.type === "line") return; // skip the dashed target line
         const meta = chart.getDatasetMeta(dsIndex);
+        if (!meta.data.length) return;
+        ctx.save();
+        ctx.font = "600 10px monospace";
+        // Skip labels entirely (for this chart) if there isn't room to draw them without
+        // overlapping — this happens on terminals with many vessel calls in one period (e.g.
+        // 20+ in a week), where each bar is only a few pixels wide. Values are still available
+        // via the existing tooltip on hover.
+        const availablePerBar = chartArea.width / meta.data.length;
+        const widestLabel = (dataset.valueLabels || []).reduce((max, l) => l ? Math.max(max, ctx.measureText(l).width) : max, 0);
+        if (widestLabel + 4 > availablePerBar){
+          ctx.restore();
+          return;
+        }
+        ctx.fillStyle = "#D8E7EC";
+        ctx.textAlign = "center";
         meta.data.forEach((bar, i) => {
           const label = dataset.valueLabels ? dataset.valueLabels[i] : null;
           if (label === null || label === undefined) return;
-          ctx.save();
-          ctx.fillStyle = "#D8E7EC";
-          ctx.font = "600 10px monospace";
-          ctx.textAlign = "center";
-          ctx.textBaseline = dataset.data[i] < 0 ? "top" : "bottom";
-          ctx.fillText(label, bar.x, dataset.data[i] < 0 ? bar.y + 5 : bar.y - 5);
-          ctx.restore();
+          ctx.fillText(label, bar.x, bar.y - 5);
         });
+        ctx.restore();
       });
     }
   };
@@ -2686,10 +2518,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
     miniKpis.forEach((k,i) => {
       const rowsSorted = [...curRows]
-        .map(r => ({ r, raw: r[k.key] }))
-        .filter(x => x.raw !== null && x.raw !== undefined && x.raw !== "")
-        .map(x => ({ r:x.r, v:Number(x.raw) }))
-        .filter(x => Number.isFinite(x.v))
+        .map(r => ({ r, v: Number(r[k.key]) }))
+        .filter(x => !isNaN(x.v))
         .sort((a,b)=>b.v-a.v);
       const labels = rowsSorted.map(x=>vesselShortId(x.r));
       const vesselNames = rowsSorted.map(x=>x.r["Vessel Name"] || vesselShortId(x.r));
@@ -2717,16 +2547,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
             }
           },
           layout:{ padding:{ top:26, right:8, bottom:4, left:2 } },
-          scales:{
-            x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
-            y:{
-              suggestedMin: Math.min(0, ...data, Number.isFinite(Number(target)) ? Number(target) : 0),
-              suggestedMax: Math.max(0, ...data, Number.isFinite(Number(target)) ? Number(target) : 0),
-              grace:"18%",
-              ticks:{ color:chartTickColor(), font:{size:9} },
-              grid:{ color:chartGridColor() }
-            }
-          }
+          scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:45, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } },
+                   y:{ grace:"18%", ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
         }
       });
     });
@@ -2734,10 +2556,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // Ranked horizontal bar panels for the remaining KPIs, one row per vessel call, sorted descending.
     rankedKpis.forEach(k => {
       const rowsSorted = [...curRows]
-        .map(r => ({ r, raw: r[k.key] }))
-        .filter(x => x.raw !== null && x.raw !== undefined && x.raw !== "")
-        .map(x => ({ r:x.r, v:Number(x.raw) }))
-        .filter(x => Number.isFinite(x.v))
+        .map(r => ({ r, v: Number(r[k.key]) }))
+        .filter(x => !isNaN(x.v))
         .sort((a,b)=>b.v-a.v);
       const maxAbs = Math.max(1e-9, ...rowsSorted.map(x=>Math.abs(x.v)));
       const target = effectiveTarget(k, currentTerminal, curYear, "vessel");
@@ -3823,7 +3643,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
       const key = rawKey === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : rawKey;
       if (out.some(k=>k.key===key)) return;
-      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Twin Yard Flow Adherence","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling","P.O.W Operational Overlap","Yard Picking Sequence Adherence"].includes(rawKey);
+      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
       const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
       out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
     });
