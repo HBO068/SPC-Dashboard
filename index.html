@@ -2466,22 +2466,36 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (!meta.data.length) return;
         ctx.save();
         ctx.font = "600 10px monospace";
-        // Skip labels entirely (for this chart) if there isn't room to draw them without
-        // overlapping — this happens on terminals with many vessel calls in one period (e.g.
-        // 20+ in a week), where each bar is only a few pixels wide. Values are still available
-        // via the existing tooltip on hover.
+        // With many bars (e.g. 20+ vessel calls in a week, like MAMED), there isn't enough
+        // horizontal room per bar for a normal label without it overlapping its neighbors. Rather
+        // than hide the label, rotate it vertical — that only needs about one font-size worth of
+        // horizontal room, so it keeps showing the actual value in almost every real case. Only
+        // if a chart is so crowded that even that doesn't fit do we fall back to no label (the
+        // value is still available via the existing tooltip on hover).
         const availablePerBar = chartArea.width / meta.data.length;
         const widestLabel = (dataset.valueLabels || []).reduce((max, l) => l ? Math.max(max, ctx.measureText(l).width) : max, 0);
-        if (widestLabel + 4 > availablePerBar){
+        const fitsHorizontal = widestLabel + 4 <= availablePerBar;
+        const fitsRotated = 14 <= availablePerBar; // ~font-size + a little breathing room
+        if (!fitsHorizontal && !fitsRotated){
           ctx.restore();
           return;
         }
         ctx.fillStyle = "#D8E7EC";
-        ctx.textAlign = "center";
         meta.data.forEach((bar, i) => {
           const label = dataset.valueLabels ? dataset.valueLabels[i] : null;
           if (label === null || label === undefined) return;
-          ctx.fillText(label, bar.x, bar.y - 5);
+          if (fitsHorizontal){
+            ctx.textAlign = "center";
+            ctx.fillText(label, bar.x, bar.y - 5);
+          } else {
+            ctx.save();
+            ctx.translate(bar.x, bar.y - 6);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+          }
         });
         ctx.restore();
       });
