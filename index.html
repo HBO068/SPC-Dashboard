@@ -2327,7 +2327,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
     const monthSel = document.createElement("select");
     monthSel.className = "picker-select";
-    monthKeys.forEach(m => { const o=document.createElement("option"); o.value=m; o.textContent=m; monthSel.appendChild(o); });
+    monthGroups.forEach(g => {
+      const o = document.createElement("option");
+      o.value = g.key;
+      o.textContent = (g.rows[0] && g.rows[0]["Month By ETB"]) || g.key;
+      monthSel.appendChild(o);
+    });
     monthSel.value = dailyMonth;
 
     // Day options (within year+month), chronological
