@@ -1014,7 +1014,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       "Load Planned 20ft","Load Planned 40ft","Load Planned 45ft",
       "Discharge Planned 20ft","Discharge Planned 40ft","Discharge Planned 45ft",
       "Load Planned","Discharge Planned","Total Moves Planned","Total TEU Planned",
-      "Restows (20' Moves)","Restows (40'/45' Moves)","Call Seize"
+      "Restows (20' Moves)","Restows (40'/45' Moves)","Call Seize","Vessel Verified?"
     ];
     const DATE_FIELDS = new Set(["ETB","ETD"]); // only real dates are read via the cellDates parse
     const fieldsNeeded = new Set(CORE_FIELDS);
@@ -1027,12 +1027,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
     const ERROR_VALUE_RE = /^#(N\/A|REF!|VALUE!|DIV\/0!|NULL!|NAME\?|NUM!)$/i;
     const idVisitCol = colIdx["Id visit"];
+    const verifiedCol = colIdx["Vessel Verified?"]; // undefined if this terminal's Excel doesn't have the column yet
     const rowsByYear = {};
     const termCounts = {};
     const errorCells = []; // #N/A / other Excel errors found while reading — surfaced as a warning, upload still proceeds
+    let unverifiedSkipped = 0; // vessels present in the Excel but not yet marked "Yes" — still upcoming, excluded from the dashboard
     for (let r = headerRow+1; r <= maxRow; r++){
       const idCell = getCell(dataSheet, r, idVisitCol, XLSX);
       if (!idCell || !idCell.v) continue;
+      if (verifiedCol){
+        const verifiedRaw = getCell(dataSheetRaw, r, verifiedCol, XLSX);
+        const isVerified = typeof (verifiedRaw && verifiedRaw.v) === "string" && verifiedRaw.v.trim().toLowerCase() === "yes";
+        if (!isVerified){ unverifiedSkipped++; continue; }
+      }
       const vesselCell = colIdx["Vessel Name"] ? getCell(dataSheetRaw, r, colIdx["Vessel Name"], XLSX) : null;
       const row = {};
       Object.keys(colIdx).forEach(f => {
@@ -1057,7 +1064,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if (!terminal) throw new Error("Could not detect a Terminal code from the data (the 'Terminal' column looks empty).");
 
     const totalRows = Object.values(rowsByYear).reduce((a,arr)=>a+arr.length,0);
-    return { terminal, catalog, rowsByYear, years: Object.keys(rowsByYear).sort(), totalRows, errorCells };
+    return { terminal, catalog, rowsByYear, years: Object.keys(rowsByYear).sort(), totalRows, errorCells, unverifiedSkipped };
   }
 
   return { parseWorkbook, classifyFormula, findPeriodVariants, findBaseColumn, norm };
@@ -1886,6 +1893,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       render();
       const kpiNote = isFirstUpload ? "KPI setup created" : "data refreshed; manual Settings preserved";
       let msg = `✓ ${result.terminal}: ${result.years.join(", ")} updated (${result.totalRows} calls) — ${kpiNote}`;
+      if (result.unverifiedSkipped){
+        msg += ` — ${result.unverifiedSkipped} upcoming vessel${result.unverifiedSkipped>1?'s':''} not yet verified excluded`;
+      }
       if (result.errorCells && result.errorCells.length){
         const n = result.errorCells.length;
         const sample = result.errorCells.slice(0,3).map(e => `${e.field}${e.vessel?" ("+e.vessel+")":""}`).join("; ");
