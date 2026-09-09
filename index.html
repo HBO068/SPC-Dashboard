@@ -1557,6 +1557,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         DATA[term] = { rows: [], kpis: [] };
       }
     });
+    TERM_CODES = sortTermCodes(TERM_CODES);
 
     // Load terminal metadata and years concurrently. This avoids the long blank wait after login
     // caused by waiting for every terminal/year Firestore read one after another.
@@ -1689,7 +1690,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function mergeUploadIntoMemory(term, rowsByYear, mergedCatalog){
     const isFirstUpload = !DATA[term] || !DATA[term].kpis || !DATA[term].kpis.length;
     if (!DATA[term]) DATA[term] = { rows: [], kpis: [] };
-    if (!TERM_CODES.includes(term)) TERM_CODES.push(term);
+    if (!TERM_CODES.includes(term)){ TERM_CODES.push(term); TERM_CODES = sortTermCodes(TERM_CODES); }
     Object.keys(rowsByYear).forEach(year => {
       const newRows = normalizeRows(rowsByYear[year]);
       // Re-uploading the same terminal/year REPLACES that year's rows; it never appends duplicates.
@@ -2012,7 +2013,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function ensureTargetTerminalRegistered(term){
     if (!term) return;
-    if (!TERM_CODES.includes(term)) TERM_CODES.push(term);
+    if (!TERM_CODES.includes(term)){ TERM_CODES.push(term); TERM_CODES = sortTermCodes(TERM_CODES); }
     if (!DATA[term]) DATA[term] = { rows: [], kpis: [] };
     SETTINGS[term] = SETTINGS[term] || {};
   }
