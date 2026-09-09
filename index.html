@@ -926,7 +926,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
     "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
     "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Dual Cycling",
-    "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score"
+    "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score",
+    "Twin Yard Flow Adherence", "Yard Picking Sequence Adherence", "Pow Per Stack",
+    "Tandem Planning", "Lane Split"
   ];
 
   // ---------- Main entry point ----------
@@ -1238,7 +1240,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     await batch.commit();
   }
 
-  let TERM_CODES = Object.keys(BUNDLE.terminals);
+  const TERM_DISPLAY_ORDER = ["MAMED","MAPTM","EGPSD","OMSLL","BHBAH","JOAQJ","SEGOT","DKAAR","HRRJK","ITVAD","NGAPP","NGONN","LRMLW"];
+  function sortTermCodes(arr){
+    return arr.slice().sort((a,b) => {
+      const ia = TERM_DISPLAY_ORDER.indexOf(a), ib = TERM_DISPLAY_ORDER.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b); // unknown terminals: alphabetical, at the end
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }
+  let TERM_CODES = sortTermCodes(Object.keys(BUNDLE.terminals));
 
   // ---------- Theme (dark / light) ----------
   let CURRENT_THEME = "dark";
@@ -2282,7 +2294,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     select.className = "picker-select";
     groups.forEach(g => {
       const opt = document.createElement("option");
-      opt.value = g.key; opt.textContent = g.key;
+      opt.value = g.key;
+      opt.textContent = (currentType === "monthly" && g.rows[0] && g.rows[0]["Month By ETB"]) ? g.rows[0]["Month By ETB"] : g.key;
       select.appendChild(opt);
     });
     const nextBtn = document.createElement("button");
@@ -2974,8 +2987,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
     const netAvgScore = scoreCount ? scoreSum/scoreCount : null;
 
+    let periodLabel = currentPeriod || '–';
+    if (currentType === "monthly" && currentPeriod){
+      const curGroup = groups.find(gr => gr.key === currentPeriod);
+      if (curGroup && curGroup.rows.length && curGroup.rows[0]["Month By ETB"]) periodLabel = curGroup.rows[0]["Month By ETB"];
+    }
+
     nv.innerHTML = `
-      <div class="section-label">Network Rollup · ${currentPeriod || '–'}</div>
+      <div class="section-label">Network Rollup · ${periodLabel}</div>
       <div class="network-grid" id="netCards"></div>
       <div class="section-label">Terminals</div>
       <div class="term-grid" id="termGrid"></div>
@@ -2987,7 +3006,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       {label:"Vessel Calls", value: fmtNum(totalCalls), sub: "across network"},
       {label:"Network Avg Vessel Score", value: fmtNum(netAvgScore,2), sub: "simple avg across terminals"},
       {label:"Terminals Reporting", value: activeTerms + " / " + TERM_CODES.length, sub: PERIOD_TYPES[currentType].label + " granularity"},
-      {label:"Period", value: currentPeriod || "–", sub: "select another above"},
+      {label:"Period", value: periodLabel, sub: "select another above"},
     ];
     cardsData.forEach(c => {
       const el = document.createElement("div");
@@ -3903,7 +3922,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   async function initApp(){
     // Rebuild terminal scope on every login before role filtering; avoids a terminal-scoped login permanently shrinking the list.
-    TERM_CODES = Object.keys(BUNDLE.terminals);
+    TERM_CODES = sortTermCodes(Object.keys(BUNDLE.terminals));
     Object.keys(DATA).forEach(term => { if(!TERM_CODES.includes(term)) TERM_CODES.push(term); });
     if (!FIREBASE_AVAILABLE){
       const banner = document.getElementById("storageWarningBanner");
