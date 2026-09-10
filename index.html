@@ -1927,26 +1927,79 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const uploadTargetsBtn = document.getElementById("uploadTargetsBtn");
   const uploadTargetsFile = document.getElementById("uploadTargetsFile");
   uploadTargetsBtn.onclick = () => uploadTargetsFile.click();
+
+  // A Targets workbook can contain many terminal tables. Never silently update all of them:
+  // after reading the workbook, the user explicitly chooses which terminal/table is being imported.
+  // This keeps the existing target concept unchanged while preventing an upload intended for one
+  // terminal from replacing targets for every other terminal present in the workbook.
+  function chooseTargetTerminalForUpload(terminalCodes, fileName, preferredTerm){
+    return new Promise(resolve => {
+      const terms=[...new Set((terminalCodes||[]).map(t=>String(t).trim().toUpperCase()).filter(Boolean))].sort();
+      if(!terms.length){ resolve(null); return; }
+
+      const overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;inset:0;background:rgba(2,14,22,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;";
+      const card=document.createElement("div");
+      card.style.cssText="width:min(460px,94vw);background:var(--panel,#0d2632);border:1px solid var(--border,#214554);border-radius:14px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.45);font-family:var(--mono,monospace);color:var(--text,#e8f2f5);";
+      const title=document.createElement("div");
+      title.textContent="Choose terminal targets to import";
+      title.style.cssText="font-size:15px;font-weight:700;margin-bottom:8px;";
+      const note=document.createElement("div");
+      note.textContent=`${fileName || "Targets workbook"} contains ${terms.length} recognized terminal table${terms.length===1?"":"s"}. Only the terminal selected below will be written to the database.`;
+      note.style.cssText="font-size:11.5px;line-height:1.55;color:var(--text-faint,#7894a0);margin-bottom:14px;";
+      const select=document.createElement("select");
+      select.className="priority-input";
+      select.style.cssText="width:100%;margin-bottom:16px;";
+      terms.forEach(t=>{ const o=document.createElement("option"); o.value=t; o.textContent=t; select.appendChild(o); });
+      const preferred=String(preferredTerm||"").toUpperCase();
+      if(terms.includes(preferred)) select.value=preferred;
+      const actions=document.createElement("div");
+      actions.style.cssText="display:flex;justify-content:flex-end;gap:8px;";
+      const cancel=document.createElement("button");
+      cancel.className="btn-secondary"; cancel.textContent="Cancel";
+      const apply=document.createElement("button");
+      apply.className="btn-primary"; apply.textContent="Import selected terminal";
+      actions.append(cancel,apply);
+      card.append(title,note,select,actions); overlay.appendChild(card); document.body.appendChild(overlay);
+      const finish=v=>{ overlay.remove(); resolve(v); };
+      cancel.onclick=()=>finish(null);
+      apply.onclick=()=>finish(select.value);
+      overlay.onclick=e=>{ if(e.target===overlay) finish(null); };
+      select.onkeydown=e=>{ if(e.key==="Enter") finish(select.value); if(e.key==="Escape") finish(null); };
+      select.focus();
+    });
+  }
+
   uploadTargetsFile.onchange = async (e) => {
     const file=e.target.files[0];
     if(!file) return;
-    if(!window.XLSX || !window.TargetsParser){ setUploadStatus("✗ The Targets/Excel parser did not load. Refresh and try again.", true); return; }
+    if(!window.XLSX || !window.TargetsParser){ setUploadStatus("✗ The Targets/Excel parser did not load. Refresh and try again.", true); uploadTargetsFile.value=""; return; }
     setUploadStatus("Reading targets from " + file.name + "…", false);
     try {
       const buf=await file.arrayBuffer();
       const result=window.TargetsParser.parseWorkbook(buf, window.XLSX);
-      await persistImportedTargets(result.targets);
+      const availableTerms=Object.keys(result.targets||{}).sort();
+      const preferred=(showingSettings && settingsTerm) ? settingsTerm : (currentTerminal && currentTerminal!=="ALL" && currentTerminal!=="PANAMA" && currentTerminal!=="SPCS" ? currentTerminal : null);
+      const selectedTerm=await chooseTargetTerminalForUpload(availableTerms, file.name, preferred);
+      if(!selectedTerm){ setUploadStatus("Targets upload cancelled — nothing was changed.", false); uploadTargetsFile.value=""; return; }
+      if(!result.targets[selectedTerm]) throw new Error("The selected terminal " + selectedTerm + " was not found in the parsed Targets workbook.");
+
+      // Persist ONLY the selected terminal. Excel remains authoritative for uploaded target cells;
+      // manual Direction / visibility / priority settings remain untouched exactly as before.
+      await persistImportedTargets({ [selectedTerm]: result.targets[selectedTerm] });
       initSettingsDefaults();
       await loadAllSettingsFromStorage();
       buildTerminalPills();
       if(showingSettings) {
-        if(!settingsTerm || !TERM_CODES.includes(settingsTerm)) settingsTerm = Object.keys(result.targets)[0] || settingsTerm;
+        settingsTerm = selectedTerm;
         renderSettingsView();
       }
       render();
-      let msg=`✓ Targets updated: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Direction, visibility and priority were not changed.`;
-      if(result.unrecognized.length){
-        msg += ` ⚠ ${result.unrecognized.length} unrecognized target label(s) skipped.`;
+      const selectedKpiCount=Object.keys(result.targets[selectedTerm]||{}).length;
+      const selectedUnrecognized=(result.unrecognized||[]).filter(x=>x.terminal===selectedTerm);
+      let msg=`✓ ${selectedTerm} targets updated in database (${selectedKpiCount} KPI row(s)). Other terminal tables in the workbook were not changed. Direction, visibility and priority were not changed.`;
+      if(selectedUnrecognized.length){
+        msg += ` ⚠ ${selectedUnrecognized.length} unrecognized target label(s) for ${selectedTerm} skipped.`;
         setUploadStatus(msg,"warn");
       } else setUploadStatus(msg,false);
     } catch(err){
@@ -3658,8 +3711,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const oldText = settingsRefreshDashboardBtn.textContent;
       settingsRefreshDashboardBtn.textContent = "Refreshing…";
       try {
-        // Ensure the latest in-memory settings have completed their database write before rendering.
-        await saveSettingsForTerm(settingsTerm);
+        // Finish any queued manual edits first, then verify one final snapshot before leaving Settings.
+        if (settingsSaveQueue[settingsTerm]) await settingsSaveQueue[settingsTerm];
+        const refreshSaved = await persistSettings(settingsTerm, "Saved before refresh");
+        if (!refreshSaved) throw new Error("Latest Settings could not be verified in the database.");
         buildMainNav();
         buildTerminalPills();
         currentPeriod = null;
@@ -3746,15 +3801,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // same terminal) to fully finish before it even starts, so they can never finish out of order.
   const settingsSaveQueue = {};
   async function persistSettings(term, successMsg){
+    // Capture the exact state at the moment this edit is made. Without this immutable snapshot,
+    // a later edit can mutate SETTINGS while an earlier Firestore request is still in flight,
+    // causing misleading verification failures or a refresh race.
+    const snapshot = JSON.stringify(SETTINGS[term] || {});
     const previous = settingsSaveQueue[term] || Promise.resolve();
     let failure = null;
     const thisSave = previous.then(async () => {
       try {
-        await saveSettingsForTerm(term);
-        const expected = JSON.stringify(SETTINGS[term]);
+        await storageSet("settings:"+term, snapshot, true);
         const verify = await storageGet("settings:"+term, true);
-        if (!verify || verify.value !== expected){
-          failure = { mismatch: true, expected, actual: verify && verify.value };
+        if (!verify || verify.value !== snapshot){
+          failure = { mismatch: true, expected: snapshot, actual: verify && verify.value };
         }
       } catch(e){
         failure = { error: e };
@@ -3770,9 +3828,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         console.error("Settings save failed for", term, failure.error);
         flashSaveStatus("✗ NOT saved — " + (failure.error && (failure.error.code || failure.error.message) || "unknown error") + ". Try again.", true);
       }
-      return;
+      return false;
     }
     flashSaveStatus(successMsg);
+    return true;
   }
 
   function settingsKpisForTerm(term){
@@ -3851,12 +3910,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
     });
     tbody.querySelectorAll(".vessel-target-input").forEach(inp => {
-      inp.onchange = () => {
+      inp.onchange = async () => {
         const s = SETTINGS[settingsTerm][inp.dataset.key];
         if (!s.vesselTargetOverrides) s.vesselTargetOverrides = {};
         if (inp.value === '') delete s.vesselTargetOverrides[settingsYear];
         else s.vesselTargetOverrides[settingsYear] = Number(inp.value);
-        persistSettings(settingsTerm, "Saved vessel-hours target (" + settingsYear + ")"); render();
+        await persistSettings(settingsTerm, "Saved vessel-hours target (" + settingsYear + ")");
+        render();
       };
     });
     tbody.querySelectorAll(".vessel-direction-select").forEach(sel => {
@@ -3904,15 +3964,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if (inp.classList.contains("direction-select")) return;
       inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; persistSettings(settingsTerm, "Saved"); render(); };
     });
-    tbody.querySelectorAll(".target-input").forEach(inp => {
-      inp.onchange = () => {
+    // Do not bind the generic period-target handler to the dedicated vessel-hours input.
+    // Also resolve KPIs from the Settings catalog (not only operational DATA), because terminals
+    // such as LRMLW can have target-only KPI rows before/without a matching operational KPI column.
+    tbody.querySelectorAll(".target-input:not(.vessel-target-input)").forEach(inp => {
+      inp.onchange = async () => {
         const s = SETTINGS[settingsTerm][inp.dataset.key];
-        const kpi = DATA[settingsTerm].kpis.find(k=>k.key===inp.dataset.key);
+        const kpi = settingsKpisForTerm(settingsTerm).find(k=>k.key===inp.dataset.key);
+        if (!kpi){ flashSaveStatus("Target not saved — KPI definition could not be resolved.", true); return; }
         const isPct = effectiveIsPercent(kpi, settingsTerm);
         if (!s.targetOverrides) s.targetOverrides = {};
         if (inp.value === '') delete s.targetOverrides[settingsYear];
         else s.targetOverrides[settingsYear] = isPct ? Number(inp.value)/100 : Number(inp.value);
-        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
+        await persistSettings(settingsTerm, "Saved (" + settingsYear + ")");
+        render();
       };
     });
     tbody.querySelectorAll(".remove-kpi-btn").forEach(btn => {
