@@ -984,7 +984,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
         if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      kpiMap[col] = {key: col, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(col) ? "lower" : "higher"};
+      kpiMap[col] = {key: name, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(name) ? "lower" : "higher"};
     });
 
     // Planning Turnaround Time: use the '%' compliance-rate columns instead of '(h)' hours at
@@ -2127,6 +2127,25 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // Legacy fallback only. For Planning Turnaround vessel hours this allows older stored catalogs
     // to keep working if no dedicated targets file has yet been uploaded.
     return targetFor(kpi, year);
+  }
+  // Diagnostic-only twin of effectiveTarget: same exact logic, but reports which source actually
+  // won, so it can be shown directly next to the Target input instead of guessing why a terminal
+  // behaves differently from another.
+  function targetSourceFor(kpi, term, year, mode){
+    mode = mode || "period";
+    const isPlanningHours = kpi && kpi.key === "Planning Turnaround Time (h)";
+    const lookupKey = isPlanningHours && mode !== "vessel" ? "Planning Turnaround Time (%)" : kpi.key;
+    const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
+    if (mode === "vessel" && isPlanningHours && s.vesselTargetOverrides && s.vesselTargetOverrides[year] !== undefined && s.vesselTargetOverrides[year] !== null && s.vesselTargetOverrides[year] !== '') {
+      return "manual override";
+    }
+    if (mode !== "vessel" && s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
+      return "manual override";
+    }
+    const imported = IMPORTED_TARGETS[term] && IMPORTED_TARGETS[term][lookupKey];
+    const importedTarget = targetFromMap(imported, year);
+    if (importedTarget !== null) return "Targets Excel import";
+    return "legacy/default (no override, no import for this year)";
   }
   function effectiveActive(term, kpiKey, scope, year){
     const s = (SETTINGS[term] && SETTINGS[term][kpiKey]) || {};
@@ -3780,6 +3799,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const s = SETTINGS[settingsTerm][k.key] || {activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}, direction:null};
       const isPct = effectiveIsPercent(k, settingsTerm);
       const effTarget = effectiveTarget(k, settingsTerm, settingsYear);
+      const targetSource = targetSourceFor(k, settingsTerm, settingsYear);
       const effDir = effectiveDirection(k, settingsTerm);
       const targetDisplay = effTarget!==null && effTarget!==undefined ? (isPct ? (effTarget*100).toFixed(2) : effTarget) : '';
       const activeTerminalYear = effectiveActive(settingsTerm, k.key, "terminal", settingsYear);
@@ -3790,6 +3810,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <td>
           <input type="number" step="0.01" class="priority-input target-input" value="${targetDisplay}" data-key="${k.key}" style="width:72px;">
           <span class="weight-badge">${isPct ? '%' : ''}</span>
+          <div style="font-size:10px; color:var(--text-faint); margin-top:3px;">from: ${targetSource}</div>
         </td>
         <td>
           <select class="priority-input direction-select" data-key="${k.key}" style="width:auto;">
@@ -3805,6 +3826,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       tbody.appendChild(tr);
       if (k.key === "Planning Turnaround Time (h)") {
         const hourTarget = effectiveTarget(k, settingsTerm, settingsYear, "vessel");
+        const hourTargetSource = targetSourceFor(k, settingsTerm, settingsYear, "vessel");
         const vesselDir = effectiveVesselDirection(k, settingsTerm);
         const vesselActiveTerminal = effectiveVesselActive(settingsTerm, k.key, "terminal", settingsYear);
         const vesselActiveGlobal = effectiveVesselActive(settingsTerm, k.key, "global", settingsYear);
@@ -3816,6 +3838,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <td>
             <input type="number" step="0.01" class="priority-input target-input vessel-target-input" value="${hourTarget!==null && hourTarget!==undefined ? hourTarget : ''}" data-key="${k.key}" style="width:72px;">
             <span class="weight-badge">h</span>
+            <div style="font-size:10px; color:var(--text-faint); margin-top:3px;">from: ${hourTargetSource}</div>
           </td>
           <td>
             <select class="priority-input vessel-direction-select" data-key="${k.key}" style="width:auto;">
