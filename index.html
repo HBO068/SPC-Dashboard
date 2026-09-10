@@ -3734,12 +3734,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     el.style.fontWeight = isError ? "700" : "";
     setTimeout(()=>{ if (el){ el.textContent = ""; el.style.color = ""; el.style.fontWeight = ""; } }, isError ? 6000 : 1500);
   }
-  // Every Settings edit goes through this: it actually waits for the Firestore write to finish
-  // and tells the truth about the result. Previously "Saved" was shown the instant you typed,
-  // whether or not the write behind it succeeded — silently losing edits with no way to notice.
+  // Every Settings edit goes through this: it actually waits for the Firestore write to finish,
+  // then reads it straight back from the database and compares it to what was just written —
+  // not just trusting that the write promise resolved. If the database doesn't actually have
+  // what we just sent it, this says so immediately instead of claiming "Saved".
   async function persistSettings(term, successMsg){
     try {
       await saveSettingsForTerm(term);
+      const expected = JSON.stringify(SETTINGS[term]);
+      const verify = await storageGet("settings:"+term, true);
+      if (!verify || verify.value !== expected){
+        console.error("Settings verify MISMATCH for", term, { expected, actuallyInDatabase: verify && verify.value });
+        flashSaveStatus("✗ NOT actually saved — the database has a different value. Check console, try again.", true);
+        return;
+      }
       flashSaveStatus(successMsg);
     } catch(e){
       console.error("Settings save failed for", term, e);
