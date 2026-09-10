@@ -2106,8 +2106,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
   }
   async function saveSettingsForTerm(term){
-    try { await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); }
-    catch(e){ console.error("Could not save settings for", term, e); }
+    await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); // let a failure propagate — callers must know if this didn't actually save
   }
   function effectiveTarget(kpi, term, year, mode){
     mode = mode || "period";
@@ -2426,6 +2425,37 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.getElementById("gaugeTgt").textContent = hasTarget ? "target " + fmtNum(numericTarget,2) : "target –";
   }
 
+  const lineValueLabelPlugin = {
+    id: "lineValueLabel",
+    afterDatasetsDraw(chart){
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      const dataset = chart.data.datasets[0]; // the KPI's own line, not the dashed target line
+      if (!dataset || !dataset.valueLabels) return;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta.data.length) return;
+      ctx.save();
+      ctx.font = "600 10px monospace";
+      ctx.textAlign = "center";
+      // Skip (for this chart) if points are too close together for a label not to overlap its
+      // neighbor — values stay available via the existing hover tooltip either way.
+      const availablePerPoint = chartArea.width / meta.data.length;
+      const widestLabel = dataset.valueLabels.reduce((max, l) => l ? Math.max(max, ctx.measureText(l).width) : max, 0);
+      if (widestLabel + 6 > availablePerPoint){
+        ctx.restore();
+        return;
+      }
+      ctx.fillStyle = "#EAF4F7";
+      meta.data.forEach((point, i) => {
+        const label = dataset.valueLabels[i];
+        if (label === null || label === undefined) return;
+        const above = point.y - 9;
+        const y = above < chartArea.top + 9 ? point.y + 15 : above; // flip below the point if too close to the top
+        ctx.fillText(label, point.x, y);
+      });
+      ctx.restore();
+    }
+  };
   function makeScoreTrend(subGroups, scoreKpi, subPeriod){
     const canvas = document.getElementById("scoreTrendChart");
     if (!canvas) return;
@@ -2442,9 +2472,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         { label:"Vessel Score", data, borderColor: lastColor,
           segment:{ borderColor: (c) => statusColors[c.p1DataIndex] || lastColor },
           backgroundColor: lastColor + "1F", pointBackgroundColor: statusColors, pointBorderColor: statusColors,
-          fill:true, tension:0.35, pointRadius:3 },
+          fill:true, tension:0.35, pointRadius:3, valueLabels: data.map(v => fmtNum(v,1)) },
         { label:"Target", data: targetData, borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, fill:false, tension:0 }
       ]},
+      plugins: [lineValueLabelPlugin],
       options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:"index", intersect:false },
         plugins:{ legend:{ labels:{ color:chartTickColor(), font:{size:10} } } },
         scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:10 }, grid:{ color:chartGridColor() } },
@@ -2468,9 +2499,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       data:{ labels, datasets:[
         { data, borderColor: lastColor, segment:{ borderColor:(c)=>statusColors[c.p1DataIndex]||lastColor },
           backgroundColor: lastColor+"1F", pointBackgroundColor: statusColors, pointBorderColor: statusColors,
-          fill:true, tension:0.35, pointRadius:2, borderWidth:2 },
+          fill:true, tension:0.35, pointRadius:2, borderWidth:2, valueLabels: data.map(v => fmtVal(kpi, v)) },
         { data: targetData, borderColor:"#F5C518", borderDash:[4,4], pointRadius:0, borderWidth:1.5, fill:false, tension:0 }
       ]},
+      plugins: [lineValueLabelPlugin],
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
         scales:{ x:{ ticks:{ color:chartTickColor(), font:{size:8}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid:{ display:false } },
                  y:{ ticks:{ color:chartTickColor(), font:{size:9} }, grid:{ color:chartGridColor() } } }
@@ -3243,7 +3275,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const el = document.createElement("div");
         el.className = "chart-card";
         const curVal = getValue(k, curRows, currentType);
-        el.innerHTML = `<div class="label">${kpiPeriodLabel(k.key)} <span class="cur">${fmtVal(k,curVal)}</span></div><canvas id="${id}"></canvas>`;
+        const curTarget = effectiveTarget(k, currentTerminal, curYear);
+        const curStatus = statusFor(k, curVal, curTarget);
+        const curColor = STATUS_COLOR[curStatus];
+        el.innerHTML = `<div class="label">${kpiPeriodLabel(k.key)} <span class="cur" style="color:${curColor}">${fmtVal(k,curVal)}</span></div><canvas id="${id}"></canvas>`;
         chartsGrid.appendChild(el);
       });
       otherKpis.forEach((k,i) => makeTrendChart(k, subGroups, subPeriod, "trend_"+i));
@@ -3691,11 +3726,25 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     renderSettingsTable();
   }
 
-  function flashSaveStatus(msg){
+  function flashSaveStatus(msg, isError){
     const el = document.getElementById("saveStatus");
     if (!el) return;
     el.textContent = msg;
-    setTimeout(()=>{ if (el) el.textContent = ""; }, 1500);
+    el.style.color = isError ? "#F2483D" : "";
+    el.style.fontWeight = isError ? "700" : "";
+    setTimeout(()=>{ if (el){ el.textContent = ""; el.style.color = ""; el.style.fontWeight = ""; } }, isError ? 6000 : 1500);
+  }
+  // Every Settings edit goes through this: it actually waits for the Firestore write to finish
+  // and tells the truth about the result. Previously "Saved" was shown the instant you typed,
+  // whether or not the write behind it succeeded — silently losing edits with no way to notice.
+  async function persistSettings(term, successMsg){
+    try {
+      await saveSettingsForTerm(term);
+      flashSaveStatus(successMsg);
+    } catch(e){
+      console.error("Settings save failed for", term, e);
+      flashSaveStatus("✗ NOT saved — " + (e && (e.code || e.message) || "unknown error") + ". Try again.", true);
+    }
   }
 
   function settingsKpisForTerm(term){
@@ -3779,18 +3828,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (!s.vesselTargetOverrides) s.vesselTargetOverrides = {};
         if (inp.value === '') delete s.vesselTargetOverrides[settingsYear];
         else s.vesselTargetOverrides[settingsYear] = Number(inp.value);
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved vessel-hours target (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved vessel-hours target (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".vessel-direction-select").forEach(sel => {
-      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].vesselDirection = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].vesselDirection = sel.value; persistSettings(settingsTerm, "Saved"); render(); };
     });
     tbody.querySelectorAll(".vessel-active-terminal-toggle").forEach(cb => {
       cb.onchange = () => {
         const s = SETTINGS[settingsTerm][cb.dataset.key];
         if (!s.vesselActiveTerminalByYear) s.vesselActiveTerminalByYear = {};
         s.vesselActiveTerminalByYear[settingsYear] = cb.checked;
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".vessel-active-global-toggle").forEach(cb => {
@@ -3798,18 +3847,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const s = SETTINGS[settingsTerm][cb.dataset.key];
         if (!s.vesselActiveGlobalByYear) s.vesselActiveGlobalByYear = {};
         s.vesselActiveGlobalByYear[settingsYear] = cb.checked;
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".vessel-priority-input").forEach(inp => {
-      inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].vesselPriority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].vesselPriority = Number(inp.value)||999; persistSettings(settingsTerm, "Saved"); render(); };
     });
     tbody.querySelectorAll(".active-terminal-toggle").forEach(cb => {
       cb.onchange = () => {
         const s = SETTINGS[settingsTerm][cb.dataset.key];
         if (!s.activeTerminalByYear) s.activeTerminalByYear = {};
         s.activeTerminalByYear[settingsYear] = cb.checked;
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".active-global-toggle").forEach(cb => {
@@ -3817,15 +3866,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const s = SETTINGS[settingsTerm][cb.dataset.key];
         if (!s.activeGlobalByYear) s.activeGlobalByYear = {};
         s.activeGlobalByYear[settingsYear] = cb.checked;
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".direction-select").forEach(sel => {
-      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; persistSettings(settingsTerm, "Saved"); render(); };
     });
     tbody.querySelectorAll(".priority-input:not(.target-input):not(.vessel-direction-select):not(.vessel-priority-input)").forEach(inp => {
       if (inp.classList.contains("direction-select")) return;
-      inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved"); render(); };
+      inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; persistSettings(settingsTerm, "Saved"); render(); };
     });
     tbody.querySelectorAll(".target-input").forEach(inp => {
       inp.onchange = () => {
@@ -3835,7 +3884,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (!s.targetOverrides) s.targetOverrides = {};
         if (inp.value === '') delete s.targetOverrides[settingsYear];
         else s.targetOverrides[settingsYear] = isPct ? Number(inp.value)/100 : Number(inp.value);
-        saveSettingsForTerm(settingsTerm); flashSaveStatus("Saved (" + settingsYear + ")"); render();
+        persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
     tbody.querySelectorAll(".remove-kpi-btn").forEach(btn => {
