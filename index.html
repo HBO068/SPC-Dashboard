@@ -4060,10 +4060,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function adhHeaderIndexes(row){
     const h=row.map(adhNormHeader), find=(names)=>h.findIndex(x=>names.includes(x));
-    return {
+    const out={
       terminal:find(["terminal","terminalname"]), vessel:find(["vesselcall","vesselcalls"]), moves:find(["moves","move","actualmoves"]),
       visit:find(["idvisit","visitid"]), etb:find(["etb","estimatedtimeofberthing"])
     };
+    // The standard exports label the first visit-presence field with only "-" or ".".
+    // It repeats for several calls, so it is a validity marker and never the dedupe key.
+    const first=String(row[0] == null ? "" : row[0]).trim();
+    if(out.visit<0 && (first==="-" || first===".")) out.visit=0;
+    return out;
   }
   function parseAdherenceWorkbook(buffer,fileName){
     const wb=XLSX.read(buffer,{type:"array",cellDates:true}), visits=[], rejected=[];
@@ -4075,17 +4080,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       for(let i=headerRow+1;i<matrix.length;i++){
         const r=matrix[i]||[], terminal=String(r[idx.terminal]||"").trim(), visit=String(r[idx.visit]||"").trim(), vessel=String(r[idx.vessel]||"").trim(), etb=(idx.etb>=0?adhDate(r[idx.etb]):null)||adhEtbFromVesselCall(vessel);
         if(!terminal&&!visit&&!vessel) continue;
-        if(!terminal||!visit||!etb){ rejected.push({file:fileName,sheet:sheetName,row:i+1,reason:!terminal?"Missing Terminal":!visit?"Missing Id visit":"Invalid ETB"}); continue; }
+        if(!terminal||!visit||!etb){ rejected.push({file:fileName,sheet:sheetName,row:i+1,reason:!terminal?"Missing Terminal":!visit?"Missing visit marker":"Invalid ETB"}); continue; }
         const f=adherencePeriodFields(etb);
         visits.push({terminal,visit,vessel,moves:adhNumber(r[idx.moves]),etb:etb.toISOString(),year:f.year,month:f.month,quarter:f.quarter,week:f.week});
       }
     });
-    if(!visits.length&&!rejected.length) throw new Error(fileName+": no sheet has the required Terminal, Vessel Call, Moves and Id visit headers.");
+    if(!visits.length&&!rejected.length) throw new Error(fileName+": no sheet has Terminal, Vessel Call and Moves with the standard first-column marker (- or .).");
     return {visits,rejected};
   }
   function aggregateAdherenceVisits(visits){
     const unique=new Map(),duplicates=[];
-    visits.forEach(v=>{ const key=v.terminal+"||"+v.visit; if(unique.has(key)) duplicates.push(v); else unique.set(key,v); });
+    visits.forEach(v=>{ const key=v.terminal+"||"+v.vessel; if(unique.has(key)) duplicates.push(v); else unique.set(key,v); });
     const groups=new Map();
     unique.forEach(v=>{
       const key=[v.terminal,v.year,v.month,v.quarter,v.week].join("||");
@@ -4225,9 +4230,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="adh-panel"><h3>${adherenceMetric==="calls"?"Calls":"Moves"} Adherence by Terminal</h3><p>Group results use summed planned ÷ summed total; terminal percentages are never averaged.</p><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th>Region</th><th class="right">Total BI</th><th class="right">Target %</th><th class="right">Expected Planned</th><th class="right">Actual Planned</th><th class="right">Actual Adherence</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)} (${adhEsc(r.reg.pod)})</td><td>${adhEsc(r.reg.pod)}</td><td>${adhEsc(r.reg.region)}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right"><span class="pill ${r.target==null||r.adherence==null?"watch":r.adherence>=r.target?"good":"bad"}">${adhPct(r.adherence)}</span></td></tr>`).join("")||'<tr><td colspan="8" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div>`;
   }
   function adhUploads(){
-    return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Required fields: Terminal, Vessel Call, Moves, Id visit, ETB. Id visit + ETB are required by the exact Week Filter treatment.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Deduplication: Exact BI Terminal Name + Id visit<br>• Week: Excel WEEKNUM(ETB,21) → YYYY-WW<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>Unique calls</th><th>Duplicates</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.duplicates||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="6" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
+    return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Accepted standard format: first-column validity marker “-” or “.”, Vessel Call, Terminal and Moves. ETB is read from the date/time after the final “/” in Vessel Call.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Deduplication: Exact BI Terminal Name + full Vessel Call<br>• Week: Excel WEEKNUM(ETB,21) → YYYY-WW<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>Unique calls</th><th>Duplicates</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.duplicates||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="6" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
   }
-  function adhFormat(){ return `<div class="adh-panel"><h3>BI Upload Format & Calculation Rules</h3><p>This page documents the active implementation without altering any established dashboard treatment.</p><div class="adh-note"><b>Required BI columns</b><br>Terminal · Vessel Call · Moves · Id visit · ETB<br><br><b>Week Filter</b><br>YEAR(ETB), with December ISO week 01 assigned to the next year, joined to WEEKNUM(ETB,21) as YYYY-WW.<br><br><b>Calls</b><br>One unique Terminal + Id visit = one actual call.<br><br><b>Moves</b><br>Sum of BI Moves after deduplication.<br><br><b>Actual Adherence</b><br>Existing planned Calls or planned Moves ÷ BI total Calls or Moves.<br><br><b>Scope</b><br>Monthly target saved by terminal/year. Quarterly and yearly targets are simple monthly averages. Regional/global targets are weighted: total expected planned ÷ total configured BI universe.</div></div>`; }
+  function adhFormat(){ return `<div class="adh-panel"><h3>BI Upload Format & Calculation Rules</h3><p>This page documents the active implementation without altering any established dashboard treatment.</p><div class="adh-note"><b>Standard BI columns</b><br>First-column validity marker “-” or “.” · Vessel Call · Terminal · Moves. ETB is extracted from Vessel Call after the final “/”.<br><br><b>Week Filter</b><br>YEAR(ETB), with December ISO week 01 assigned to the next year, joined to WEEKNUM(ETB,21) as YYYY-WW.<br><br><b>Calls</b><br>One unique Exact BI Terminal Name + full Vessel Call = one actual call. The first-column marker repeats for different calls and is not used for deduplication.<br><br><b>Moves</b><br>Sum of BI Moves after deduplication.<br><br><b>Actual Adherence</b><br>Existing planned Calls or planned Moves ÷ BI total Calls or Moves.<br><br><b>Scope</b><br>Monthly target saved by terminal/year. Quarterly and yearly targets are simple monthly averages. Regional/global targets are weighted: total expected planned ÷ total configured BI universe.</div></div>`; }
 
   function collectRegistryEdits(){
     document.querySelectorAll(".adh-terminal-table tbody tr[data-i]").forEach(tr=>{ const r=ADHERENCE_REGISTRY[Number(tr.dataset.i)]; tr.querySelectorAll("[data-k]").forEach(el=>{r[el.dataset.k]=el.type==="checkbox"?el.checked:el.value.trim();}); });
