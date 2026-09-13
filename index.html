@@ -3957,6 +3957,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let ADHERENCE_SCOPE = {};       // year -> registry id -> 12 monthly decimal targets
   let ADHERENCE_ACTUAL = [];      // BI actuals aggregated by exact terminal + ISO week
   let ADHERENCE_IMPORTS = [];
+  const ADHERENCE_STORAGE_TERM = "SPC_ADHERENCE"; // reserved storage namespace; never added to dashboard terminals
   let adherencePage = "overview";
   let adherenceMetric = "calls";
   let adherenceScopeFilter = "global";
@@ -4011,25 +4012,36 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   async function loadAdherenceDataFromStorage(){
     try {
-      const [rr,sr,yr] = await Promise.all([storageGet("adherence_registry",true),storageGet("adherence_scope",true),storageGet("adherence_actual_years",true)]);
+      let [rr,sr,yr,ir] = await Promise.all([
+        storageGet("adherence_registry:"+ADHERENCE_STORAGE_TERM,true),
+        storageGet("adherence_scope:"+ADHERENCE_STORAGE_TERM,true),
+        storageGet("years:"+ADHERENCE_STORAGE_TERM,true),
+        storageGet("adherence_imports:"+ADHERENCE_STORAGE_TERM,true)
+      ]);
+      // Read-only compatibility with any configuration saved by the first test build.
+      if(!rr) rr=await storageGet("adherence_registry",true);
+      if(!sr) sr=await storageGet("adherence_scope",true);
+      if(!yr) yr=await storageGet("adherence_actual_years",true);
       ADHERENCE_REGISTRY = rr && rr.value ? JSON.parse(rr.value) : [];
       ADHERENCE_SCOPE = sr && sr.value ? JSON.parse(sr.value) : {};
       const years = yr && yr.value ? JSON.parse(yr.value) : [];
       const docs = await Promise.all(years.map(async y => {
-        try { const s=await db.collection("adherence_actual").doc(String(y)).get(); return s.exists ? (s.data().rows||[]) : []; }
+        try {
+          const rows=await firestoreGetYearRows(ADHERENCE_STORAGE_TERM,String(y));
+          if(rows)return rows;
+          // Read-only fallback for a partially successful first test build.
+          try{const old=await db.collection("adherence_actual").doc(String(y)).get();return old.exists?(old.data().rows||[]):[];}catch(ignore){return[];}
+        }
         catch(e){ console.error("Adherence year load failed",y,e); return []; }
       }));
       ADHERENCE_ACTUAL = docs.flat();
-      try {
-        const logs = await db.collection("adherence_imports").orderBy("uploadedAt","desc").limit(15).get();
-        ADHERENCE_IMPORTS=[]; logs.forEach(d=>ADHERENCE_IMPORTS.push(Object.assign({id:d.id},d.data())));
-      } catch(e){ ADHERENCE_IMPORTS=[]; }
+      ADHERENCE_IMPORTS = ir && ir.value ? JSON.parse(ir.value) : [];
     } catch(e){ console.error("Adherence storage load failed",e); }
   }
   async function persistAdherenceConfig(){
     await Promise.all([
-      storageSet("adherence_registry",JSON.stringify(ADHERENCE_REGISTRY),true),
-      storageSet("adherence_scope",JSON.stringify(ADHERENCE_SCOPE),true)
+      storageSet("adherence_registry:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_REGISTRY),true),
+      storageSet("adherence_scope:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_SCOPE),true)
     ]);
   }
 
@@ -4106,16 +4118,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const workbooks=await adhExpandFiles(files), all=[], rejected=[];
       for(const f of workbooks){ const parsed=parseAdherenceWorkbook(await f.arrayBuffer(),f.name); all.push(...parsed.visits); rejected.push(...parsed.rejected); }
       const agg=aggregateAdherenceVisits(all), years=[...new Set(agg.rows.map(r=>r.year))].sort();
-      if(!years.length) throw new Error("No valid records were found. Id visit and ETB are required for the exact YYYY-WW week formula.");
+      if(!years.length) throw new Error("No valid records were found. A visit marker and a valid Vessel Call date are required for the YYYY-WW week formula.");
       for(const year of years){
         const rows=agg.rows.filter(r=>r.year===year);
-        await db.collection("adherence_actual").doc(year).set({rows,updatedAt:Date.now(),sourceFiles:workbooks.map(f=>f.name)});
+        // Reuse the platform's already-authorized terminal/year/month Firestore structure.
+        // The reserved namespace is storage-only and never becomes a visible terminal.
+        const storageRows=rows.map(r=>Object.assign({"Year":r.year,"Month By ETB":String(r.month).padStart(2,"0")},r));
+        await firestoreSetYearRows(ADHERENCE_STORAGE_TERM,year,storageRows);
       }
-      let known=[]; const yr=await storageGet("adherence_actual_years",true); if(yr&&yr.value) known=JSON.parse(yr.value);
-      years.forEach(y=>{if(!known.includes(y))known.push(y);}); await storageSet("adherence_actual_years",JSON.stringify(known.sort()),true);
+      let known=[]; const yr=await storageGet("years:"+ADHERENCE_STORAGE_TERM,true); if(yr&&yr.value) known=JSON.parse(yr.value);
+      years.forEach(y=>{if(!known.includes(y))known.push(y);}); await storageSet("years:"+ADHERENCE_STORAGE_TERM,JSON.stringify(known.sort()),true);
       ADHERENCE_ACTUAL=ADHERENCE_ACTUAL.filter(r=>!years.includes(r.year)).concat(agg.rows);
       const log={uploadedAt:Date.now(),files:workbooks.map(f=>f.name),years,validVisits:all.length-agg.duplicates.length,duplicates:agg.duplicates.length,rejected:rejected.length};
-      try{ const d=await db.collection("adherence_imports").add(log); ADHERENCE_IMPORTS.unshift(Object.assign({id:d.id},log)); }catch(e){}
+      ADHERENCE_IMPORTS.unshift(log); ADHERENCE_IMPORTS=ADHERENCE_IMPORTS.slice(0,15);
+      try{ await storageSet("adherence_imports:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_IMPORTS),true); }catch(e){ console.warn("Adherence import log could not be saved",e); }
       adherencePage="overview"; render();
       setUploadStatus(`✓ Adherence: ${log.validVisits} unique calls saved for ${years.join(", ")} (${log.duplicates} duplicates, ${log.rejected} rejected).`,false);
     }catch(e){ console.error("Adherence upload failed",e); setUploadStatus("✗ Adherence upload failed: "+e.message,true); }
