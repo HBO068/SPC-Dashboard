@@ -3957,7 +3957,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let ADHERENCE_SCOPE = {};       // year -> registry id -> 12 monthly decimal targets
   let ADHERENCE_ACTUAL = [];      // BI actuals aggregated by exact terminal + ISO week
   let ADHERENCE_IMPORTS = [];
-  const ADHERENCE_STORAGE_TERM = "SPC_ADHERENCE"; // reserved storage namespace; never added to dashboard terminals
+  // Firestore rules explicitly reserve /adherence/{document=**} for this module.
+  // Keep every Adherence write inside that isolated collection.
+  function adherenceDoc(name){ return db.collection("adherence").doc(name); }
+  async function adherenceGetValue(name){
+    const snap=await adherenceDoc(name).get();
+    return snap.exists ? snap.data().value : null;
+  }
+  async function adherenceSetValue(name,value){
+    await adherenceDoc(name).set({value,updatedAt:Date.now()});
+  }
+  async function adherenceGetYearRows(year){
+    const snap=await adherenceDoc("actual").collection("years").doc(String(year)).collection("months").get();
+    let rows=[];snap.forEach(doc=>{rows=rows.concat(doc.data().rows||[]);});return rows;
+  }
+  async function adherenceSetYearRows(year,rows){
+    const yearRef=adherenceDoc("actual").collection("years").doc(String(year));
+    const existing=await yearRef.collection("months").get(),batch=db.batch(),byMonth={};
+    rows.forEach(r=>{const mk=r.year+"-"+String(r.month).padStart(2,"0");(byMonth[mk]=byMonth[mk]||[]).push(r);});
+    existing.forEach(doc=>batch.delete(doc.ref));
+    Object.keys(byMonth).forEach(mk=>batch.set(yearRef.collection("months").doc(mk),{rows:sanitizeForFirestore(byMonth[mk])}));
+    await batch.commit();
+  }
   let adherencePage = "overview";
   let adherenceMetric = "calls";
   let adherenceScopeFilter = "global";
@@ -4012,36 +4033,33 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   async function loadAdherenceDataFromStorage(){
     try {
-      let [rr,sr,yr,ir] = await Promise.all([
-        storageGet("adherence_registry:"+ADHERENCE_STORAGE_TERM,true),
-        storageGet("adherence_scope:"+ADHERENCE_STORAGE_TERM,true),
-        storageGet("years:"+ADHERENCE_STORAGE_TERM,true),
-        storageGet("adherence_imports:"+ADHERENCE_STORAGE_TERM,true)
+      let [registryValue,scopeValue,yearsValue,importsValue] = await Promise.all([
+        adherenceGetValue("registry"),adherenceGetValue("scope"),adherenceGetValue("years"),adherenceGetValue("imports")
       ]);
-      // Read-only compatibility with any configuration saved by the first test build.
-      if(!rr) rr=await storageGet("adherence_registry",true);
-      if(!sr) sr=await storageGet("adherence_scope",true);
-      if(!yr) yr=await storageGet("adherence_actual_years",true);
-      ADHERENCE_REGISTRY = rr && rr.value ? JSON.parse(rr.value) : [];
-      ADHERENCE_SCOPE = sr && sr.value ? JSON.parse(sr.value) : {};
-      const years = yr && yr.value ? JSON.parse(yr.value) : [];
+      // Read-only compatibility with configuration from either earlier test build.
+      if(!registryValue){const x=await storageGet("adherence_registry:SPC_ADHERENCE",true)||await storageGet("adherence_registry",true);registryValue=x&&x.value;}
+      if(!scopeValue){const x=await storageGet("adherence_scope:SPC_ADHERENCE",true)||await storageGet("adherence_scope",true);scopeValue=x&&x.value;}
+      if(!yearsValue){const x=await storageGet("years:SPC_ADHERENCE",true)||await storageGet("adherence_actual_years",true);yearsValue=x&&x.value;}
+      ADHERENCE_REGISTRY = registryValue ? JSON.parse(registryValue) : [];
+      ADHERENCE_SCOPE = scopeValue ? JSON.parse(scopeValue) : {};
+      const years = yearsValue ? JSON.parse(yearsValue) : [];
       const docs = await Promise.all(years.map(async y => {
         try {
-          const rows=await firestoreGetYearRows(ADHERENCE_STORAGE_TERM,String(y));
-          if(rows)return rows;
-          // Read-only fallback for a partially successful first test build.
-          try{const old=await db.collection("adherence_actual").doc(String(y)).get();return old.exists?(old.data().rows||[]):[];}catch(ignore){return[];}
+          const rows=await adherenceGetYearRows(String(y));
+          if(rows.length)return rows;
+          // Read-only fallback for a partially successful terminal-namespace test build.
+          return (await firestoreGetYearRows("SPC_ADHERENCE",String(y))) || [];
         }
         catch(e){ console.error("Adherence year load failed",y,e); return []; }
       }));
       ADHERENCE_ACTUAL = docs.flat();
-      ADHERENCE_IMPORTS = ir && ir.value ? JSON.parse(ir.value) : [];
+      ADHERENCE_IMPORTS = importsValue ? JSON.parse(importsValue) : [];
     } catch(e){ console.error("Adherence storage load failed",e); }
   }
   async function persistAdherenceConfig(){
     await Promise.all([
-      storageSet("adherence_registry:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_REGISTRY),true),
-      storageSet("adherence_scope:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_SCOPE),true)
+      adherenceSetValue("registry",JSON.stringify(ADHERENCE_REGISTRY)),
+      adherenceSetValue("scope",JSON.stringify(ADHERENCE_SCOPE))
     ]);
   }
 
@@ -4121,17 +4139,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(!years.length) throw new Error("No valid records were found. A visit marker and a valid Vessel Call date are required for the YYYY-WW week formula.");
       for(const year of years){
         const rows=agg.rows.filter(r=>r.year===year);
-        // Reuse the platform's already-authorized terminal/year/month Firestore structure.
-        // The reserved namespace is storage-only and never becomes a visible terminal.
-        const storageRows=rows.map(r=>Object.assign({"Year":r.year,"Month By ETB":String(r.month).padStart(2,"0")},r));
-        await firestoreSetYearRows(ADHERENCE_STORAGE_TERM,year,storageRows);
+        await adherenceSetYearRows(year,rows);
       }
-      let known=[]; const yr=await storageGet("years:"+ADHERENCE_STORAGE_TERM,true); if(yr&&yr.value) known=JSON.parse(yr.value);
-      years.forEach(y=>{if(!known.includes(y))known.push(y);}); await storageSet("years:"+ADHERENCE_STORAGE_TERM,JSON.stringify(known.sort()),true);
+      let known=[]; const savedYears=await adherenceGetValue("years"); if(savedYears) known=JSON.parse(savedYears);
+      years.forEach(y=>{if(!known.includes(y))known.push(y);}); await adherenceSetValue("years",JSON.stringify(known.sort()));
       ADHERENCE_ACTUAL=ADHERENCE_ACTUAL.filter(r=>!years.includes(r.year)).concat(agg.rows);
       const log={uploadedAt:Date.now(),files:workbooks.map(f=>f.name),years,validVisits:all.length-agg.duplicates.length,duplicates:agg.duplicates.length,rejected:rejected.length};
       ADHERENCE_IMPORTS.unshift(log); ADHERENCE_IMPORTS=ADHERENCE_IMPORTS.slice(0,15);
-      try{ await storageSet("adherence_imports:"+ADHERENCE_STORAGE_TERM,JSON.stringify(ADHERENCE_IMPORTS),true); }catch(e){ console.warn("Adherence import log could not be saved",e); }
+      try{ await adherenceSetValue("imports",JSON.stringify(ADHERENCE_IMPORTS)); }catch(e){ console.warn("Adherence import log could not be saved",e); }
       adherencePage="overview"; render();
       setUploadStatus(`✓ Adherence: ${log.validVisits} unique calls saved for ${years.join(", ")} (${log.duplicates} duplicates, ${log.rejected} rejected).`,false);
     }catch(e){ console.error("Adherence upload failed",e); setUploadStatus("✗ Adherence upload failed: "+e.message,true); }
