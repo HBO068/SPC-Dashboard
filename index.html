@@ -312,18 +312,22 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
   .app-shell{ position:relative; z-index:1; display:flex; min-height:100vh; }
   .sidebar{
-    width:96px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
-    display:flex; flex-direction:column; align-items:center; gap:10px; padding:18px 10px;
+    width:128px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:16px 10px;
     position:sticky; top:0; height:100vh; z-index:5;
+    overflow-y:auto;
   }
-  .sidebar-mark{ width:56px;height:56px;border-radius:10px; background:#0A1D27; display:flex;align-items:center;justify-content:center; border:1px solid var(--border-soft); overflow:hidden; margin-bottom:8px; }
+  .sidebar-mark{ width:56px;height:56px;border-radius:10px; background:#0A1D27; display:flex;align-items:center;justify-content:center; border:1px solid var(--border-soft); overflow:hidden; margin:0 auto 6px; flex-shrink:0; }
+  .sidebar-section{ display:flex; flex-direction:column; gap:3px; padding-top:8px; border-top:1px solid var(--border-soft); }
+  .sidebar-section-title{ padding:0 5px 4px; color:var(--text-faint); font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; }
   .sidebar-btn{
     width:100%; background:transparent; border:1px solid transparent; color:var(--text-muted);
-    font-family:var(--body); font-size:10.5px; font-weight:600; padding:10px 4px; border-radius:9px;
-    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; line-height:1.2;
+    font-family:var(--body); font-size:10.5px; font-weight:600; padding:8px 6px; border-radius:8px;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; line-height:1.2;
   }
   .sidebar-btn span{ display:block; }
   .sidebar-btn:hover{ background:var(--panel-2); color:var(--text); border-color:var(--border); }
+  .sidebar-btn.active{ background:var(--teal-dim); color:var(--teal); border-color:var(--teal); }
   .sidebar-spacer{ flex:1; }
   .sidebar-status{ font-size:9.5px; color:var(--text-faint); font-family:var(--mono); text-align:center; padding:0 2px; word-break:break-word; }
   .print-menu{
@@ -631,25 +635,36 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 <div class="app-shell">
   <div class="sidebar" id="appSidebar">
     <div class="sidebar-mark" id="brandMark"><img id="brandLogo" alt="APM Terminals" style="width:100%;height:100%;object-fit:contain;padding:6px;"></div>
-    <button class="sidebar-btn" id="uploadBtn" title="Upload one of the Tangier terminal Excel files">⬆ <span>Upload Tangier Excel</span></button>
-    <input type="file" id="uploadFile" accept=".xlsm,.xlsx" style="display:none;">
-    <button class="sidebar-btn" id="uploadTargetsBtn" title="Upload the dedicated Terminal Targets Excel file">🎯 <span>Upload Targets Excel</span></button>
-    <input type="file" id="uploadTargetsFile" accept=".xlsx,.xlsm" style="display:none;">
-    <button class="sidebar-btn" id="uploadPanamaBtn" title="Upload Panama's weekly terminal KPI file">⬆ <span>Upload Panama Weekly</span></button>
-    <input type="file" id="uploadPanamaFile" accept=".xlsm,.xlsx" style="display:none;">
-    <button class="sidebar-btn" id="uploadAdherenceBtn" title="Upload the Gateways/Hubs Adherence export files">⬆ <span>Upload Adherence Data</span></button>
-    <input type="file" id="uploadAdherenceFile" accept=".xlsm,.xlsx,.zip" style="display:none;" multiple>
-    <div style="position:relative;">
-      <button class="sidebar-btn" id="printBtn" title="Print or export this view">🖨 <span>Print / Export</span></button>
-      <div id="printMenu" class="print-menu" style="display:none;">
-        <button id="printPdfBtn">Save as PDF</button>
-        <button id="printImageBtn">Save as Image</button>
+    <div class="sidebar-section" id="dashboardSection">
+      <div class="sidebar-section-title">Dashboards</div>
+      <button class="sidebar-btn" id="terminalDashboardsBtn" title="Open Terminal Performance dashboards">▦ <span>Terminal Dashboards</span></button>
+      <button class="sidebar-btn" id="adherenceDashboardsBtn" title="Open the Adherence dashboard">◎ <span>Adherence Dashboard</span></button>
+      <div id="printWrap" style="position:relative;">
+        <button class="sidebar-btn" id="printBtn" title="Print or export the selected dashboard">🖨 <span>Print / Export</span></button>
+        <div id="printMenu" class="print-menu" style="display:none;">
+          <button id="printPdfBtn">Save as PDF</button>
+          <button id="printImageBtn">Save as Image</button>
+        </div>
       </div>
     </div>
-    <button class="sidebar-btn" id="rolesBtn" title="Manage user roles" style="display:none;">👤 <span>Roles</span></button>
-    <button class="sidebar-btn" id="exportConfigBtn" title="Download the current KPI catalog and settings for every terminal" style="display:none;">📋 <span>Export Config</span></button>
-    <button class="sidebar-btn" id="eraseDataBtn" title="Permanently erase a terminal's uploaded data" style="display:none; color:#F2483D;">🗑 <span>Erase Data</span></button>
-    <button class="sidebar-btn" id="settingsBtn" title="KPI Settings">⚙ <span>Settings</span></button>
+    <div class="sidebar-section" id="dataAnalysisSection">
+      <div class="sidebar-section-title">Data Analysis</div>
+      <button class="sidebar-btn" id="uploadBtn" title="Upload one of the Tangier terminal Excel files">⬆ <span>Upload Tangier Data</span></button>
+      <button class="sidebar-btn" id="uploadPanamaBtn" title="Upload Panama's weekly terminal KPI file">⬆ <span>Upload Panama Data</span></button>
+      <button class="sidebar-btn" id="uploadAdherenceBtn" title="Upload the Gateways/Hubs Adherence export files">⬆ <span>Upload Adherence Data</span></button>
+      <button class="sidebar-btn" id="eraseDataBtn" title="Permanently erase a terminal's uploaded data" style="display:none; color:#F2483D;">🗑 <span>Erase Data</span></button>
+    </div>
+    <input type="file" id="uploadFile" accept=".xlsm,.xlsx" style="display:none;">
+    <button id="uploadTargetsBtn" type="button" style="display:none;" aria-hidden="true" tabindex="-1"></button>
+    <input type="file" id="uploadTargetsFile" accept=".xlsx,.xlsm" style="display:none;">
+    <input type="file" id="uploadPanamaFile" accept=".xlsm,.xlsx" style="display:none;">
+    <input type="file" id="uploadAdherenceFile" accept=".xlsm,.xlsx,.zip" style="display:none;" multiple>
+    <div class="sidebar-section" id="settingsRolesSection">
+      <div class="sidebar-section-title">Settings &amp; Roles</div>
+      <button class="sidebar-btn" id="settingsBtn" title="Settings">⚙ <span>Settings</span></button>
+      <button class="sidebar-btn" id="rolesBtn" title="Manage user roles" style="display:none;">👤 <span>Roles</span></button>
+      <button class="sidebar-btn" id="exportConfigBtn" title="Download the current KPI catalog and settings for every terminal" style="display:none;">📋 <span>Export Config</span></button>
+    </div>
     <div class="sidebar-spacer"></div>
     <span id="uploadStatus" class="sidebar-status"></span>
     <button class="sidebar-btn" id="themeToggleBtn" title="Toggle dark/light theme">🌙 <span id="themeToggleLabel">Dark</span></button>
@@ -1395,8 +1410,47 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let currentTerminal = "ALL";
   let currentType = "weekly";
   let currentPeriod = null;
+  let lastPerformanceView = { section:"global", globalSub:"tangier", terminal:"ALL" };
   // daily cascading state
   let dailyYear = null, dailyMonth = null;
+
+  const terminalDashboardsBtn = document.getElementById("terminalDashboardsBtn");
+  const adherenceDashboardsBtn = document.getElementById("adherenceDashboardsBtn");
+  function closeUtilityViews(){
+    showingSettings=false; showingRoles=false; showingErase=false;
+    document.getElementById("settingsView").style.display="none";
+    document.getElementById("rolesView").style.display="none";
+    document.getElementById("eraseView").style.display="none";
+    document.getElementById("mainApp").style.display="";
+  }
+  function openDashboardArea(kind){
+    closeUtilityViews();
+    if(kind==="adherence"){
+      if(currentTerminal!=="ADHERENCE") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
+      if(currentType==="daily")currentType="weekly";
+      adherencePage="overview";
+    }else if(currentTerminal==="ADHERENCE"){
+      currentSection=lastPerformanceView.section;
+      currentGlobalSub=lastPerformanceView.globalSub;
+      currentTerminal=lastPerformanceView.terminal;
+    }
+    currentPeriod=null;
+    buildMainNav(); buildTerminalPills(); updateTabs(); render();
+  }
+  terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
+  adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
+  function updateSidebarContext(){
+    const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
+    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE");
+    adherenceDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="ADHERENCE");
+    const printWrap=document.getElementById("printWrap");
+    if(printWrap)printWrap.style.display=dashboardVisible?"":"none";
+    [document.getElementById("settingsBtn"),document.getElementById("rolesBtn"),document.getElementById("eraseDataBtn")].forEach(b=>{if(b)b.classList.remove("active");});
+    if(showingSettings)document.getElementById("settingsBtn").classList.add("active");
+    if(showingRoles)document.getElementById("rolesBtn").classList.add("active");
+    if(showingErase)document.getElementById("eraseDataBtn").classList.add("active");
+  }
 
   // ---------- Aggregation helpers ----------
   function groupByKeyFn(rows, keyFn){
@@ -1750,6 +1804,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (currentTerminal === "ALL") return "Tangier";
     if (currentTerminal === "PANAMA") return "Panama";
     if (currentTerminal === "SPCS") return "Global";
+    if (currentTerminal === "ADHERENCE") return "Adherence";
     return currentTerminal || "Report";
   }
   function exportBaseName(){
@@ -1992,14 +2047,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   const uploadAdherenceBtn = document.getElementById("uploadAdherenceBtn");
   const uploadAdherenceFile = document.getElementById("uploadAdherenceFile");
-  uploadAdherenceBtn.onclick = () => {
-    currentSection = "global";
-    currentGlobalSub = "adherence";
-    currentTerminal = "ADHERENCE";
-    currentType = currentType === "daily" ? "weekly" : currentType;
-    adherencePage = "uploads";
-    buildMainNav(); buildTerminalPills(); updateTabs(); render();
-  };
+  uploadAdherenceBtn.onclick = () => uploadAdherenceFile.click();
   uploadAdherenceFile.onchange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -2202,7 +2250,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (currentSection === "global"){
       globalSubTabsEl.style.display = "";
       globalSubTabsEl.innerHTML = "";
-      [["spcs","SPCs","SPCS",null],["adherence","Adherence","ADHERENCE",null],["panama","All Panama Terminals","PANAMA","PANAMA_FLAG"],["tangier","All Tangier Terminals","ALL","MOROCCO"]].forEach(([key,label,termVal,flagKey]) => {
+      [["spcs","SPCs","SPCS",null],["panama","All Panama Terminals","PANAMA","PANAMA_FLAG"],["tangier","All Tangier Terminals","ALL","MOROCCO"]].forEach(([key,label,termVal,flagKey]) => {
         const btn = document.createElement("button");
         btn.className = "tab" + (currentGlobalSub===key ? " active" : "");
         const flagHtml = (flagKey && ASSETS.flags[flagKey]) ? `<img src="${ASSETS.flags[flagKey]}" style="width:16px;height:11px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : '';
@@ -3389,11 +3437,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const rolesBtn = document.getElementById("rolesBtn");
   let showingRoles = false;
   rolesBtn.onclick = () => {
-    showingRoles = !showingRoles;
-    document.getElementById("mainApp").style.display = showingRoles ? "none" : "";
-    document.getElementById("rolesView").style.display = showingRoles ? "" : "none";
-    rolesBtn.textContent = showingRoles ? "← Back to Dashboard" : "👤 Roles";
-    if (showingRoles) renderRolesView();
+    showingRoles=true; showingSettings=false; showingErase=false;
+    document.getElementById("mainApp").style.display="none";
+    document.getElementById("rolesView").style.display="";
+    document.getElementById("settingsView").style.display="none";
+    document.getElementById("eraseView").style.display="none";
+    renderRolesView(); updateSidebarContext();
   };
 
   document.getElementById("exportConfigBtn").onclick = () => {
@@ -3509,11 +3558,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const eraseDataBtn = document.getElementById("eraseDataBtn");
   let showingErase = false;
   eraseDataBtn.onclick = () => {
-    showingErase = !showingErase;
-    document.getElementById("mainApp").style.display = showingErase ? "none" : "";
-    document.getElementById("eraseView").style.display = showingErase ? "" : "none";
-    eraseDataBtn.textContent = showingErase ? "← Back to Dashboard" : "🗑 Erase Data";
-    if (showingErase) renderEraseView();
+    showingErase=true; showingSettings=false; showingRoles=false;
+    document.getElementById("mainApp").style.display="none";
+    document.getElementById("eraseView").style.display="";
+    document.getElementById("settingsView").style.display="none";
+    document.getElementById("rolesView").style.display="none";
+    renderEraseView(); updateSidebarContext();
   };
 
   function renderEraseView(){
@@ -3602,12 +3652,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let settingsYear = null;
   let settingsPage = "kpi";
   settingsBtn.onclick = () => {
-    showingSettings = !showingSettings;
-    if(showingSettings && CURRENT_USER && CURRENT_USER.role==="data_analyst" && settingsPage==="kpi") settingsPage="adherence_terminals";
-    document.getElementById("mainApp").style.display = showingSettings ? "none" : "";
-    document.getElementById("settingsView").style.display = showingSettings ? "" : "none";
-    settingsBtn.textContent = showingSettings ? "← Back to Dashboard" : "⚙ Settings";
-    if (showingSettings) renderSettingsView();
+    showingSettings=true; showingRoles=false; showingErase=false;
+    if(CURRENT_USER && CURRENT_USER.role==="data_analyst" && settingsPage==="kpi") settingsPage="adherence_terminals";
+    document.getElementById("mainApp").style.display="none";
+    document.getElementById("settingsView").style.display="";
+    document.getElementById("rolesView").style.display="none";
+    document.getElementById("eraseView").style.display="none";
+    renderSettingsView(); updateSidebarContext();
   };
 
   function yearsForTerm(term){
@@ -3712,8 +3763,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         showingSettings = false;
         document.getElementById("settingsView").style.display = "none";
         document.getElementById("mainApp").style.display = "";
-        settingsBtn.textContent = "⚙ Settings";
-        render();
+        render(); updateSidebarContext();
       } catch(e){
         flashSaveStatus("Refresh failed: " + (e.message || e));
       } finally {
@@ -4004,7 +4054,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let adherencePage = "overview";
   let adherenceMetric = "calls";
   let adherenceScopeFilter = "global";
-  let adherenceRegionFilter = "all";
   let adherenceYear = null;
   let adherencePeriod = null;
   let adherenceConfigYear = String(new Date().getUTCFullYear());
@@ -4237,7 +4286,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return adhSummary(regs.map(reg=>{const total=adhActualFor(reg,type,period,metric),planned=adhPlannedFor(reg,type,period,metric),target=adhTargetFor(reg,year,type,period);return{reg,total,planned,target,expected:target==null?null:total*target,adherence:total?planned/total:null};}));
   }
   function adhRowsForSelection(){
-    return adhRowsFor(adherenceScopeFilter,adherenceMetric,currentType,adherencePeriod).filter(r=>adherenceRegionFilter==="all"||r.reg.region===adherenceRegionFilter);
+    return adhRowsFor(adherenceScopeFilter,adherenceMetric,currentType,adherencePeriod);
   }
   function adhSummary(rows){
     const configured=rows.filter(r=>r.target!=null), total=rows.reduce((a,r)=>a+r.total,0), planned=rows.reduce((a,r)=>a+r.planned,0), expected=configured.reduce((a,r)=>a+r.expected,0), configuredTotal=configured.reduce((a,r)=>a+r.total,0);
@@ -4259,39 +4308,42 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function prepareAdherenceRegistryDrafts(){
     collectRegistryEdits();
     const names=adhUnmappedTerminalNames();
-    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,terminalType:"",effectiveFrom:"",effectiveTo:"",comments:""}));
+    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",assignment:"None",inScope:false,opsControlled:false,terminalType:"",effectiveFrom:"",effectiveTo:"",comments:""}));
     if(names.length)adherenceDraftsPending=true;
   }
 
   function adhRegistryTable(){
     const editable=canEditAdherenceConfig(), unmapped=adhUnmappedTerminalNames(), rows=ADHERENCE_REGISTRY.map((r,i)=>`<tr data-i="${i}">
       <td><input class="wide" data-k="biName" value="${adhEsc(r.biName)}" ${editable?"":"disabled"}></td><td><input class="wide" data-k="displayName" value="${adhEsc(r.displayName)}" ${editable?"":"disabled"}></td>
-      <td><input data-k="pod" value="${adhEsc(r.pod)}" ${editable?"":"disabled"}></td><td><input data-k="region" value="${adhEsc(r.region)}" ${editable?"":"disabled"}></td>
+      <td><input data-k="pod" value="${adhEsc(r.pod)}" placeholder="Optional" ${editable?"":"disabled"}></td>
       <td><select data-k="assignment" ${editable?"":"disabled"}>${["None","Tangier","Panama"].map(x=>`<option ${r.assignment===x?"selected":""}>${x}</option>`).join("")}</select></td>
       <td><input type="checkbox" data-k="inScope" ${r.inScope?"checked":""} ${editable?"":"disabled"}></td><td><input type="checkbox" data-k="opsControlled" ${r.opsControlled?"checked":""} ${editable?"":"disabled"}></td>
       <td><select data-k="terminalType" ${editable?"":"disabled"}><option value="">Select…</option>${["Gateway","Hub"].map(x=>`<option ${r.terminalType===x?"selected":""}>${x}</option>`).join("")}</select></td>
       <td><input type="date" data-k="effectiveFrom" value="${adhEsc(r.effectiveFrom)}" ${editable?"":"disabled"}></td><td><input type="date" data-k="effectiveTo" value="${adhEsc(r.effectiveTo)}" ${editable?"":"disabled"}></td>
       <td><input class="wide" data-k="comments" value="${adhEsc(r.comments)}" ${editable?"":"disabled"}></td><td>${editable?`<button class="btn-secondary adh-remove" data-i="${i}">Remove</button>`:""}</td></tr>`).join("");
-    return `<div class="adh-panel"><h3>Terminal / POD Registry</h3><p>Only terminals deliberately registered here are calculated. BI uploads never create configuration automatically.</p>
+    return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Assign each BI terminal to Tangier or Panama. POD is optional and is used only to link planned data and display the POD where available.</p>
       <div class="adh-toolbar">${editable?`<button class="btn-primary" id="adhAddTerminal">+ Add Terminal</button>${unmapped.length?`<button class="btn-primary" id="adhPrepareTerminals">Prepare ${unmapped.length} BI Terminal${unmapped.length===1?"":"s"}</button>`:""}<button class="btn-secondary" id="adhSaveRegistry">Save to Database</button><button class="btn-secondary" id="adhImportConfig">Import Configuration Excel</button>`:""}<button class="btn-secondary" id="adhExportConfig">Export Configuration Excel</button><input id="adhConfigFile" type="file" accept=".xlsx,.xlsm" hidden></div>
-      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Complete POD, Type and any scope fields, then select Save to Database.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the mapping, then save once.`:"Exact BI Terminal Name is the matching key. Saved mappings are reused for every future BI upload."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>POD</th><th>Region</th><th>SPC Assignment</th><th>In Scope</th><th>OPS Controlled</th><th>Type</th><th>Effective From</th><th>Effective To</th><th>Comments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="12" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
+      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Complete the terminal Type and Tangier/Panama assignment where applicable, then select Save to Database.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the mapping, then save once.`:"Exact BI Terminal Name is the matching key. Saved mappings are reused for every future BI upload."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>POD (Optional)</th><th>Belongs To</th><th>In Scope</th><th>OPS Controlled</th><th>Type</th><th>Effective From</th><th>Effective To</th><th>Comments</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="11" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
+  }
+  function adherenceConfigYears(){
+    const years=new Set(Object.keys(ADHERENCE_SCOPE).concat(ADHERENCE_ACTUAL.map(r=>String(r.year))));
+    for(let y=2020;y<=2032;y++)years.add(String(y));
+    return [...years].sort();
   }
   function adhScopeTable(){
     const editable=canEditAdherenceConfig(), y=adherenceConfigYear, names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const rows=ADHERENCE_REGISTRY.map(r=>{ const vals=((ADHERENCE_SCOPE[y]||{})[r.id]||[]); return `<tr data-id="${r.id}"><td>${adhEsc(r.displayName||r.biName)}</td><td>${adhEsc(r.pod)}</td>${names.map((n,i)=>`<td><input data-m="${i}" type="number" min="0" step="0.1" value="${vals[i]==null?"":Number(vals[i])*100}" ${editable?"":"disabled"}></td>`).join("")}</tr>`; }).join("");
-    return `<div class="adh-panel"><h3>Monthly Scope %</h3><p>One monthly target per terminal, shared by Calls and Moves. Quarter is the simple average of 3 months; Year is the simple average of 12 months.</p><div class="adh-toolbar"><div class="adh-field"><label>Configuration Year</label><input id="adhConfigYear" type="number" value="${adhEsc(y)}"></div>${editable?'<button class="btn-primary" id="adhSaveScope">Save to Database</button>':''}</div><div id="adhScopeStatus" class="adh-status">Enter percentages as 75 for 75%.</div><div class="adh-table-wrap"><table class="adh-table adh-scope-table"><thead><tr><th>Terminal</th><th>POD</th>${names.map(n=>`<th>${n}</th>`).join("")}</tr></thead><tbody>${rows||'<tr><td colspan="14" class="empty-note">Configure terminals first.</td></tr>'}</tbody></table></div></div>`;
+    return `<div class="adh-panel"><h3>Monthly Scope %</h3><p>One monthly target per terminal, shared by Calls and Moves. Quarter is the simple average of 3 months; Year is the simple average of 12 months.</p><div class="adh-toolbar"><div class="adh-field"><label>Configuration Year</label><select id="adhConfigYear">${adherenceConfigYears().map(year=>`<option value="${year}" ${String(y)===year?"selected":""}>${year}</option>`).join("")}</select></div>${editable?'<button class="btn-primary" id="adhSaveScope">Save to Database</button>':''}</div><div id="adhScopeStatus" class="adh-status">Enter percentages as 75 for 75%.</div><div class="adh-table-wrap"><table class="adh-table adh-scope-table"><thead><tr><th>Terminal</th><th>POD</th>${names.map(n=>`<th>${n}</th>`).join("")}</tr></thead><tbody>${rows||'<tr><td colspan="14" class="empty-note">Configure terminals first.</td></tr>'}</tbody></table></div></div>`;
   }
   function adhOverview(){
     const years=[...new Set(ADHERENCE_ACTUAL.map(r=>r.year).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
     if(!adherenceYear||!years.includes(String(adherenceYear))) adherenceYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const periods=adhPeriods(adherenceYear,currentType); if(!adherencePeriod||!periods.includes(adherencePeriod)) adherencePeriod=periods[periods.length-1]||String(adherenceYear);
-    const regions=[...new Set(ADHERENCE_REGISTRY.map(r=>r.region).filter(Boolean))].sort();
-    if(adherenceRegionFilter!=="all"&&!regions.includes(adherenceRegionFilter))adherenceRegionFilter="all";
     const rows=adhRowsForSelection(), s=adhSummary(rows), unmapped=[...new Set(ADHERENCE_ACTUAL.filter(r=>adhPeriodMatch(r,currentType,adherencePeriod)).map(r=>r.terminal))].filter(x=>!ADHERENCE_REGISTRY.some(t=>t.biName===x));
-    return `<div class="adh-toolbar"><div class="adh-metric"><button data-metric="calls" class="${adherenceMetric==="calls"?"active":""}">Calls</button><button data-metric="moves" class="${adherenceMetric==="moves"?"active":""}">Moves</button></div><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>SPC Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Region</label><select id="adhRegionFilter"><option value="all">All Regions</option>${regions.map(r=>`<option value="${adhEsc(r)}" ${adherenceRegionFilter===r?"selected":""}>${adhEsc(r)}</option>`).join("")}</select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
+    return `<div class="adh-toolbar"><div class="adh-metric"><button data-metric="calls" class="${adherenceMetric==="calls"?"active":""}">Calls</button><button data-metric="moves" class="${adherenceMetric==="moves"?"active":""}">Moves</button></div><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>SPC Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
       ${unmapped.length?`<div class="adh-status watch"><span class="adh-unmapped">Unmapped BI terminals excluded:</span> ${unmapped.map(adhEsc).join(", ")}. <button class="btn-secondary" id="adhOpenTerminalSettings" style="margin-left:8px;">Open Settings → Adherence Terminals</button></div>`:""}
       <div class="adh-kpis"><div class="adh-card"><div class="label">Actual Adherence</div><div class="value">${adhPct(s.actual)}</div><div class="sub">Planned ÷ total</div></div><div class="adh-card"><div class="label">Scope Target</div><div class="value">${adhPct(s.target)}</div><div class="sub">Weighted from configured terminals</div></div><div class="adh-card"><div class="label">Planned ${adherenceMetric}</div><div class="value">${fmtNum(s.planned,0)}</div><div class="sub">Existing platform planned source</div></div><div class="adh-card"><div class="label">Total BI ${adherenceMetric}</div><div class="value">${fmtNum(s.total,0)}</div><div class="sub">Uploaded actual universe</div></div></div>
-      <div class="adh-panel"><h3>${adherenceMetric==="calls"?"Calls":"Moves"} Adherence by Terminal</h3><p>Group results use summed planned ÷ summed total; terminal percentages are never averaged.</p><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th>Region</th><th class="right">Total BI</th><th class="right">Target %</th><th class="right">Expected Planned</th><th class="right">Actual Planned</th><th class="right">Actual Adherence</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)} (${adhEsc(r.reg.pod)})</td><td>${adhEsc(r.reg.pod)}</td><td>${adhEsc(r.reg.region)}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right"><span class="pill ${r.target==null||r.adherence==null?"watch":r.adherence>=r.target?"good":"bad"}">${adhPct(r.adherence)}</span></td></tr>`).join("")||'<tr><td colspan="8" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div>`;
+      <div class="adh-panel"><h3>${adherenceMetric==="calls"?"Calls":"Moves"} Adherence by Terminal</h3><p>Group results use summed planned ÷ summed total; terminal percentages are never averaged.</p><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th class="right">Total BI</th><th class="right">Target %</th><th class="right">Expected Planned</th><th class="right">Actual Planned</th><th class="right">Actual Adherence</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${r.reg.pod?` (${adhEsc(r.reg.pod)})`:""}</td><td>${r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right"><span class="pill ${r.target==null||r.adherence==null?"watch":r.adherence>=r.target?"good":"bad"}">${adhPct(r.adherence)}</span></td></tr>`).join("")||'<tr><td colspan="7" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div>`;
   }
   function adhUploads(){
     return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Accepted standard format: first-column validity marker “-” or “.”, Vessel Call, Terminal and Moves. ETB is read from the date/time after the final “/” in Vessel Call.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Deduplication: Exact BI Terminal Name + full Vessel Call<br>• Week: Excel WEEKNUM(ETB,21) → YYYY-WW<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>Unique calls</th><th>Duplicates</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.duplicates||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="6" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
@@ -4315,33 +4367,33 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   async function saveRegistryFromUI(){
     collectRegistryEdits(); const names=ADHERENCE_REGISTRY.map(r=>r.biName).filter(Boolean), dup=names.find((x,i)=>names.indexOf(x)!==i);
-    if(ADHERENCE_REGISTRY.some(r=>!r.biName||!r.displayName||!r.pod||!r.terminalType)){ document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Complete Exact BI Terminal Name, Display Terminal Name, POD and Terminal Type for every row.";return; }
-    if(ADHERENCE_REGISTRY.some(r=>r.inScope&&(!r.region||r.assignment==="None"))){document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Every terminal marked In Scope must have a Region and Tangier/Panama SPC Assignment.";return;}
+    if(ADHERENCE_REGISTRY.some(r=>!r.biName||!r.displayName||!r.terminalType)){ document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Complete Exact BI Terminal Name, Display Terminal Name and Terminal Type for every row. POD may be left blank.";return; }
+    if(ADHERENCE_REGISTRY.some(r=>r.inScope&&r.assignment==="None")){document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Every terminal marked In Scope must belong to Tangier or Panama.";return;}
     if(dup){document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Duplicate Exact BI Terminal Name: "+dup;return;}
     await persistAdherenceConfig(); adherenceDraftsPending=false; document.getElementById("adhConfigStatus").className="adh-status good";document.getElementById("adhConfigStatus").textContent="✓ Terminal registry saved to database. These mappings will be reused for future BI uploads.";
   }
   function exportAdherenceConfig(){
-    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"Region":r.region,"SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Terminal Type":r.terminalType,"Effective From":r.effectiveFrom,"Effective To":r.effectiveTo,"Comments":r.comments}));
+    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Terminal Type":r.terminalType,"Effective From":r.effectiveFrom,"Effective To":r.effectiveTo,"Comments":r.comments}));
     const scope=[]; Object.keys(ADHERENCE_SCOPE).sort().forEach(y=>ADHERENCE_REGISTRY.forEach(r=>{const v=(ADHERENCE_SCOPE[y]||{})[r.id]||[];const o={Year:Number(y),"Exact BI Terminal Name":r.biName,POD:r.pod};["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((m,i)=>o[m]=v[i]==null?null:v[i]);scope.push(o);}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(terms),"Terminals");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(scope),"Monthly Scope %");XLSX.writeFile(wb,"SPC_Adherence_Configuration.xlsx");
   }
   function importAdherenceConfig(buffer){
     const wb=XLSX.read(buffer,{type:"array",cellDates:true}), ts=wb.Sheets["Terminals"], ss=wb.Sheets["Monthly Scope %"];
     if(!ts) throw new Error('Sheet "Terminals" is required.');
-    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),region:String(o.Region||"").trim(),assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),terminalType:String(o["Terminal Type"]||"Gateway"),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||""),comments:String(o.Comments||"")}); });
+    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),terminalType:String(o["Terminal Type"]||"Gateway"),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||""),comments:String(o.Comments||"")}); });
     if(ss) XLSX.utils.sheet_to_json(ss,{defval:""}).forEach(o=>{const y=String(o.Year||"").trim(),r=ADHERENCE_REGISTRY.find(x=>x.biName===String(o["Exact BI Terminal Name"]||"").trim());if(!y||!r)return;if(!ADHERENCE_SCOPE[y])ADHERENCE_SCOPE[y]={};ADHERENCE_SCOPE[y][r.id]=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map(m=>{if(o[m]==="")return null;const n=Number(o[m]);return Number.isFinite(n)?(n>1?n/100:n):null;});});
   }
   function wireAdherenceView(){
     document.querySelectorAll(".adh-tabs button[data-page]").forEach(b=>b.onclick=()=>{adherencePage=b.dataset.page;render();});
     if(adherencePage==="overview"){
       document.querySelectorAll("[data-metric]").forEach(b=>b.onclick=()=>{adherenceMetric=b.dataset.metric;render();});
-      const s=document.getElementById("adhScopeFilter"),g=document.getElementById("adhRegionFilter"),y=document.getElementById("adhYear"),p=document.getElementById("adhPeriod");if(s)s.onchange=()=>{adherenceScopeFilter=s.value;adherencePeriod=null;render();};if(g)g.onchange=()=>{adherenceRegionFilter=g.value;render();};if(y)y.onchange=()=>{adherenceYear=y.value;adherencePeriod=null;render();};if(p)p.onchange=()=>{adherencePeriod=p.value;render();};
-      const openSettings=document.getElementById("adhOpenTerminalSettings");if(openSettings)openSettings.onclick=()=>{settingsPage="adherence_terminals";showingSettings=true;document.getElementById("mainApp").style.display="none";document.getElementById("settingsView").style.display="";settingsBtn.textContent="← Back to Dashboard";renderSettingsView();};
+      const s=document.getElementById("adhScopeFilter"),y=document.getElementById("adhYear"),p=document.getElementById("adhPeriod");if(s)s.onchange=()=>{adherenceScopeFilter=s.value;adherencePeriod=null;render();};if(y)y.onchange=()=>{adherenceYear=y.value;adherencePeriod=null;render();};if(p)p.onchange=()=>{adherencePeriod=p.value;render();};
+      const openSettings=document.getElementById("adhOpenTerminalSettings");if(openSettings)openSettings.onclick=()=>{settingsPage="adherence_terminals";showingSettings=true;showingRoles=false;showingErase=false;document.getElementById("mainApp").style.display="none";document.getElementById("settingsView").style.display="";document.getElementById("rolesView").style.display="none";document.getElementById("eraseView").style.display="none";renderSettingsView();updateSidebarContext();};
     }
     if(adherencePage==="uploads"){const b=document.getElementById("adhChooseActual");if(b)b.onclick=()=>uploadAdherenceFile.click();}
     if(adherencePage==="terminals"){
       const add=document.getElementById("adhAddTerminal"),prepare=document.getElementById("adhPrepareTerminals"),save=document.getElementById("adhSaveRegistry"),imp=document.getElementById("adhImportConfig"),exp=document.getElementById("adhExportConfig"),file=document.getElementById("adhConfigFile");
-      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,terminalType:"",effectiveFrom:"",effectiveTo:"",comments:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
+      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",assignment:"None",inScope:false,opsControlled:false,terminalType:"",effectiveFrom:"",effectiveTo:"",comments:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
       if(prepare)prepare.onclick=()=>{prepareAdherenceRegistryDrafts();rerenderAdherenceSurface();};
       if(save)save.onclick=()=>saveRegistryFromUI().catch(e=>{document.getElementById("adhConfigStatus").textContent="✗ "+e.message;});
       document.querySelectorAll(".adh-remove").forEach(b=>b.onclick=()=>{const r=ADHERENCE_REGISTRY[Number(b.dataset.i)];if(!confirm(`Remove ${r.displayName||r.biName||"this terminal"} from the unsaved registry view? Existing BI actual records are not deleted.`))return;collectRegistryEdits();ADHERENCE_REGISTRY.splice(Number(b.dataset.i),1);adherenceDraftsPending=true;rerenderAdherenceSurface();});
@@ -4355,15 +4407,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function renderAdherenceView(){
     ["globalReportView","networkView","terminalView","panamaView"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
+    mainSectionTabsEl.style.display="none";
+    globalSubTabsEl.style.display="none";
+    terminalRow.style.display="none";
     document.getElementById("brandTitle").textContent="SPC Adherence";
     document.getElementById("brandSubtitle").textContent="Shared Planning Center — Calls & Moves · "+PERIOD_TYPES[currentType].label+" View";
     document.getElementById("brandFlag").style.display="none";
     periodPicker.innerHTML="";
     const v=document.getElementById("adherenceView");v.style.display="";
-    if(!["overview","uploads","format"].includes(adherencePage))adherencePage="overview";
-    const tabs=[["overview","Overview"],["uploads","BI Uploads"],["format","Rules & Format"]];
-    let body=adherencePage==="overview"?adhOverview():adherencePage==="uploads"?adhUploads():adhFormat();
-    v.innerHTML=`<div class="adh-wrap"><div class="section-eyebrow">GLOBAL · ADHERENCE</div><div class="section-title">SPC Adherence</div><div class="adh-tabs">${tabs.map(([k,l])=>`<button data-page="${k}" class="${adherencePage===k?"active":""}">${l}</button>`).join("")}</div>${body}<div class="footer-note">ADHERENCE MODULE · FIREBASE-BACKED · WEEK FILTER YYYY-WW</div></div>`;
+    adherencePage="overview";
+    v.innerHTML=`<div class="adh-wrap"><div class="section-eyebrow">GLOBAL · ADHERENCE</div><div class="section-title">SPC Adherence Dashboard</div>${adhOverview()}<div class="footer-note">ADHERENCE MODULE · FIREBASE-BACKED · WEEK FILTER YYYY-WW</div></div>`;
     wireAdherenceView();
   }
 
@@ -4372,6 +4425,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function render(){
     if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE") renderPeriodPicker();
     renderContent();
+    updateSidebarContext();
   }
 
   // ---------- Roles ----------
@@ -4408,12 +4462,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const rolesBtn = document.getElementById("rolesBtn");
     uploadBtn.style.display = can("upload") ? "" : "none";
     uploadPanamaBtn.style.display = can("upload") ? "" : "none";
-    uploadTargetsBtn.style.display = (CURRENT_USER && (CURRENT_USER.role==="admin" || can("upload") || can("editSettings"))) ? "" : "none";
+    uploadTargetsBtn.style.display = "none";
     uploadAdherenceBtn.style.display = can("upload") ? "" : "none";
     settingsBtn.style.display = (CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"))) ? "" : "none";
     rolesBtn.style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("exportConfigBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("eraseDataBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
+    document.getElementById("adherenceDashboardsBtn").style.display = can("viewAll") ? "" : "none";
+    document.getElementById("dataAnalysisSection").style.display = can("upload") ? "" : "none";
+    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"));
+    document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
     if (allowed){
       TERM_CODES = TERM_CODES.filter(t => allowed.includes(t));
