@@ -335,8 +335,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .sidebar-spacer{ flex:1; }
   .sidebar-status{ font-size:9.5px; color:var(--text-faint); font-family:var(--mono); text-align:center; padding:0 2px; word-break:break-word; }
   .print-menu{
-    position:absolute; left:100%; top:0; margin-left:8px; background:var(--panel); border:1px solid var(--border);
-    border-radius:10px; padding:6px; z-index:20; min-width:150px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+    position:fixed; left:auto; top:auto; margin:0; background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:6px; z-index:10050; min-width:190px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
   }
   .print-menu button{
     display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--text);
@@ -563,6 +563,30 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .adh-terminal-chart-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:15px;margin-bottom:12px;break-inside:avoid}.adh-terminal-chart-card>h3{font:700 14px var(--display);margin:0 0 12px}.adh-terminal-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.adh-terminal-chart-grid>div{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:10px}.adh-terminal-chart-grid h4{font:600 11px var(--display);color:var(--text-muted);margin:0 0 5px}.adh-terminal-chart-box{height:210px}.adh-detail-head{display:flex;justify-content:space-between;align-items:end;gap:16px}.adh-detail-head p{margin-bottom:0}.adh-compare small,.adh-gap small{display:block;color:var(--text-muted);font:10px var(--mono);margin-top:8px}.adh-section-note{font-size:12px;color:var(--text-muted);margin:-4px 0 12px}
   @media(max-width:720px){.adh-terminal-chart-grid{grid-template-columns:1fr}.adh-detail-head{align-items:stretch;flex-direction:column}.sqdc-development-note{flex-basis:100%}}
   @media print{.adh-terminal-chart-grid{grid-template-columns:repeat(2,1fr)!important}.adh-terminal-chart-box{height:180px}.adh-detail-head{display:flex!important;flex-direction:row!important}}
+
+  /* Final print contract: one consistent, selectable report in either screen theme. */
+  @media print{
+    @page{size:A4 landscape;margin:8mm}
+    html,body{width:100%!important;min-width:0!important;height:auto!important;overflow:visible!important;background:#fff!important}
+    body{font-size:9pt!important}
+    #mainSectionTabs,#globalSubTabs,#printMenu,.sidebar,.terminal-row,.no-print,#loginScreen,#settingsView,#rolesView,#eraseView,#storageWarningBanner,.crane-accent,.port-skyline,.bg-grid,.footer-note{display:none!important}
+    .app-shell,.main-area,#mainApp,.main-area .wrap{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0!important;overflow:visible!important}
+    .period-row,.print-filters{display:flex!important;margin:0 0 10px!important;gap:8px!important}
+    #periodTabs{display:none!important}
+    select,.picker-select{appearance:none!important;border:1px solid #bbb!important;background:#fff!important;color:#111!important;padding:3px 6px!important}
+    .topbar{margin:0 0 10px!important}
+    .adh-section{margin:12px 0!important}
+    .adh-panel,.adh-summary-card,.adh-compare,.adh-gap,.chart-card,.table-card,.term-card,.score-card,.vcard,.ncard,.vr-card,.gauge-card,.trend-card,.timeline-card,.adh-terminal-chart-card{background:#fff!important;border-color:#bbb!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid}
+    .adh-table-wrap,.table-card,.timeline-scroll{overflow:visible!important;max-height:none!important}
+    table,.adh-table,.adh-terminal-table{width:100%!important;min-width:0!important;font-size:7.5pt!important}
+    thead{display:table-header-group!important}
+    thead th{position:static!important;background:#fff!important;color:#222!important}
+    tr,canvas,.adh-chart-box,.adh-terminal-chart-box{break-inside:avoid;page-break-inside:avoid}
+    .adh-chart-box{height:210px!important}.adh-terminal-chart-box{height:165px!important}
+    .adh-terminal-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    .pill.good{background:#d9f5e5!important;color:#08633b!important}.pill.bad{background:#fde0de!important;color:#8f2018!important}.pill.watch{background:#fff4bf!important;color:#704900!important}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -668,7 +692,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="sidebar-btn" id="adherenceDashboardsBtn" title="Open the Adherence dashboard">◎ <span>Adherence Dashboard</span></button>
       <div id="printWrap" style="position:relative;">
         <button class="sidebar-btn" id="printBtn" title="Print or export the selected dashboard">🖨 <span>Print / Export</span></button>
-        <div id="printMenu" class="print-menu" style="display:none;">
+        <div id="printMenu" class="print-menu no-print" style="display:none;">
           <button id="printNativeBtn">Print current report</button>
           <button id="printPdfBtn">Save as PDF</button>
           <button id="printImageBtn">Save as Image</button>
@@ -1826,13 +1850,42 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   const printBtn = document.getElementById("printBtn");
   const printMenu = document.getElementById("printMenu");
+  // Keep the export menu outside the scrolling sidebar so it cannot be clipped.
+  document.body.appendChild(printMenu);
+  function positionPrintMenu(){
+    const rect=printBtn.getBoundingClientRect();
+    printMenu.style.display="block";
+    const width=printMenu.offsetWidth,height=printMenu.offsetHeight,pad=8;
+    printMenu.style.left=Math.max(pad,Math.min(rect.right+pad,window.innerWidth-width-pad))+"px";
+    printMenu.style.top=Math.max(pad,Math.min(rect.top,window.innerHeight-height-pad))+"px";
+  }
   printBtn.onclick = (e) => {
     e.stopPropagation();
-    printMenu.style.display = printMenu.style.display === "none" ? "block" : "none";
+    if(getComputedStyle(printMenu).display!=="none") printMenu.style.display="none";
+    else positionPrintMenu();
   };
   document.addEventListener("click", () => { printMenu.style.display = "none"; });
   printMenu.onclick = (e) => e.stopPropagation();
-  const nativePrintBtn=document.getElementById("printNativeBtn");if(nativePrintBtn)nativePrintBtn.onclick=async()=>{printMenu.style.display="none";document.body.classList.add("printing-report");if(currentTerminal==="ADHERENCE"){renderPendingAdherenceCharts();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}window.print();};window.addEventListener("afterprint",()=>document.body.classList.remove("printing-report"));
+  window.addEventListener("resize",()=>{printMenu.style.display="none";});
+  function prepareCurrentReportForPrint(){
+    document.body.classList.add("printing-report");
+    if(currentTerminal==="ADHERENCE")renderPendingAdherenceCharts();
+    // Stop Chart.js animations and synchronously paint their final state before the
+    // browser takes its print snapshot. This covers every dashboard, not only Adherence.
+    if(window.Chart&&Chart.instances){
+      Object.values(Chart.instances).forEach(chart=>{try{chart.stop();chart.resize();chart.update("none");}catch(e){/* keep printing */}});
+    }
+  }
+  function runNativeReportPrint(){
+    printMenu.style.display="none";
+    prepareCurrentReportForPrint();
+    // Keep this call synchronous with the user's click so popup protection cannot block it.
+    window.print();
+  }
+  const nativePrintBtn=document.getElementById("printNativeBtn");
+  if(nativePrintBtn)nativePrintBtn.onclick=runNativeReportPrint;
+  window.addEventListener("beforeprint",prepareCurrentReportForPrint);
+  window.addEventListener("afterprint",()=>document.body.classList.remove("printing-report"));
 
   function exportPeriodName(){
     return ({daily:"Day", weekly:"Week", monthly:"Month", quarterly:"Quarter", yearly:"Year"})[currentType] || "Report";
@@ -1950,19 +2003,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       window.scrollTo(savedScrollX, savedScrollY);
     }
   }
-  document.getElementById("printPdfBtn").onclick = async () => {
-    printMenu.style.display = "none";
-    try {
-      if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export library did not load. Refresh once and try again.");
-      const canvas = await captureCurrentReport();
-      const { jsPDF } = window.jspdf;
-      const wPt = canvas.width * 0.375; // canvas is rendered at scale 2; CSS px -> PDF points
-      const hPt = canvas.height * 0.375;
-      const pdf = new jsPDF({ orientation:wPt>=hPt?"landscape":"portrait", unit:"pt", format:[wPt,hPt], compress:true });
-      pdf.addImage(canvas.toDataURL("image/jpeg",0.96), "JPEG", 0, 0, wPt, hPt, undefined, "FAST");
-      pdf.save(exportBaseName() + ".pdf");
-    } catch(e){ alert("Could not export PDF: " + e.message); }
-  };
+  // Use the browser's native Save as PDF path. It works for long reports, keeps
+  // text selectable/copyable, and uses the same print layout as physical printing.
+  document.getElementById("printPdfBtn").onclick = runNativeReportPrint;
   document.getElementById("printImageBtn").onclick = async () => {
     printMenu.style.display = "none";
     try {
@@ -4190,6 +4233,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let adherencePage = "overview";
   let adherenceMetric = "calls";
   let adherenceScopeFilter = "global";
+  let adherenceRegionFilter = "all";
   let adherenceYear = null;
   let adherencePeriod = null;
   let adherenceConfigYear = String(new Date().getUTCFullYear());
@@ -4253,6 +4297,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(!scopeValue){const x=await storageGet("adherence_scope:SPC_ADHERENCE",true)||await storageGet("adherence_scope",true);scopeValue=x&&x.value;}
       if(!yearsValue){const x=await storageGet("years:SPC_ADHERENCE",true)||await storageGet("adherence_actual_years",true);yearsValue=x&&x.value;}
       ADHERENCE_REGISTRY = registryValue ? JSON.parse(registryValue) : [];
+      ADHERENCE_REGISTRY.forEach(r=>{if(typeof r.region!=="string")r.region="";});
       ADHERENCE_SCOPE = scopeValue ? JSON.parse(scopeValue) : {};
       const years = yearsValue ? JSON.parse(yearsValue) : [];
       const docs = await Promise.all(years.map(async y => {
@@ -4474,7 +4519,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function prepareAdherenceRegistryDrafts(){
     collectRegistryEdits();
     const names=adhUnmappedTerminalNames();
-    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""}));
+    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""}));
     if(names.length)adherenceDraftsPending=true;
   }
 
@@ -4482,13 +4527,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const editable=canEditAdherenceConfig(), unmapped=adhUnmappedTerminalNames(), rows=ADHERENCE_REGISTRY.map((r,i)=>`<tr data-i="${i}">
       <td><input class="wide" data-k="biName" value="${adhEsc(r.biName)}" ${editable?"":"disabled"}></td><td><input class="wide" data-k="displayName" value="${adhEsc(r.displayName)}" ${editable?"":"disabled"}></td>
       <td><input data-k="pod" value="${adhEsc(r.pod)}" placeholder="Optional" ${editable?"":"disabled"}></td>
+      <td><input data-k="region" value="${adhEsc(r.region||"")}" placeholder="e.g. Europe" ${editable?"":"disabled"}></td>
       <td><select data-k="assignment" ${editable?"":"disabled"}>${["None","Tangier","Panama"].map(x=>`<option ${r.assignment===x?"selected":""}>${x}</option>`).join("")}</select></td>
       <td><input type="checkbox" data-k="inScope" title="Include this OPS-controlled terminal in Adherence targets" ${r.inScope?"checked":""} ${editable?"":"disabled"}></td><td><input type="checkbox" data-k="opsControlled" title="Checked includes this terminal in actual Adherence Calls and Moves" ${r.opsControlled?"checked":""} ${editable?"":"disabled"}></td>
       <td><input type="date" data-k="effectiveFrom" value="${adhEsc(r.effectiveFrom)}" ${editable?"":"disabled"}></td><td><input type="date" data-k="effectiveTo" value="${adhEsc(r.effectiveTo)}" ${editable?"":"disabled"}></td>
       </tr>`).join("");
-    return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Assign each BI terminal to Tangier or Panama. POD is optional and is used only to link planned data and display the POD where available.</p>
+    return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Assign each BI terminal to Tangier or Panama and enter its Region for dashboard filtering and display. POD remains optional and links planned data where available.</p>
       <div class="adh-toolbar">${editable?`<button class="btn-primary" id="adhAddTerminal">+ Add Terminal</button>${unmapped.length?`<button class="btn-primary" id="adhPrepareTerminals">Prepare ${unmapped.length} BI Terminal${unmapped.length===1?"":"s"}</button>`:""}<button class="btn-secondary" id="adhSaveRegistry">Save to Database</button><button class="btn-secondary" id="adhImportConfig">Import Configuration Excel</button>`:""}<button class="btn-secondary" id="adhExportConfig">Export Configuration Excel</button><input id="adhConfigFile" type="file" accept=".xlsx,.xlsm" hidden></div>
-      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Assign each applicable terminal to Tangier or Panama, then select Save to Database.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the mapping, then save once.`:"Exact BI Terminal Name is the matching key. OPS Controlled includes actual Calls/Moves; In Scope and effective dates control targets only."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>POD (Optional)</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
+      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Assign each applicable terminal to Tangier or Panama, add its Region, then select Save to Database.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the mapping, then save once.`:"Exact BI Terminal Name is the matching key. Region is available as an Adherence dashboard filter. OPS Controlled includes actual Calls/Moves; In Scope and effective dates control targets only."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>POD (Optional)</th><th>Region</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="9" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
   }
   function adherenceConfigYears(){
     const years=new Set(Object.keys(ADHERENCE_SCOPE).concat(ADHERENCE_ACTUAL.map(r=>String(r.year))));
@@ -4498,8 +4544,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function adhScopeTable(){
     const editable=canEditAdherenceConfig(), y=adherenceConfigYear, names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const eligible=ADHERENCE_REGISTRY.filter(r=>r.opsControlled&&r.inScope);
-    const rows=eligible.map(r=>{ const vals=((ADHERENCE_SCOPE[y]||{})[r.id]||[]); return `<tr data-id="${r.id}"><td>${adhEsc(r.displayName||r.biName)}</td><td>${r.pod?adhEsc(r.pod):"—"}</td>${names.map((n,i)=>{const state=adhTargetMonthState(r,y,i+1),active=state==="active",value=active?(vals[i]==null?0:Number(vals[i])*100):0,title=state==="before"?"Automatic 0% before Effective From":state==="ended"?"Excluded from targets after Effective To":"Target percentage (0% to 100%)";return `<td><input data-m="${i}" type="number" min="0" max="100" step="0.1" value="${value}" ${editable&&active?"":"disabled"} title="${title}"></td>`;}).join("")}</tr>`; }).join("");
-    return `<div class="adh-panel"><h3>Monthly Scope %</h3><p>Every terminal marked In Scope remains visible. Months before Effective From are automatically locked at 0%; if no start date exists, all months are available and default to 0%.</p><div class="adh-toolbar"><div class="adh-field"><label>Configuration Year</label><select id="adhConfigYear">${adherenceConfigYears().map(year=>`<option value="${year}" ${String(y)===year?"selected":""}>${year}</option>`).join("")}</select></div>${editable?'<button class="btn-primary" id="adhSaveScope">Save to Database</button>':''}</div><div id="adhScopeStatus" class="adh-status">Enter percentages as 75 for 75%. Effective To excludes the terminal from calculations starting on that date.</div><div class="adh-table-wrap adh-scope-wrap"><table class="adh-table adh-scope-table"><thead><tr><th>Terminal</th><th>POD</th>${names.map(n=>`<th>${n}</th>`).join("")}</tr></thead><tbody>${rows||'<tr><td colspan="14" class="empty-note">No terminals are marked In Scope for targets.</td></tr>'}</tbody></table></div></div>`;
+    const rows=eligible.map(r=>{ const vals=((ADHERENCE_SCOPE[y]||{})[r.id]||[]); return `<tr data-id="${r.id}"><td>${adhEsc(r.displayName||r.biName)}</td><td>${r.pod?adhEsc(r.pod):"—"}</td><td>${r.region?adhEsc(r.region):"—"}</td>${names.map((n,i)=>{const state=adhTargetMonthState(r,y,i+1),active=state==="active",value=active?(vals[i]==null?0:Number(vals[i])*100):0,title=state==="before"?"Automatic 0% before Effective From":state==="ended"?"Excluded from targets after Effective To":"Target percentage (0% to 100%)";return `<td><input data-m="${i}" type="number" min="0" max="100" step="0.1" value="${value}" ${editable&&active?"":"disabled"} title="${title}"></td>`;}).join("")}</tr>`; }).join("");
+    return `<div class="adh-panel"><h3>Monthly Scope %</h3><p>Every terminal marked In Scope remains visible. Months before Effective From are automatically locked at 0%; if no start date exists, all months are available and default to 0%.</p><div class="adh-toolbar"><div class="adh-field"><label>Configuration Year</label><select id="adhConfigYear">${adherenceConfigYears().map(year=>`<option value="${year}" ${String(y)===year?"selected":""}>${year}</option>`).join("")}</select></div>${editable?'<button class="btn-primary" id="adhSaveScope">Save to Database</button>':''}</div><div id="adhScopeStatus" class="adh-status">Enter percentages as 75 for 75%. Effective To excludes the terminal from calculations starting on that date.</div><div class="adh-table-wrap adh-scope-wrap"><table class="adh-table adh-scope-table"><thead><tr><th>Terminal</th><th>POD</th><th>Region</th>${names.map(n=>`<th>${n}</th>`).join("")}</tr></thead><tbody>${rows||'<tr><td colspan="15" class="empty-note">No terminals are marked In Scope for targets.</td></tr>'}</tbody></table></div></div>`;
   }
   let adherenceCharts = {};
   let adherenceChartObserver = null;
@@ -4517,18 +4563,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!CURRENT_USER||CURRENT_USER.role!=="terminal")return rows;
     return rows.filter(r=>String(r.reg.pod||"").trim()===String(CURRENT_USER.terminal||"").trim());
   }
+  function adhRegionRows(rows){
+    if(adherenceRegionFilter==="all")return rows;
+    if(adherenceRegionFilter==="__unassigned__")return rows.filter(r=>!String(r.reg.region||"").trim());
+    return rows.filter(r=>String(r.reg.region||"").trim()===adherenceRegionFilter);
+  }
+  function adhDisplayRows(scope,metric,type,period){return adhRegionRows(adhAuthorizedRows(adhRowsFor(scope,metric,type,period)));}
   function adhVisualStatus(summary){
     if(summary.actual==null||summary.target==null)return "watch";
     return summary.actual>=summary.target?"good":"bad";
   }
   function adhPreviousPeriod(periods,period){const i=periods.indexOf(period);return i>0?periods[i-1]:null;}
   function adhSummaryCard(scope,label,metric,periods){
-    const rows=adhAuthorizedRows(adhRowsFor(scope,metric,currentType,adherencePeriod)),s=adhSummary(rows),prev=adhPreviousPeriod(periods,adherencePeriod),ps=prev?adhSummary(adhAuthorizedRows(adhRowsFor(scope,metric,currentType,prev))):null;
+    const rows=adhDisplayRows(scope,metric,currentType,adherencePeriod),s=adhSummary(rows),prev=adhPreviousPeriod(periods,adherencePeriod),ps=prev?adhSummary(adhDisplayRows(scope,metric,currentType,prev)):null;
     const delta=s.actual!=null&&ps&&ps.actual!=null?s.actual-ps.actual:null,status=adhVisualStatus(s),value=s.actual==null?0:Math.max(0,Math.min(1,s.actual)),marker=s.target==null?null:Math.max(0,Math.min(1,s.target));
     return `<div class="adh-summary-card ${status}"><div class="adh-card-head"><span>${label}</span><span class="pill ${status}">${adhPct(s.actual)}</span></div><div class="adh-card-value">${adhPct(s.actual)}</div><div class="adh-card-meta"><span>Target ${adhPct(s.target)}</span><span>${delta==null?"No comparable prior period":`${delta>=0?"+":""}${(delta*100).toFixed(1)} pp vs ${adhEsc(prev)}`}</span></div><div class="adh-progress" aria-label="${label} ${metric} adherence ${adhPct(s.actual)}; target ${adhPct(s.target)}"><span style="width:${value*100}%"></span>${marker==null?"":`<i style="left:${marker*100}%" title="Target ${adhPct(s.target)}"></i>`}</div></div>`;
   }
-  function adhComparison(scope,label,metric){const s=adhSummary(adhAuthorizedRows(adhRowsFor(scope,metric,currentType,adherencePeriod))),max=Math.max(s.total,s.planned,1),status=adhVisualStatus(s);return `<div class="adh-compare ${status}"><b>${label}</b><div><span>Total</span><i><em style="width:${Math.min(100,s.total/max*100)}%"></em></i><strong>${fmtNum(s.total,0)}</strong></div><div><span>Planned</span><i><em class="planned" style="width:${Math.min(100,s.planned/max*100)}%"></em></i><strong>${fmtNum(s.planned,0)}</strong></div><small>Adherence ${adhPct(s.actual)} · Target ${adhPct(s.target)}</small></div>`;}
-  function adhGapCard(scope,label,metric){const s=adhSummary(adhAuthorizedRows(adhRowsFor(scope,metric,currentType,adherencePeriod))),gap=s.actual==null||s.target==null?null:s.actual-s.target,status=adhVisualStatus(s);return `<div class="adh-gap ${status}"><span>${label} ${metric==="calls"?"Calls":"Moves"}<small>Target ${adhPct(s.target)}</small></span><b>${gap==null?"—":`${gap>=0?"+":""}${(gap*100).toFixed(1)} pp`}</b></div>`;}
+  function adhComparison(scope,label,metric){const s=adhSummary(adhDisplayRows(scope,metric,currentType,adherencePeriod)),max=Math.max(s.total,s.planned,1),status=adhVisualStatus(s);return `<div class="adh-compare ${status}"><b>${label}</b><div><span>Total</span><i><em style="width:${Math.min(100,s.total/max*100)}%"></em></i><strong>${fmtNum(s.total,0)}</strong></div><div><span>Planned</span><i><em class="planned" style="width:${Math.min(100,s.planned/max*100)}%"></em></i><strong>${fmtNum(s.planned,0)}</strong></div><small>Adherence ${adhPct(s.actual)} · Target ${adhPct(s.target)}</small></div>`;}
+  function adhGapCard(scope,label,metric){const s=adhSummary(adhDisplayRows(scope,metric,currentType,adherencePeriod)),gap=s.actual==null||s.target==null?null:s.actual-s.target,status=adhVisualStatus(s);return `<div class="adh-gap ${status}"><span>${label} ${metric==="calls"?"Calls":"Moves"}<small>Target ${adhPct(s.target)}</small></span><b>${gap==null?"—":`${gap>=0?"+":""}${(gap*100).toFixed(1)} pp`}</b></div>`;}
   function adhTrendPanel(metric,title){return `<div class="adh-panel adh-chart-panel"><h3>${title}</h3><p>${currentType==="weekly"?"Previous Week and Current Week are shown; the current week is highlighted.":currentType==="monthly"?"Weekly results belonging to the selected month.":currentType==="quarterly"?"Monthly results belonging to the selected quarter.":"Quarterly results belonging to the selected year."} The dashed series is the clearly labelled applicable target. Missing results remain No Data gaps.</p><div class="adh-chart-box"><canvas id="adhTrend_${metric}"></canvas></div></div>`;}
   function adherenceChartOptions(selectedIndex){return {responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},layout:{padding:{top:18}},plugins:{legend:{labels:{color:chartTickColor()}},tooltip:{callbacks:{label:c=>c.raw==null?`${c.dataset.label}: No Data`:`${c.dataset.label}: ${adhPct(c.raw)}`}}},scales:{x:{ticks:{color:c=>c.index===selectedIndex?"#F5C518":chartTickColor(),font:c=>({weight:c.index===selectedIndex?"700":"400"}),maxTicksLimit:12},grid:{color:chartGridColor()}},y:{min:0,max:1.08,ticks:{color:chartTickColor(),callback:v=>(v*100)+"%"},grid:{color:chartGridColor()}}}};}
   function adhShiftIsoWeek(period,offset){
@@ -4549,18 +4601,30 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     return [1,2,3,4].map(q=>({type:"quarterly",period:String(adherenceYear)+"-Q"+q,label:"Q"+q}));
   }
+  function adhTrendColor(value,target){return value==null||target==null?"#F5C518":Number(value)>=Number(target)?"#3ED17E":"#F2483D";}
+  function adhActualTrendDataset(label,actuals,targets,selectedIndex,fill){
+    const colors=actuals.map((value,i)=>adhTrendColor(value,targets[i]));
+    return {label,data:actuals,targets,borderColor:colors[0]||"#4FA6E8",backgroundColor:fill?"rgba(79,166,232,.12)":"transparent",segment:{borderColor:ctx=>colors[ctx.p1DataIndex]||colors[ctx.p0DataIndex]||"#4FA6E8"},pointBackgroundColor:colors,pointBorderColor:actuals.map((_,i)=>i===selectedIndex?"#FFFFFF":colors[i]),pointBorderWidth:actuals.map((_,i)=>i===selectedIndex?3:2),pointRadius:actuals.map((value,i)=>value==null?0:i===selectedIndex?7:5),tension:.35,fill:!!fill,spanGaps:false};
+  }
   function renderAdherenceCharts(){
     destroyAdherenceCharts();
-    ["calls","moves"].forEach(metric=>{const canvas=document.getElementById("adhTrend_"+metric);if(!canvas)return;const trendPeriods=adhTrendPeriods(),labels=trendPeriods.map(x=>x.label),selectedIndex=currentType==="weekly"?1:-1,scopes=[["Global","global","#4FA6E8"],["Tangier","tangier","#3ED17E"],["Panama","panama","#9B8CF2"]];const datasets=scopes.map(([label,scope,color])=>{const summaries=trendPeriods.map(x=>adhSummary(adhAuthorizedRows(adhRowsFor(scope,metric,x.type,x.period))));return {label,data:summaries.map(x=>x.actual),targets:summaries.map(x=>x.target),borderColor:color,backgroundColor:color,pointBackgroundColor:labels.map((_,i)=>i===selectedIndex?"#F5C518":color),pointBorderColor:labels.map((_,i)=>i===selectedIndex?"#FFFFFF":color),pointBorderWidth:labels.map((_,i)=>i===selectedIndex?3:1),pointRadius:labels.map((_,i)=>i===selectedIndex?7:3),tension:.3,spanGaps:false};});const targets=trendPeriods.map(x=>adhSummary(adhAuthorizedRows(adhRowsFor("global",metric,x.type,x.period))).target);datasets.push({label:"Applicable Target",data:targets,borderColor:"#F5C518",backgroundColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:false,hideValueLabels:true});adherenceCharts[metric]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels,datasets},plugins:[adherenceValueLabels],options:adherenceChartOptions(selectedIndex)});});
+    ["calls","moves"].forEach(metric=>{
+      const canvas=document.getElementById("adhTrend_"+metric);if(!canvas)return;
+      const trendPeriods=adhTrendPeriods(),labels=trendPeriods.map(x=>x.label),selectedIndex=currentType==="weekly"?1:-1,scopes=[["Global","global"],["Tangier","tangier"],["Panama","panama"]];
+      const datasets=scopes.map(([label,scope])=>{const summaries=trendPeriods.map(x=>adhSummary(adhDisplayRows(scope,metric,x.type,x.period)));return adhActualTrendDataset(label,summaries.map(x=>x.actual),summaries.map(x=>x.target),selectedIndex,false);});
+      const targets=trendPeriods.map(x=>adhSummary(adhDisplayRows("global",metric,x.type,x.period)).target);
+      datasets.push({label:"Applicable Target",data:targets,borderColor:"#F5C518",backgroundColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:false,hideValueLabels:true});
+      adherenceCharts[metric]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels,datasets},plugins:[adherenceValueLabels],options:adherenceChartOptions(selectedIndex)});
+    });
     const terminalCanvases=[...document.querySelectorAll("canvas[data-adh-terminal]")];
     const drawTerminal=canvas=>{
       if(canvas.dataset.rendered)return;
       canvas.dataset.rendered="1";
       const regId=canvas.dataset.regId,metric=canvas.dataset.metric,reg=ADHERENCE_REGISTRY.find(r=>String(r.id)===regId),trendPeriods=adhTrendPeriods();
       if(!reg)return;
-      const summaries=trendPeriods.map(x=>{const row=adhAuthorizedRows(adhRowsFor(adherenceScopeFilter,metric,x.type,x.period)).find(r=>String(r.reg.id)===regId);return adhSummary(row?[row]:[]);});
-      const actuals=summaries.map(s=>s.actual),targets=summaries.map(s=>s.target),pointColors=actuals.map((value,i)=>value==null||targets[i]==null?"#F5C518":value>=targets[i]?"#3ED17E":"#F2483D"),selectedIndex=currentType==="weekly"?1:-1,id=canvas.id;
-      adherenceCharts[id]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels:trendPeriods.map(x=>x.label),datasets:[{label:`${metric==="calls"?"Calls":"Moves"} Adherence`,data:actuals,targets,borderColor:"#4FA6E8",backgroundColor:"rgba(79,166,232,.12)",pointBackgroundColor:pointColors,pointBorderColor:pointColors,pointBorderWidth:2,pointRadius:actuals.map((_,i)=>i===selectedIndex?7:5),tension:.25,fill:true,spanGaps:false},{label:"Applicable Target",data:targets,borderColor:"#F5C518",backgroundColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:false,hideValueLabels:true}]},plugins:[adherenceValueLabels],options:adherenceChartOptions(selectedIndex)});
+      const summaries=trendPeriods.map(x=>{const row=adhDisplayRows(adherenceScopeFilter,metric,x.type,x.period).find(r=>String(r.reg.id)===regId);return adhSummary(row?[row]:[]);});
+      const actuals=summaries.map(s=>s.actual),targets=summaries.map(s=>s.target),selectedIndex=currentType==="weekly"?1:-1,id=canvas.id;
+      adherenceCharts[id]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels:trendPeriods.map(x=>x.label),datasets:[adhActualTrendDataset(`${metric==="calls"?"Calls":"Moves"} Adherence`,actuals,targets,selectedIndex,true),{label:"Applicable Target",data:targets,borderColor:"#F5C518",backgroundColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:false,hideValueLabels:true}]},plugins:[adherenceValueLabels],options:adherenceChartOptions(selectedIndex)});
     };
     renderPendingAdherenceCharts=()=>terminalCanvases.forEach(drawTerminal);
     if("IntersectionObserver" in window){adherenceChartObserver=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){drawTerminal(e.target);adherenceChartObserver.unobserve(e.target);}}),{rootMargin:"240px"});terminalCanvases.forEach(c=>adherenceChartObserver.observe(c));}else terminalCanvases.forEach(drawTerminal);
@@ -4578,18 +4642,22 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function adhTerminalCharts(rows){
     const eligible=rows.filter(r=>adhHasConfiguredTarget(r.reg,currentType,adherencePeriod));
-    return eligible.map(r=>{const calls=adhSummary([r]),moveRow=adhAuthorizedRows(adhRowsFor(adherenceScopeFilter,"moves",currentType,adherencePeriod)).find(x=>x.reg.id===r.reg.id),moves=adhSummary(moveRow?[moveRow]:[]),name=adhEsc(r.reg.displayName||r.reg.biName),key=String(r.reg.id).replace(/[^a-zA-Z0-9_-]/g,"");return `<div class="adh-terminal-chart-card"><h3>${name}${r.reg.pod?` · ${adhEsc(r.reg.pod)}`:""}</h3><div class="adh-terminal-chart-grid"><div><h4>Calls · ${adhPct(calls.actual)} · Target ${adhPct(calls.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermCalls_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="calls"></canvas></div></div><div><h4>Moves · ${adhPct(moves.actual)} · Target ${adhPct(moves.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermMoves_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="moves"></canvas></div></div></div></div>`;}).join("")||'<div class="adh-panel empty-note">No terminals with a configured target percentage for this selection.</div>';
+    return eligible.map(r=>{const calls=adhSummary([r]),moveRow=adhDisplayRows(adherenceScopeFilter,"moves",currentType,adherencePeriod).find(x=>x.reg.id===r.reg.id),moves=adhSummary(moveRow?[moveRow]:[]),name=adhEsc(r.reg.displayName||r.reg.biName),key=String(r.reg.id).replace(/[^a-zA-Z0-9_-]/g,"");return `<div class="adh-terminal-chart-card"><h3>${name}${r.reg.pod?` · ${adhEsc(r.reg.pod)}`:""}${r.reg.region?` · ${adhEsc(r.reg.region)}`:""}</h3><div class="adh-terminal-chart-grid"><div><h4>Calls · ${adhPct(calls.actual)} · Target ${adhPct(calls.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermCalls_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="calls"></canvas></div></div><div><h4>Moves · ${adhPct(moves.actual)} · Target ${adhPct(moves.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermMoves_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="moves"></canvas></div></div></div></div>`;}).join("")||'<div class="adh-panel empty-note">No terminals with a configured target percentage for this selection.</div>';
   }
   function adhOverview(){
     const years=[...new Set(ADHERENCE_ACTUAL.map(r=>r.year).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
     if(!adherenceYear||!years.includes(String(adherenceYear))) adherenceYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const periods=adhPeriods(adherenceYear,currentType); if(!adherencePeriod||!periods.includes(adherencePeriod)) adherencePeriod=periods[periods.length-1]||String(adherenceYear);
-    const allRows=adhAuthorizedRows(adhRowsForSelection()),availableIds=new Set(allRows.map(r=>r.reg.id));if(adherenceTerminalFilter!=="all"&&!availableIds.has(adherenceTerminalFilter))adherenceTerminalFilter="all";
+    const scopeBaseRows=adhAuthorizedRows(adhRowsForSelection()),regions=[...new Set(scopeBaseRows.map(r=>String(r.reg.region||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)),hasUnassignedRegion=scopeBaseRows.some(r=>!String(r.reg.region||"").trim());
+    if(adherenceRegionFilter!=="all"&&adherenceRegionFilter!=="__unassigned__"&&!regions.includes(adherenceRegionFilter))adherenceRegionFilter="all";
+    if(adherenceRegionFilter==="__unassigned__"&&!hasUnassignedRegion)adherenceRegionFilter="all";
+    const allRows=adhRegionRows(scopeBaseRows),availableIds=new Set(allRows.map(r=>r.reg.id));if(adherenceTerminalFilter!=="all"&&!availableIds.has(adherenceTerminalFilter))adherenceTerminalFilter="all";
     const rows=adherenceTerminalFilter==="all"?allRows:allRows.filter(r=>r.reg.id===adherenceTerminalFilter),unmapped=[...new Set(ADHERENCE_ACTUAL.filter(r=>adhPeriodMatch(r,currentType,adherencePeriod)).map(r=>r.terminal))].filter(x=>!ADHERENCE_REGISTRY.some(t=>t.biName===x));
     const scopes=[["global","Global"],["tangier","Tangier"],["panama","Panama"]];
-    const terminalOptions=allRows.map(r=>`<option value="${adhEsc(r.reg.id)}" ${adherenceTerminalFilter===r.reg.id?"selected":""}>${adhEsc(r.reg.displayName||r.reg.biName)}${r.reg.pod?` (${adhEsc(r.reg.pod)})`:""}</option>`).join("");
-    const moveRows=adhAuthorizedRows(adhRowsFor(adherenceScopeFilter,"moves",currentType,adherencePeriod));
-    return `<div class="adh-toolbar print-filters"><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
+    const terminalOptions=allRows.map(r=>`<option value="${adhEsc(r.reg.id)}" ${adherenceTerminalFilter===r.reg.id?"selected":""}>${adhEsc(r.reg.displayName||r.reg.biName)}${r.reg.pod?` (${adhEsc(r.reg.pod)})`:""}${r.reg.region?` · ${adhEsc(r.reg.region)}`:""}</option>`).join("");
+    const regionOptions=regions.map(region=>`<option value="${adhEsc(region)}" ${adherenceRegionFilter===region?"selected":""}>${adhEsc(region)}</option>`).join("")+(hasUnassignedRegion?`<option value="__unassigned__" ${adherenceRegionFilter==="__unassigned__"?"selected":""}>Not Assigned</option>`:"");
+    const moveRows=adhDisplayRows(adherenceScopeFilter,"moves",currentType,adherencePeriod);
+    return `<div class="adh-toolbar print-filters"><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Region</label><select id="adhRegionFilter"><option value="all" ${adherenceRegionFilter==="all"?"selected":""}>All Regions</option>${regionOptions}</select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
       ${unmapped.length&&(!CURRENT_USER||CURRENT_USER.role!=="terminal")?`<div class="adh-status watch"><span class="adh-unmapped">Unmapped BI terminals excluded:</span> ${unmapped.map(adhEsc).join(", ")}. <button class="btn-secondary no-print" id="adhOpenTerminalSettings">Open Settings → Adherence Terminals</button></div>`:""}
       <section class="adh-section"><h2>A · Calls Adherence %</h2><div class="adh-summary-grid">${scopes.map(x=>adhSummaryCard(x[0],x[1],"calls",periods)).join("")}</div></section>
       <section class="adh-section"><h2>B · Moves Adherence %</h2><div class="adh-summary-grid">${scopes.map(x=>adhSummaryCard(x[0],x[1],"moves",periods)).join("")}</div></section>
@@ -4597,8 +4665,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <section class="adh-section"><h2>D · Moves Adherence Trend</h2>${adhTrendPanel("moves","Moves Adherence Trend")}</section>
       <section class="adh-section"><h2>E · Actual versus Planned by Scope</h2><div class="adh-compare-grid">${["calls","moves"].flatMap(metric=>scopes.map(x=>adhComparison(x[0],x[1]+" "+(metric==="calls"?"Calls":"Moves"),metric))).join("")}</div></section>
       <section class="adh-section"><h2>F · Gap to Target</h2><div class="adh-gap-grid">${["calls","moves"].flatMap(metric=>scopes.map(x=>adhGapCard(x[0],x[1],metric))).join("")}</div></section>
-      <section class="adh-section"><h2>G · Terminal Adherence Charts</h2><p class="adh-section-note">Calls and Moves use the existing terminal adherence values and applicable targets. Charts render as they approach the viewport.</p>${adhTerminalCharts(allRows)}</section>
-      <section class="adh-section"><h2>H · Detailed Terminal Table</h2><div class="adh-panel"><div class="adh-detail-head"><div><h3>Calls & Moves Adherence by Terminal</h3><p>Complete existing detail for the selected period. Existing planned, total, target, expected, fallback and adherence calculations are unchanged.</p></div><div class="adh-field"><label>Terminal</label><select id="adhTerminalFilter"><option value="all">All Terminals</option>${terminalOptions}</select></div></div><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th class="right">Calls Total</th><th class="right">Calls Planned</th><th class="right">Calls Target</th><th class="right">Calls Expected</th><th class="right">Calls Adherence</th><th class="right">Moves Total</th><th class="right">Moves Planned</th><th class="right">Moves Target</th><th class="right">Moves Expected</th><th class="right">Moves Adherence</th></tr></thead><tbody>${rows.map(r=>{const m=moveRows.find(x=>x.reg.id===r.reg.id)||{};return `<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${r.fallback||m.fallback?' <span class="weight-badge" title="Planned value used as total">Planned fallback</span>':''}</td><td>${r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right"><span class="pill ${adhVisualStatus(adhSummary([r]))}">${adhPct(r.adherence)}</span></td><td class="right">${fmtNum(m.total||0,0)}</td><td class="right">${fmtNum(m.planned||0,0)}</td><td class="right">${adhPct(m.target)}</td><td class="right">${m.expected==null?"—":fmtNum(m.expected,1)}</td><td class="right"><span class="pill ${adhVisualStatus(adhSummary(m.reg?[m]:[]))}">${adhPct(m.adherence)}</span></td></tr>`;}).join("")||'<tr><td colspan="12" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div></section>`;
+      <section class="adh-section"><h2>G · Terminal Adherence Charts</h2><p class="adh-section-note">Calls and Moves use curved trend lines, visible data labels, target-based colours and the applicable target line. Only terminals with a configured target percentage are displayed.</p>${adhTerminalCharts(allRows)}</section>
+      <section class="adh-section"><h2>H · Detailed Terminal Table</h2><div class="adh-panel"><div class="adh-detail-head"><div><h3>Calls & Moves Adherence by Terminal</h3><p>Complete existing detail for the selected period. Existing planned, total, target, expected, fallback and adherence calculations are unchanged.</p></div><div class="adh-field"><label>Terminal</label><select id="adhTerminalFilter"><option value="all">All Terminals</option>${terminalOptions}</select></div></div><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th>Region</th><th class="right">Calls Total</th><th class="right">Calls Planned</th><th class="right">Calls Target</th><th class="right">Calls Expected</th><th class="right">Calls Adherence</th><th class="right">Moves Total</th><th class="right">Moves Planned</th><th class="right">Moves Target</th><th class="right">Moves Expected</th><th class="right">Moves Adherence</th></tr></thead><tbody>${rows.map(r=>{const m=moveRows.find(x=>x.reg.id===r.reg.id)||{};return `<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${r.fallback||m.fallback?' <span class="weight-badge" title="Planned value used as total">Planned fallback</span>':''}</td><td>${r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td>${r.reg.region?adhEsc(r.reg.region):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right"><span class="pill ${adhVisualStatus(adhSummary([r]))}">${adhPct(r.adherence)}</span></td><td class="right">${fmtNum(m.total||0,0)}</td><td class="right">${fmtNum(m.planned||0,0)}</td><td class="right">${adhPct(m.target)}</td><td class="right">${m.expected==null?"—":fmtNum(m.expected,1)}</td><td class="right"><span class="pill ${adhVisualStatus(adhSummary(m.reg?[m]:[]))}">${adhPct(m.adherence)}</span></td></tr>`;}).join("")||'<tr><td colspan="13" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div></section>`;
   }
   function adhUploads(){
     return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Accepted standard format: first-column validity marker “-” or “.”, Vessel Call, Terminal and Moves. ETD is read from the date/time after the final “/” in Vessel Call.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Deduplication: Exact BI Terminal Name + full Vessel Call<br>• Adherence week: Excel WEEKNUM(ETD,21) → YYYY-WW<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>Unique calls</th><th>Duplicates</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.duplicates||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="6" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
@@ -4628,27 +4696,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     await persistAdherenceConfig(); invalidateAdherenceCache(); adherenceDraftsPending=false; document.getElementById("adhConfigStatus").className="adh-status good";document.getElementById("adhConfigStatus").textContent="✓ Terminal registry saved. OPS Controlled includes actual Calls/Moves; In Scope and effective dates control targets.";
   }
   function exportAdherenceConfig(){
-    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Effective From":r.effectiveFrom,"Effective To":r.effectiveTo}));
-    const scope=[]; Object.keys(ADHERENCE_SCOPE).sort().forEach(y=>ADHERENCE_REGISTRY.forEach(r=>{const v=(ADHERENCE_SCOPE[y]||{})[r.id]||[];const o={Year:Number(y),"Exact BI Terminal Name":r.biName,POD:r.pod};["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((m,i)=>o[m]=v[i]==null?null:v[i]);scope.push(o);}));
+    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"Region":r.region||"","SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Effective From":r.effectiveFrom,"Effective To":r.effectiveTo}));
+    const scope=[]; Object.keys(ADHERENCE_SCOPE).sort().forEach(y=>ADHERENCE_REGISTRY.forEach(r=>{const v=(ADHERENCE_SCOPE[y]||{})[r.id]||[];const o={Year:Number(y),"Exact BI Terminal Name":r.biName,POD:r.pod,Region:r.region||""};["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((m,i)=>o[m]=v[i]==null?null:v[i]);scope.push(o);}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(terms),"Terminals");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(scope),"Monthly Scope %");XLSX.writeFile(wb,"SPC_Adherence_Configuration.xlsx");
   }
   function importAdherenceConfig(buffer){
     const wb=XLSX.read(buffer,{type:"array",cellDates:true}), ts=wb.Sheets["Terminals"], ss=wb.Sheets["Monthly Scope %"];
     if(!ts) throw new Error('Sheet "Terminals" is required.');
-    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||"")}); });
+    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}const region=Object.prototype.hasOwnProperty.call(o,"Region")?String(o.Region||"").trim():String(r.region||"").trim();Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),region,assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||"")}); });
     if(ss) XLSX.utils.sheet_to_json(ss,{defval:""}).forEach(o=>{const y=String(o.Year||"").trim(),r=ADHERENCE_REGISTRY.find(x=>x.biName===String(o["Exact BI Terminal Name"]||"").trim());if(!y||!r)return;if(!ADHERENCE_SCOPE[y])ADHERENCE_SCOPE[y]={};ADHERENCE_SCOPE[y][r.id]=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map(m=>{if(o[m]==="")return null;const n=Number(o[m]),normalized=n>1?n/100:n;if(!Number.isFinite(n)||normalized<0||normalized>1)throw new Error(`Invalid ${m} target for ${r.biName} in ${y}. Enter a value from 0% to 100%.`);return normalized;});});
   }
   function wireAdherenceView(){
     document.querySelectorAll(".adh-tabs button[data-page]").forEach(b=>b.onclick=()=>{adherencePage=b.dataset.page;render();});
     if(adherencePage==="overview"){
       document.querySelectorAll("[data-metric]").forEach(b=>b.onclick=()=>{adherenceMetric=b.dataset.metric;render();});
-      const s=document.getElementById("adhScopeFilter"),y=document.getElementById("adhYear"),p=document.getElementById("adhPeriod");if(s)s.onchange=()=>{adherenceScopeFilter=s.value;adherencePeriod=null;render();};if(y)y.onchange=()=>{adherenceYear=y.value;adherencePeriod=null;render();};if(p)p.onchange=()=>{adherencePeriod=p.value;render();};const tf=document.getElementById("adhTerminalFilter");if(tf)tf.onchange=()=>{adherenceTerminalFilter=tf.value;render();};requestAnimationFrame(renderAdherenceCharts);
+      const s=document.getElementById("adhScopeFilter"),rg=document.getElementById("adhRegionFilter"),y=document.getElementById("adhYear"),p=document.getElementById("adhPeriod");if(s)s.onchange=()=>{adherenceScopeFilter=s.value;adherencePeriod=null;adherenceTerminalFilter="all";render();};if(rg)rg.onchange=()=>{adherenceRegionFilter=rg.value;adherenceTerminalFilter="all";render();};if(y)y.onchange=()=>{adherenceYear=y.value;adherencePeriod=null;render();};if(p)p.onchange=()=>{adherencePeriod=p.value;render();};const tf=document.getElementById("adhTerminalFilter");if(tf)tf.onchange=()=>{adherenceTerminalFilter=tf.value;render();};requestAnimationFrame(renderAdherenceCharts);
       const openSettings=document.getElementById("adhOpenTerminalSettings");if(openSettings)openSettings.onclick=()=>{settingsPage="adherence_terminals";showingSettings=true;showingRoles=false;showingErase=false;document.getElementById("mainApp").style.display="none";document.getElementById("settingsView").style.display="";document.getElementById("rolesView").style.display="none";document.getElementById("eraseView").style.display="none";renderSettingsView();updateSidebarContext();};
     }
     if(adherencePage==="uploads"){const b=document.getElementById("adhChooseActual");if(b)b.onclick=()=>uploadAdherenceFile.click();}
     if(adherencePage==="terminals"){
       const add=document.getElementById("adhAddTerminal"),prepare=document.getElementById("adhPrepareTerminals"),save=document.getElementById("adhSaveRegistry"),imp=document.getElementById("adhImportConfig"),exp=document.getElementById("adhExportConfig"),file=document.getElementById("adhConfigFile");
-      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
+      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
       if(prepare)prepare.onclick=()=>{prepareAdherenceRegistryDrafts();rerenderAdherenceSurface();};
       if(save)save.onclick=()=>saveRegistryFromUI().catch(e=>{document.getElementById("adhConfigStatus").textContent="✗ "+e.message;});
       if(imp)imp.onclick=()=>file.click(); if(exp)exp.onclick=exportAdherenceConfig;
