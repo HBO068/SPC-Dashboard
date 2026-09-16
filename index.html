@@ -1882,6 +1882,31 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function exportPeriodName(){
     return ({daily:"Day", weekly:"Week", monthly:"Month", quarterly:"Quarter", yearly:"Year"})[currentType] || "Report";
   }
+  function adherenceExportScopeName(){
+    return ({global:"Global",tangier:"Tangier",panama:"Panama"})[adherenceScopeFilter] || "Global";
+  }
+  function adherenceExportPeriodLabel(){
+    const period=String(adherencePeriod||globalReportPeriod||"").trim();
+    let match;
+    if(currentType==="weekly" && (match=period.match(/^(\d{4})-(\d{1,2})$/))){
+      return `Week ${Number(match[2])}, ${match[1]}`;
+    }
+    if(currentType==="monthly" && (match=period.match(/^(\d{4})-(\d{1,2})$/))){
+      const monthNumber=Number(match[2]);
+      const monthName=monthNumber>=1&&monthNumber<=12
+        ? new Intl.DateTimeFormat("en",{month:"long",timeZone:"UTC"}).format(new Date(Date.UTC(2000,monthNumber-1,1)))
+        : `Month ${match[2]}`;
+      return `${monthName}, ${match[1]}`;
+    }
+    if(currentType==="quarterly" && (match=period.match(/^(\d{4})-Q([1-4])$/i))){
+      return `Quarter Q${match[2]}, ${match[1]}`;
+    }
+    if(currentType==="yearly") return `Year ${period||adherenceYear||"Current"}`;
+    return `${exportPeriodName()} ${period||"Current"}`;
+  }
+  function adherenceExportReportName(){
+    return `SPC ${adherenceExportScopeName()} Adherence Report - ${adherenceExportPeriodLabel()}`;
+  }
   function exportTerminalName(){
     if (currentTerminal === "ALL") return "Tangier";
     if (currentTerminal === "PANAMA") return "Panama";
@@ -1890,6 +1915,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return currentTerminal || "Report";
   }
   function exportBaseName(){
+    if(currentTerminal === "ADHERENCE") return adherenceExportReportName().replace(/[\/:*?"<>|]/g,"-");
     const period = currentPeriod || globalReportPeriod || "Current";
     return `SPC-${exportTerminalName()} Performance - ${exportPeriodName()} ${period}`.replace(/[\/:*?"<>|]/g,"-");
   }
@@ -1941,6 +1967,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const rolesView = document.getElementById("rolesView");
     const eraseView = document.getElementById("eraseView");
     const storageWarning = document.getElementById("storageWarningBanner");
+    const brandTitle = document.getElementById("brandTitle");
+    const brandSubtitle = document.getElementById("brandSubtitle");
+    const savedBrandTitle = brandTitle ? brandTitle.textContent : "";
+    const savedBrandSubtitle = brandSubtitle ? brandSubtitle.textContent : "";
 
     [mainTabs, globalTabs, terminalRow, periodRow, settingsView, rolesView, eraseView, storageWarning]
       .forEach(saveStyle);
@@ -1956,6 +1986,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if (rolesView) rolesView.style.display = "none";
       if (eraseView) eraseView.style.display = "none";
       if (storageWarning) storageWarning.style.display = "none";
+
+      if(currentTerminal === "ADHERENCE"){
+        if(brandTitle) brandTitle.textContent = adherenceExportReportName();
+        if(brandSubtitle) brandSubtitle.textContent = "Shared Planning Center — Calls & Moves Adherence";
+      }
 
       if (terminalRow){
         terminalRow.style.display = "flex";
@@ -1998,6 +2033,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       });
     } finally {
       restoreStyles();
+      if(brandTitle) brandTitle.textContent = savedBrandTitle;
+      if(brandSubtitle) brandSubtitle.textContent = savedBrandSubtitle;
       window.scrollTo(savedScrollX, savedScrollY);
     }
   }
