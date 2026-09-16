@@ -4287,7 +4287,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return weekYear+"-"+String(week).padStart(2,"0");
   }
   function adherencePeriodFields(date){
-    return { year:String(date.getUTCFullYear()), month:date.getUTCMonth()+1, quarter:Math.floor(date.getUTCMonth()/3)+1, week:adherenceWeekOf(date) };
+    const week=adherenceWeekOf(date);
+    return { year:String(date.getUTCFullYear()), isoYear:week.slice(0,4), month:date.getUTCMonth()+1, quarter:Math.floor(date.getUTCMonth()/3)+1, week };
   }
   function adhPeriodMatch(row,type,period){
     if (type === "weekly") return row.week === period;
@@ -4359,7 +4360,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const h=row.map(adhNormHeader), find=(names)=>h.findIndex(x=>names.includes(x));
     const out={
       terminal:find(["terminal","terminalname"]), vessel:find(["vesselcall","vesselcalls"]), moves:find(["moves","move","actualmoves"]),
-      visit:find(["idvisit","visitid"]), etb:find(["etb","estimatedtimeofberthing"])
+      visit:find(["idvisit","visitid"]), etd:find(["etd","etdestimatedtimeofdeparture","estimatedtimeofdeparture","estimatedtimeofdepartureetd","estimateddeparturetime","estimateddeparture"]), etb:find(["etb","estimatedtimeofberthing"])
     };
     // The standard exports label the first visit-presence field with only "-" or ".".
     // It repeats for several calls, so it is a validity marker and never the dedupe key.
@@ -4372,29 +4373,29 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     wb.SheetNames.forEach(sheetName=>{
       const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true});
       let headerRow=-1,idx=null;
-      for(let i=0;i<Math.min(matrix.length,80);i++){ const x=adhHeaderIndexes(matrix[i]||[]); if(x.terminal>=0&&x.vessel>=0&&x.moves>=0&&x.visit>=0){headerRow=i;idx=x;break;} }
+      for(let i=0;i<Math.min(matrix.length,80);i++){ const x=adhHeaderIndexes(matrix[i]||[]); if(x.terminal>=0&&x.moves>=0&&x.visit>=0&&(x.etd>=0||x.vessel>=0)){headerRow=i;idx=x;break;} }
       if(headerRow<0) return;
       for(let i=headerRow+1;i<matrix.length;i++){
-        const r=matrix[i]||[], terminal=String(r[idx.terminal]||"").trim(), visit=String(r[idx.visit]||"").trim(), vessel=String(r[idx.vessel]||"").trim(), etd=adhEtdFromVesselCall(vessel);
-        if(!terminal&&!visit&&!vessel) continue;
+        const r=matrix[i]||[], terminal=String(r[idx.terminal]||"").trim(), visit=String(r[idx.visit]||"").trim(), vessel=idx.vessel>=0?String(r[idx.vessel]||"").trim():"", etd=idx.etd>=0?adhDate(r[idx.etd]):adhEtdFromVesselCall(vessel);
+        if(!terminal&&!visit&&!vessel&&!(idx.etd>=0&&r[idx.etd])) continue;
         if(!terminal||!visit||!etd){ rejected.push({file:fileName,sheet:sheetName,row:i+1,reason:!terminal?"Missing Terminal":!visit?"Missing visit marker":"Invalid ETD"}); continue; }
         const f=adherencePeriodFields(etd);
         visits.push({terminal,visit,vessel,moves:adhNumber(r[idx.moves]),etd:etd.toISOString(),year:f.year,month:f.month,quarter:f.quarter,week:f.week});
       }
     });
-    if(!visits.length&&!rejected.length) throw new Error(fileName+": no sheet has Terminal, Vessel Call and Moves with the standard first-column marker (- or .).");
+    if(!visits.length&&!rejected.length) throw new Error(fileName+": no sheet has Terminal, Moves and ETD with the standard first-column marker (- or .).");
     return {visits,rejected};
   }
   function aggregateAdherenceVisits(visits){
-    const unique=new Map(),duplicates=[];
-    visits.forEach(v=>{ const key=v.terminal+"||"+v.vessel; if(unique.has(key)) duplicates.push(v); else unique.set(key,v); });
     const groups=new Map();
-    unique.forEach(v=>{
+    // Every valid BI row is one call. Vessel names may legitimately repeat for the same
+    // terminal, so Vessel Call must never be used as a deduplication key.
+    visits.forEach(v=>{
       const key=[v.terminal,v.year,v.month,v.quarter,v.week].join("||");
       if(!groups.has(key)) groups.set(key,{terminal:v.terminal,year:v.year,month:v.month,quarter:v.quarter,week:v.week,calls:0,moves:0,minEtd:v.etd,maxEtd:v.etd});
       const g=groups.get(key); g.calls+=1; g.moves+=v.moves; if(v.etd<g.minEtd)g.minEtd=v.etd;if(v.etd>g.maxEtd)g.maxEtd=v.etd;
     });
-    return {rows:Array.from(groups.values()),duplicates};
+    return {rows:Array.from(groups.values()),duplicates:[]};
   }
   async function handleAdherenceActualUpload(files){
     if(!can("upload")){ setUploadStatus("✗ Your role cannot upload Adherence data.",true); return; }
@@ -4411,11 +4412,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       let known=[]; const savedYears=await adherenceGetValue("years"); if(savedYears) known=JSON.parse(savedYears);
       years.forEach(y=>{if(!known.includes(y))known.push(y);}); await adherenceSetValue("years",JSON.stringify(known.sort()));
       ADHERENCE_ACTUAL=ADHERENCE_ACTUAL.filter(r=>!years.includes(r.year)).concat(agg.rows); invalidateAdherenceCache();
-      const log={uploadedAt:Date.now(),files:workbooks.map(f=>f.name),years,validVisits:all.length-agg.duplicates.length,duplicates:agg.duplicates.length,rejected:rejected.length};
+      const log={uploadedAt:Date.now(),files:workbooks.map(f=>f.name),years,validVisits:all.length,duplicates:0,rejected:rejected.length};
       ADHERENCE_IMPORTS.unshift(log); ADHERENCE_IMPORTS=ADHERENCE_IMPORTS.slice(0,15);
       try{ await adherenceSetValue("imports",JSON.stringify(ADHERENCE_IMPORTS)); }catch(e){ console.warn("Adherence import log could not be saved",e); }
       adherencePage="overview"; render();
-      setUploadStatus(`✓ Adherence: ${log.validVisits} unique calls saved for ${years.join(", ")} (${log.duplicates} duplicates, ${log.rejected} rejected).`,false);
+      setUploadStatus(`✓ Adherence: ${log.validVisits} BI call rows saved for ${years.join(", ")} (${log.rejected} rejected).`,false);
     }catch(e){ console.error("Adherence upload failed",e); setUploadStatus("✗ Adherence upload failed: "+e.message,true); }
   }
 
@@ -4465,7 +4466,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function adhDashboardLinkState(reg){
     const pod=String(reg&&reg.pod||"").trim();
-    if(!pod)return {linked:false,reason:"Dashboard terminal not linked"};
+    if(!pod)return {linked:false,optional:true,reason:"BI-only terminal — no planned dashboard source"};
     if(reg.assignment==="Panama")return PANAMA_TERM_CODES.includes(pod)&&!!PANAMA_DATA[pod]?{linked:true}:{linked:false,reason:"Linked Panama terminal was not found in Panama uploads"};
     if(reg.assignment==="Tangier")return TERM_CODES.includes(pod)&&!!DATA[pod]?{linked:true}:{linked:false,reason:"Linked Tangier terminal was not found in Tangier uploads"};
     return {linked:false,reason:"Tangier or Panama assignment is required"};
@@ -4492,7 +4493,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     ADHERENCE_ACTUAL.forEach(row=>{if(adhPeriodMatch(row,type,period))actualByTerminal.set(row.terminal,(actualByTerminal.get(row.terminal)||0)+adhNumber(row[metric]));});
     const rows=ADHERENCE_REGISTRY.filter(r=>adhRegInScope(r,scope)).map(reg=>{
       const link=adhDashboardLinkState(reg),planned=link.linked?adhPlannedFor(reg,type,period,metric):0,biPresent=adhBiTerminalPresent(reg),biTotal=actualByTerminal.get(reg.biName)||0,fallback=link.linked&&!biPresent&&planned>0,total=fallback?planned:biTotal,target=adhTargetFor(reg,year,type,period);
-      return {reg,total,biTotal,planned,target,fallback,unlinked:!link.linked,linkReason:link.reason||"",expected:target==null?null:total*target,adherence:link.linked&&total?Math.min(1,planned/total):null};
+      return {reg,total,biTotal,planned,target,fallback,unlinked:!link.linked,linkIssue:!link.linked&&!link.optional,linkReason:link.reason||"",expected:target==null?null:total*target,adherence:total?Math.min(1,planned/total):null};
     });
     adherenceRowsCache.set(cacheKey,rows);return rows;
   }
@@ -4503,7 +4504,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function adhTerminalSummary(pod,metric,type,period){
     if(!period)return {actual:null,target:null,total:0,planned:0};
     const year=String(period).slice(0,4),regs=ADHERENCE_REGISTRY.filter(r=>r.opsControlled&&String(r.pod||"").trim()===String(pod));
-    return adhSummary(regs.map(reg=>{const link=adhDashboardLinkState(reg),planned=link.linked?adhPlannedFor(reg,type,period,metric):0,biPresent=adhBiTerminalPresent(reg),biTotal=adhActualFor(reg,type,period,metric),fallback=link.linked&&!biPresent&&planned>0,total=fallback?planned:biTotal,target=adhTargetFor(reg,year,type,period);return{reg,total,biTotal,planned,target,fallback,unlinked:!link.linked,linkReason:link.reason||"",expected:target==null?null:total*target,adherence:link.linked&&total?Math.min(1,planned/total):null};}));
+    return adhSummary(regs.map(reg=>{const link=adhDashboardLinkState(reg),planned=link.linked?adhPlannedFor(reg,type,period,metric):0,biPresent=adhBiTerminalPresent(reg),biTotal=adhActualFor(reg,type,period,metric),fallback=link.linked&&!biPresent&&planned>0,total=fallback?planned:biTotal,target=adhTargetFor(reg,year,type,period);return{reg,total,biTotal,planned,target,fallback,unlinked:!link.linked,linkIssue:!link.linked&&!link.optional,linkReason:link.reason||"",expected:target==null?null:total*target,adherence:total?Math.min(1,planned/total):null};}));
   }
   function adhDisplayNameForPod(pod){
     const reg=ADHERENCE_REGISTRY.find(r=>String(r.pod||"").trim()===String(pod).trim()&&r.displayName);
@@ -4518,12 +4519,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return adhRowsFor(adherenceScopeFilter,adherenceMetric,currentType,adherencePeriod);
   }
   function adhSummary(rows){
-    const usable=rows.filter(r=>!r.unlinked),configured=usable.filter(r=>r.target!=null), total=usable.reduce((a,r)=>a+r.total,0), planned=usable.reduce((a,r)=>a+r.planned,0), expected=configured.reduce((a,r)=>a+r.expected,0), configuredTotal=configured.reduce((a,r)=>a+r.total,0);
-    return {total,planned,actual:total?Math.min(1,planned/total):null,target:configuredTotal?expected/configuredTotal:null,expected,unlinked:rows.length-usable.length};
+    const configured=rows.filter(r=>r.target!=null), total=rows.reduce((a,r)=>a+r.total,0), planned=rows.reduce((a,r)=>a+r.planned,0), expected=configured.reduce((a,r)=>a+r.expected,0), configuredTotal=configured.reduce((a,r)=>a+r.total,0);
+    return {total,planned,actual:total?Math.min(1,planned/total):null,target:configuredTotal?expected/configuredTotal:null,expected,unlinked:rows.filter(r=>r.unlinked).length,linkIssues:rows.filter(r=>r.linkIssue).length};
   }
   function adhPct(v){return v==null||!Number.isFinite(v)?"—":(v*100).toFixed(1)+"%";}
   function adhPeriods(year,type){
-    const rows=ADHERENCE_ACTUAL.filter(r=>r.year===String(year)); let vals=[];
+    const rows=type==="weekly"?ADHERENCE_ACTUAL.filter(r=>String(r.week||"").startsWith(String(year)+"-")):ADHERENCE_ACTUAL.filter(r=>r.year===String(year)); let vals=[];
     if(type==="weekly") vals=rows.map(r=>r.week);
     else if(type==="monthly") vals=rows.map(r=>r.year+"-"+String(r.month).padStart(2,"0"));
     else if(type==="quarterly") vals=rows.map(r=>r.year+"-Q"+r.quarter);
@@ -4543,7 +4544,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const value=String(current||"").trim(),tangier=TERM_CODES.filter(x=>DATA[x]),panama=PANAMA_TERM_CODES.filter(x=>PANAMA_DATA[x]);
     const group=(label,items)=>items.length?`<optgroup label="${label}">${items.map(x=>`<option value="${adhEsc(x)}" ${value===x?"selected":""}>${adhEsc(x)}</option>`).join("")}</optgroup>`:"";
     const missing=value&&!tangier.includes(value)&&!panama.includes(value)?`<option value="${adhEsc(value)}" selected>${adhEsc(value)} — not found in dashboard uploads</option>`:"";
-    return `<option value="">Select uploaded terminal</option>${missing}${group("Tangier uploads",tangier)}${group("Panama uploads",panama)}`;
+    return `<option value="">BI-only terminal — Planned 0</option>${missing}${group("Tangier uploads",tangier)}${group("Panama uploads",panama)}`;
   }
   function prepareAdherenceRegistryDrafts(){
     collectRegistryEdits();
@@ -4561,9 +4562,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <td><input type="checkbox" data-k="inScope" title="Include this OPS-controlled terminal in Adherence targets" ${r.inScope?"checked":""} ${editable?"":"disabled"}></td><td><input type="checkbox" data-k="opsControlled" title="Checked includes this terminal in actual Adherence Calls and Moves" ${r.opsControlled?"checked":""} ${editable?"":"disabled"}></td>
       <td><input type="date" data-k="effectiveFrom" value="${adhEsc(r.effectiveFrom)}" ${editable?"":"disabled"}></td><td><input type="date" data-k="effectiveTo" value="${adhEsc(r.effectiveTo)}" ${editable?"":"disabled"}></td>
       </tr>`).join("");
-    return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Link each exact BI terminal name to a terminal created by a Tangier or Panama operational upload, then assign its scope and Region. These links never create performance dashboards.</p>
+    return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Use the Display Terminal Name in reports. Link a BI terminal to an uploaded Tangier/Panama terminal only when SPC has a planned source; leave the link blank for a legitimate BI-only terminal, which remains in Adherence with Planned 0. These settings never create or modify performance dashboards.</p>
       <div class="adh-toolbar">${editable?`<button class="btn-primary" id="adhAddTerminal">+ Add Terminal</button>${unmapped.length?`<button class="btn-primary" id="adhPrepareTerminals">Prepare ${unmapped.length} BI Terminal${unmapped.length===1?"":"s"}</button>`:""}<button class="btn-secondary" id="adhSaveRegistry">Save to Database</button><button class="btn-secondary" id="adhImportConfig">Import Configuration Excel</button>`:""}<button class="btn-secondary" id="adhExportConfig">Export Configuration Excel</button><input id="adhConfigFile" type="file" accept=".xlsx,.xlsm" hidden></div>
-      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Link each applicable BI terminal to an uploaded dashboard terminal, assign Tangier or Panama, select its Region, then save.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the mapping, then save once.`:"Exact BI Terminal Name is the Adherence-upload matching key. The dashboard-terminal link supplies planned Calls/Moves; Region only groups the Adherence display."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>Linked Dashboard Terminal</th><th>Region</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="9" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
+      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Set the Display Terminal Name, Tangier/Panama assignment and Region; link only terminals that have a planned dashboard source.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the display settings, then save once.`:"Exact BI Terminal Name matches the BI upload. Display Terminal Name is used in COO reports. A blank dashboard link is valid and contributes BI actuals with Planned 0."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>Linked Dashboard Terminal</th><th>Region</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="9" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
   }
   function adherenceConfigYears(){
     const years=new Set(Object.keys(ADHERENCE_SCOPE).concat(ADHERENCE_ACTUAL.map(r=>String(r.year))));
@@ -4616,7 +4617,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function adhComparison(scope,label,metric){const s=adhSummary(adhDisplayRows(scope,metric,currentType,adherencePeriod)),max=Math.max(s.total,s.planned,1),status=adhVisualStatus(s);return `<div class="adh-compare ${status}"><b>${label}</b><div><span>Total</span><i><em style="width:${Math.min(100,s.total/max*100)}%"></em></i><strong>${fmtNum(s.total,0)}</strong></div><div><span>Planned</span><i><em class="planned" style="width:${Math.min(100,s.planned/max*100)}%"></em></i><strong>${fmtNum(s.planned,0)}</strong></div><small>Adherence ${adhPct(s.actual)} · Target ${adhPct(s.target)}</small></div>`;}
   function adhGapCard(scope,label,metric){const s=adhSummary(adhDisplayRows(scope,metric,currentType,adherencePeriod)),gap=s.actual==null||s.target==null?null:s.actual-s.target,status=adhVisualStatus(s);return `<div class="adh-gap ${status}"><span>${label} ${metric==="calls"?"Calls":"Moves"}<small>Target ${adhPct(s.target)}</small></span><b>${gap==null?"—":`${gap>=0?"+":""}${(gap*100).toFixed(1)} pp`}</b></div>`;}
   function adhGapDrivers(metric){
-    return adhDisplayRows(adherenceScopeFilter,metric,currentType,adherencePeriod).filter(r=>!r.unlinked&&r.target!=null&&r.expected!=null&&r.expected>r.planned).map(r=>({label:(r.reg.displayName||r.reg.biName)+(r.reg.region?" · "+r.reg.region:""),gap:r.expected-r.planned})).sort((a,b)=>b.gap-a.gap);
+    return adhDisplayRows(adherenceScopeFilter,metric,currentType,adherencePeriod).filter(r=>r.target!=null&&r.expected!=null&&r.expected>r.planned).map(r=>({label:(r.reg.displayName||r.reg.biName)+(r.reg.region?" · "+r.reg.region:""),gap:r.expected-r.planned})).sort((a,b)=>b.gap-a.gap);
   }
   function adhParetoPanels(){
     return `<div class="adh-pareto-grid">${["calls","moves"].map(metric=>{const drivers=adhGapDrivers(metric);return `<div class="adh-panel adh-pareto-panel"><h3>${metric==="calls"?"Calls":"Moves"} Gap Drivers · Pareto</h3>${drivers.length?`<div class="adh-pareto-box"><canvas id="adhPareto_${metric}"></canvas></div>`:'<div class="empty-note">No terminal is currently causing a target gap.</div>'}</div>`;}).join("")}</div>`;
@@ -4700,25 +4701,25 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return adhTargetMonths(type,period).some(month=>adhTargetMonthState(reg,year,month)==="active"&&stored[month-1]!==null&&stored[month-1]!==""&&stored[month-1]!==undefined&&Number.isFinite(Number(stored[month-1])));
   }
   function adhTerminalCharts(rows){
-    const eligible=rows.filter(r=>!r.unlinked&&adhHasConfiguredTarget(r.reg,currentType,adherencePeriod));
+    const eligible=rows.filter(r=>adhHasConfiguredTarget(r.reg,currentType,adherencePeriod));
     const terminalCard=r=>{const calls=adhSummary([r]),moveRow=adhDisplayRows(adherenceScopeFilter,"moves",currentType,adherencePeriod).find(x=>x.reg.id===r.reg.id),moves=adhSummary(moveRow?[moveRow]:[]),name=adhEsc(r.reg.displayName||r.reg.biName),key=String(r.reg.id).replace(/[^a-zA-Z0-9_-]/g,"");return `<div class="adh-terminal-chart-card"><h3>${name}${r.reg.pod?` · ${adhEsc(r.reg.pod)}`:""}</h3><div class="adh-terminal-chart-grid"><div class="${adhVisualStatus(calls)}"><h4>Calls · ${adhPct(calls.actual)} · Target ${adhPct(calls.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermCalls_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="calls"></canvas></div></div><div class="${adhVisualStatus(moves)}"><h4>Moves · ${adhPct(moves.actual)} · Target ${adhPct(moves.target)}</h4><div class="adh-terminal-chart-box"><canvas id="adhTermMoves_${key}" data-adh-terminal data-reg-id="${adhEsc(String(r.reg.id))}" data-metric="moves"></canvas></div></div></div></div>`;};
     const regions=[...new Set(eligible.map(r=>String(r.reg.region||"").trim()||"Not Assigned"))].sort((a,b)=>a.localeCompare(b));
     return regions.map(region=>`<div class="adh-region-group"><h3 class="adh-region-heading">${adhEsc(region)}</h3>${eligible.filter(r=>(String(r.reg.region||"").trim()||"Not Assigned")===region).map(terminalCard).join("")}</div>`).join("")||'<div class="adh-panel empty-note">No terminals with a configured target percentage for this selection.</div>';
   }
   function adhDetailRow(r){
-    const m=adhDisplayRows(adherenceScopeFilter,"moves",currentType,adherencePeriod).find(x=>x.reg.id===r.reg.id)||{},unlinked=!!(r.unlinked||m.unlinked),linkBadge=unlinked?' <span class="pill bad">Dashboard terminal not linked</span>':'',fallback=!unlinked&&(r.fallback||m.fallback)?' <span class="weight-badge" title="Planned value used as total">Planned fallback</span>':'';
-    const callStatus=unlinked?"watch":adhVisualStatus(adhSummary([r])),moveStatus=unlinked?"watch":adhVisualStatus(adhSummary(m.reg?[m]:[]));
-    return `<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${linkBadge}${fallback}</td><td>${unlinked?"—":r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td>${r.reg.region?adhEsc(r.reg.region):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${unlinked?"—":fmtNum(r.planned,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${unlinked||r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right"><span class="pill ${callStatus}">${unlinked?"—":adhPct(r.adherence)}</span></td><td class="right">${fmtNum(m.total||0,0)}</td><td class="right">${unlinked?"—":fmtNum(m.planned||0,0)}</td><td class="right">${adhPct(m.target)}</td><td class="right">${unlinked||m.expected==null?"—":fmtNum(m.expected,1)}</td><td class="right"><span class="pill ${moveStatus}">${unlinked?"—":adhPct(m.adherence)}</span></td></tr>`;
+    const m=adhDisplayRows(adherenceScopeFilter,"moves",currentType,adherencePeriod).find(x=>x.reg.id===r.reg.id)||{},unlinked=!!(r.unlinked||m.unlinked),linkIssue=!!(r.linkIssue||m.linkIssue),linkBadge=linkIssue?' <span class="pill bad">Invalid dashboard link</span>':unlinked?' <span class="pill watch">BI-only · Planned 0</span>':'',fallback=!unlinked&&(r.fallback||m.fallback)?' <span class="weight-badge" title="Planned value used as total">Planned fallback</span>':'';
+    const callStatus=adhVisualStatus(adhSummary([r])),moveStatus=adhVisualStatus(adhSummary(m.reg?[m]:[]));
+    return `<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${linkBadge}${fallback}</td><td>${r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td>${r.reg.region?adhEsc(r.reg.region):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right"><span class="pill ${callStatus}">${adhPct(r.adherence)}</span></td><td class="right">${fmtNum(m.total||0,0)}</td><td class="right">${fmtNum(m.planned||0,0)}</td><td class="right">${adhPct(m.target)}</td><td class="right">${m.expected==null?"—":fmtNum(m.expected,1)}</td><td class="right"><span class="pill ${moveStatus}">${adhPct(m.adherence)}</span></td></tr>`;
   }
   function adhOverview(){
-    const years=[...new Set(ADHERENCE_ACTUAL.map(r=>r.year).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
+    const years=[...new Set(ADHERENCE_ACTUAL.flatMap(r=>[r.year,String(r.week||"").slice(0,4)]).filter(Boolean).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
     if(!adherenceYear||!years.includes(String(adherenceYear))) adherenceYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const periods=adhPeriods(adherenceYear,currentType); if(!adherencePeriod||!periods.includes(adherencePeriod)) adherencePeriod=periods[periods.length-1]||String(adherenceYear);
-    const allRows=adhAuthorizedRows(adhRowsForSelection()),unlinked=allRows.filter(r=>r.unlinked),availableIds=new Set(allRows.map(r=>r.reg.id));if(adherenceTerminalFilter!=="all"&&!availableIds.has(adherenceTerminalFilter))adherenceTerminalFilter="all";
+    const allRows=adhAuthorizedRows(adhRowsForSelection()),availableIds=new Set(allRows.map(r=>r.reg.id));if(adherenceTerminalFilter!=="all"&&!availableIds.has(adherenceTerminalFilter))adherenceTerminalFilter="all";
     const rows=adherenceTerminalFilter==="all"?allRows:allRows.filter(r=>r.reg.id===adherenceTerminalFilter),unmapped=[...new Set(ADHERENCE_ACTUAL.filter(r=>adhPeriodMatch(r,currentType,adherencePeriod)).map(r=>r.terminal))].filter(x=>!ADHERENCE_REGISTRY.some(t=>t.biName===x));
     const summaryScopes=adhSummaryScopes(),filteredScopes=adhFilteredScopes();
     const terminalOptions=allRows.map(r=>`<option value="${adhEsc(r.reg.id)}" ${adherenceTerminalFilter===r.reg.id?"selected":""}>${adhEsc(r.reg.displayName||r.reg.biName)}${r.reg.pod?` (${adhEsc(r.reg.pod)})`:""}${r.reg.region?` · ${adhEsc(r.reg.region)}`:""}</option>`).join("");
-    const issueParts=[];if(unmapped.length)issueParts.push(`<span class="adh-unmapped">Unmapped BI terminals excluded:</span> ${unmapped.map(adhEsc).join(", ")}.`);if(unlinked.length)issueParts.push(`<span class="adh-unmapped">Dashboard terminal not linked:</span> ${[...new Set(unlinked.map(r=>r.reg.displayName||r.reg.biName))].map(adhEsc).join(", ")}. Planned values and gaps are not calculated for these terminals.`);
+    const issueParts=[];if(unmapped.length)issueParts.push(`<span class="adh-unmapped">Unmapped BI terminals excluded:</span> ${unmapped.map(adhEsc).join(", ")}.`);
     return `<div class="adh-toolbar print-filters"><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
       ${issueParts.length&&(!CURRENT_USER||CURRENT_USER.role!=="terminal")?`<div class="adh-status watch">${issueParts.join(" ")} <button class="btn-secondary no-print" id="adhOpenTerminalSettings">Open Settings → Adherence Terminals</button></div>`:""}
       <section class="adh-section"><h2>A · Calls Adherence %</h2><div class="adh-summary-grid${summaryScopes.length===2?" two":""}">${summaryScopes.map(x=>adhSummaryCard(x[0],x[1],"calls",periods)).join("")}</div></section>
@@ -4731,9 +4732,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <section class="adh-section"><h2>H · Detailed Terminal Table</h2><div class="adh-panel"><div class="adh-detail-head"><div><h3>Calls & Moves Adherence by Terminal</h3><p>Complete existing detail for the selected period. A missing dashboard link is shown explicitly and is never calculated as zero planned.</p></div><div class="adh-field"><label>Terminal</label><select id="adhTerminalFilter"><option value="all">All Terminals</option>${terminalOptions}</select></div></div><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Terminal</th><th>POD</th><th>Region</th><th class="right">Calls Total</th><th class="right">Calls Planned</th><th class="right">Calls Target</th><th class="right">Calls Expected</th><th class="right">Calls Adherence</th><th class="right">Moves Total</th><th class="right">Moves Planned</th><th class="right">Moves Target</th><th class="right">Moves Expected</th><th class="right">Moves Adherence</th></tr></thead><tbody>${rows.map(adhDetailRow).join("")||'<tr><td colspan="13" class="empty-note">No configured terminals for this selection.</td></tr>'}</tbody></table></div></div></section>`;
   }
   function adhUploads(){
-    return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Accepted standard format: first-column validity marker “-” or “.”, Vessel Call, Terminal and Moves. ETD is read from the date/time after the final “/” in Vessel Call.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Deduplication: Exact BI Terminal Name + full Vessel Call<br>• Adherence week: Excel WEEKNUM(ETD,21) → YYYY-WW<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>Unique calls</th><th>Duplicates</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.duplicates||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="6" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
+    return `<div class="adh-upload-grid"><div class="adh-panel adh-drop"><h3>Upload BI Actuals</h3><p>Upload one or more .xlsx/.xlsm files, or one outer .zip containing the two standard BI workbooks.</p><button class="btn-primary" id="adhChooseActual">Choose BI Files</button><div class="adh-status">Accepted standard format: first-column validity marker “-” or “.”, Terminal, ETD and Moves. Vessel names are descriptive and may repeat.</div></div><div class="adh-panel"><h3>Protected upload behavior</h3><p class="adh-note">• Calls: every valid BI row counts once per terminal; repeated vessel names remain valid calls<br>• Adherence week: BI ETD → full ISO YYYY-WW (Excel WEEKNUM(ETD,21), including year rollover)<br>• Re-upload: replaces only included years; other years remain<br>• Unknown terminals: reported, never auto-configured<br>• Operational Excel data is parsed and saved; it is not embedded in this HTML</p></div></div><div class="adh-panel"><h3>Recent BI Imports</h3><div class="adh-table-wrap"><table class="adh-table"><thead><tr><th>Uploaded</th><th>Files</th><th>Years</th><th>BI call rows</th><th>Rejected</th></tr></thead><tbody>${ADHERENCE_IMPORTS.map(x=>`<tr><td>${new Date(x.uploadedAt).toLocaleString()}</td><td>${adhEsc((x.files||[]).join(", "))}</td><td>${adhEsc((x.years||[]).join(", "))}</td><td>${x.validVisits||0}</td><td>${x.rejected||0}</td></tr>`).join("")||'<tr><td colspan="5" class="empty-note">No imports recorded yet.</td></tr>'}</tbody></table></div></div>`;
   }
-  function adhFormat(){ return `<div class="adh-panel"><h3>BI Upload Format & Calculation Rules</h3><p>This page documents the active implementation without altering any established dashboard treatment.</p><div class="adh-note"><b>Standard BI columns</b><br>First-column validity marker “-” or “.” · Vessel Call · Terminal · Moves. ETD is extracted from Vessel Call after the final “/”.<br><br><b>Adherence Week Filter</b><br>YEAR(ETD), with December ISO week 01 assigned to the next year, joined to WEEKNUM(ETD,21) as YYYY-WW. This applies only to Calls/Moves Adherence; existing KPI Week Filter calculations remain unchanged.<br><br><b>Calls</b><br>One unique Exact BI Terminal Name + full Vessel Call = one actual call. The first-column marker repeats for different calls and is not used for deduplication.<br><br><b>Moves</b><br>Sum of BI Moves after deduplication.<br><br><b>Actual Adherence</b><br>ETD-aligned planned Calls or Moves ÷ ETD-aligned BI total Calls or Moves. If a planned terminal is not yet present in BI, planned is temporarily used as both numerator and denominator.<br><br><b>Scope</b><br>Monthly target saved by terminal/year. Quarterly and yearly targets are simple monthly averages. Regional/global targets are weighted: total expected planned ÷ total configured BI universe.</div></div>`; }
+  function adhFormat(){ return `<div class="adh-panel"><h3>BI Upload Format & Calculation Rules</h3><p>This page documents the active implementation without altering any established dashboard treatment.</p><div class="adh-note"><b>Standard BI columns</b><br>First-column validity marker “-” or “.” · Terminal · ETD · Moves. Vessel name may be present but is descriptive and is never used as a unique key.<br><br><b>Adherence Week Filter</b><br>YEAR(ETD), with December ISO week 01 assigned to the next year, joined to WEEKNUM(ETD,21) as YYYY-WW. This applies only to Calls/Moves Adherence; existing KPI Week Filter calculations remain unchanged.<br><br><b>Calls</b><br>Every valid BI row counts as one actual call for its terminal and ETD period. Repeated vessel names are not deduplicated.<br><br><b>Moves</b><br>Sum of BI Moves for the same terminal and ETD period.<br><br><b>Actual Adherence</b><br>Dashboard-upload ETD planned Calls or Moves ÷ BI ETD actual Calls or Moves for the same period code, capped at 100%. A BI-only terminal remains included with Planned 0. If a planned terminal is not yet present in BI, planned is temporarily used as both numerator and denominator.<br><br><b>Scope</b><br>Monthly target saved by terminal/year. Quarterly and yearly targets are simple monthly averages. Regional/global targets are weighted: total expected planned ÷ total configured BI universe.</div></div>`; }
 
   function rerenderAdherenceSurface(){
     if(showingSettings && (settingsPage==="adherence_terminals" || settingsPage==="adherence_scope")) renderSettingsView();
@@ -4754,7 +4755,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     collectRegistryEdits(); const names=ADHERENCE_REGISTRY.map(r=>r.biName).filter(Boolean), dup=names.find((x,i)=>names.indexOf(x)!==i);
     if(ADHERENCE_REGISTRY.some(r=>!r.biName||!r.displayName)){ document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Complete Exact BI Terminal Name and Display Terminal Name for every row.";return; }
     if(ADHERENCE_REGISTRY.some(r=>r.opsControlled&&r.assignment==="None")){document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Every OPS Controlled terminal must belong to Tangier or Panama.";return;}
-    const brokenLink=ADHERENCE_REGISTRY.find(r=>r.opsControlled&&!adhDashboardLinkState(r).linked);if(brokenLink){const state=adhDashboardLinkState(brokenLink);document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent=`${brokenLink.displayName||brokenLink.biName}: ${state.reason}. Select a terminal produced by the matching Tangier or Panama upload.`;return;}
+    const brokenLink=ADHERENCE_REGISTRY.find(r=>r.opsControlled&&String(r.pod||"").trim()&&!adhDashboardLinkState(r).linked);if(brokenLink){const state=adhDashboardLinkState(brokenLink);document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent=`${brokenLink.displayName||brokenLink.biName}: ${state.reason}. Select a terminal produced by the matching Tangier or Panama upload, or leave POD blank for a valid BI-only terminal with Planned 0.`;return;}
     if(dup){document.getElementById("adhConfigStatus").className="adh-status bad";document.getElementById("adhConfigStatus").textContent="Duplicate Exact BI Terminal Name: "+dup;return;}
     await persistAdherenceConfig(); invalidateAdherenceCache(); adherenceDraftsPending=false; document.getElementById("adhConfigStatus").className="adh-status good";document.getElementById("adhConfigStatus").textContent="✓ Adherence terminal links saved. These settings do not create or change performance dashboards.";
   }
