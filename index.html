@@ -2530,8 +2530,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function unionRowsForPeriodOptions(){
-    if (currentTerminal === "ALL") return TERM_CODES.flatMap(t => DATA[t].rows);
-    return DATA[currentTerminal].rows;
+    const rows=currentTerminal === "ALL" ? TERM_CODES.flatMap(t => DATA[t].rows) : DATA[currentTerminal].rows;
+    return rows.filter(r=>canAccessYear(r._year));
   }
 
   function pickDefaultGroup(groups, opts){
@@ -2941,7 +2941,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // (e.g. Daily: day-2, day-1, today, day+1-if-it-has-data; Weekly: week-2, week-1, current week).
   function nearHistoryGroups(type, curPeriodKey, fullRows, before, after){
     const def = PERIOD_TYPES[type];
-    const groups = sortedGroups(fullRows, def.keyFn);
+    const groups = sortedGroups(fullRows.filter(r=>canAccessYear(r._year)), def.keyFn);
     const idx = groups.findIndex(g=>g.key===curPeriodKey);
     if (idx < 0) return [];
     const start = Math.max(0, idx-before);
@@ -2967,7 +2967,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function panamaAllWeekKeys(){
     const keys = new Set();
     PANAMA_TERM_CODES.forEach(t => Object.keys(PANAMA_DATA[t]||{}).forEach(wk => keys.add(wk)));
-    return [...keys].sort((a,b) => {
+    return [...keys].filter(wk=>canAccessYear(String(wk).slice(0,4))).sort((a,b) => {
       const [ya,wa] = a.split("-W").map(Number), [yb,wb] = b.split("-W").map(Number);
       return ya!==yb ? ya-yb : wa-wb;
     });
@@ -3128,7 +3128,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.getElementById("brandSubtitle").textContent="Shared Planning Center — Global · "+PERIOD_TYPES[currentType].label+" View";
     document.getElementById("brandFlag").style.display="none";periodPicker.innerHTML="";
 
-    const def=PERIOD_TYPES[currentType],allRows=TERM_CODES.flatMap(t=>(DATA[t]&&DATA[t].rows)||[]),tGroups=groupByKeyFn(allRows,def.keyFn),tPeriods=Object.keys(tGroups);
+    const def=PERIOD_TYPES[currentType],allRows=TERM_CODES.flatMap(t=>(DATA[t]&&DATA[t].rows)||[]).filter(r=>canAccessYear(r._year)),tGroups=groupByKeyFn(allRows,def.keyFn),tPeriods=Object.keys(tGroups);
     const pGroups=panamaGroupsForType(currentType),pKey=g=>String(g.key).replace("-W","-");
     const periods=[...new Set(tPeriods.concat(pGroups.map(pKey)))].sort();
     if(!globalReportPeriod||!periods.includes(globalReportPeriod))globalReportPeriod=periods[periods.length-1]||null;
@@ -3213,7 +3213,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     periodPicker.innerHTML = ""; // self-contained period selector below, same pattern as Panama
 
     const def = PERIOD_TYPES[currentType];
-    const allTangierRows = TERM_CODES.flatMap(t => DATA[t].rows);
+    const allTangierRows = TERM_CODES.flatMap(t => DATA[t].rows).filter(r=>canAccessYear(r._year));
     const tangierGroups = groupByKeyFn(allTangierRows, def.keyFn);
     const tangierPeriods = Object.keys(tangierGroups).sort();
     if (!globalReportPeriod || !tangierGroups[globalReportPeriod]) globalReportPeriod = tangierPeriods[tangierPeriods.length-1] || null;
@@ -3805,6 +3805,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
 
   function roleArray(value){ return Array.isArray(value) ? value.map(String).filter(Boolean) : []; }
+  function roleAllowedYears(user=CURRENT_USER){
+    if(!user||!Object.prototype.hasOwnProperty.call(user,"years"))return null;
+    return new Set(roleArray(user.years));
+  }
+  function canAccessYear(year,user=CURRENT_USER){
+    if(!user)return true;
+    const allowed=roleAllowedYears(user);
+    return allowed===null||allowed.has(String(year||"").slice(0,4));
+  }
+  function configuredRoleYears(){
+    const years=new Set([String(new Date().getUTCFullYear())]);
+    Object.values(DATA||{}).forEach(d=>(d&&d.rows||[]).forEach(r=>{if(r._year)years.add(String(r._year));}));
+    Object.values(PANAMA_DATA||{}).forEach(term=>Object.keys(term||{}).forEach(wk=>{const y=String(wk).slice(0,4);if(/^\d{4}$/.test(y))years.add(y);}));
+    (ADHERENCE_ACTUAL||[]).forEach(r=>{const y=String(r.year||String(r.week||"").slice(0,4));if(/^\d{4}$/.test(y))years.add(y);});
+    Object.keys(ADHERENCE_SCOPE||{}).forEach(y=>{if(/^\d{4}$/.test(y))years.add(y);});
+    Object.keys(SQDC_REGISTRY||{}).forEach(y=>{if(/^\d{4}$/.test(y))years.add(y);});
+    return [...years].sort((a,b)=>Number(b)-Number(a));
+  }
   function supervisorModuleAccess(user,module,scope){
     if(!user||user.role!=="supervisor")return false;
     const field=module==="adherence"?"adherenceDashboards":"terminalDashboards", config=user[field];
@@ -3833,9 +3851,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function hasAdherenceDashboardAccess(user=CURRENT_USER){return canViewAdherenceScope("tangier",user)||canViewAdherenceScope("panama",user)||canViewAdherenceScope("global",user);}
   function canViewSqdc(user=CURRENT_USER){return !!user&&["admin","management","data_analyst","supervisor"].includes(user.role);}
   function canEditSqdc(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
-  function roleTerminalPool(){
-    return [...TERM_CODES.map(code=>({code,scope:"Tangier"})),...PANAMA_TERM_CODES.map(code=>({code,scope:"Panama"}))];
-  }
   function configuredRegions(){
     const fixed=(typeof ADHERENCE_REGION_OPTIONS!=="undefined"?ADHERENCE_REGION_OPTIONS:[]),used=(typeof ADHERENCE_REGISTRY!=="undefined"?ADHERENCE_REGISTRY:[]).map(r=>String(r.region||"").trim()).filter(Boolean);
     return [...new Set(fixed.concat(used).filter(r=>r.toLowerCase()!=="oceania"))].sort((a,b)=>a.localeCompare(b));
@@ -3856,8 +3871,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   async function renderRolesView(){
     const rv = document.getElementById("rolesView");
-    const terminalItems=roleTerminalPool().map(x=>({value:x.code,label:`${x.code} · ${x.scope}`}));
     const regionItems=configuredRegions().map(region=>({value:region,label:region}));
+    const yearItems=configuredRoleYears().map(year=>({value:year,label:year}));
     rv.innerHTML = `
       <div class="settings-wrap">
         <div class="section-label">User Roles</div>
@@ -3884,14 +3899,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
               <div class="adh-note" style="margin-top:7px;">Global Adherence appears only when both are selected.</div>
             </div>
           </div>
-          <div class="section-label" style="margin-top:14px;">Accessible Terminals</div>
-          ${roleCheckGrid("supervisorTerminal",terminalItems,item=>adhEsc(item.label))}
+          <p class="adh-note" style="margin-top:12px;">Selecting Tangier or Panama automatically grants all uploaded terminals belonging to that side. No terminal-by-terminal selection is required.</p>
         </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
           <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
           <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
           <div class="section-label" style="margin-top:12px;">Accessible Regions</div>
           ${roleCheckGrid("regionalRegion",regionItems,item=>adhEsc(item.label))}
+        </div>
+        <div class="adh-panel" style="margin:14px 0;">
+          <h3>Accessible Years</h3>
+          <p class="adh-note">Only the checked years will appear in Terminal, Global, Adherence and SQDCP dashboards for this user.</p>
+          ${roleCheckGrid("roleYear",yearItems,item=>adhEsc(item.label))}
         </div>
         <table class="settings-table">
           <thead><tr><th>Email</th><th>Role</th><th>Access</th><th></th></tr></thead>
@@ -3915,17 +3934,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const email = document.getElementById("newRoleEmail").value.trim().toLowerCase();
       const role = typeSel.value;
       if (!email){ alert("Enter an email first."); return; }
-      const doc = { role };
+      const doc = { role, years:[...document.querySelectorAll('input[name="roleYear"]:checked')].map(x=>x.value) };
+      if(!doc.years.length){alert("Select at least one accessible year for this role.");return;}
       if (role === "terminal") doc.terminal = termSel.value;
       if(role==="supervisor"){
-        doc.terminals=[...document.querySelectorAll('input[name="supervisorTerminal"]:checked')].map(x=>x.value);
         doc.terminalDashboards={tangier:document.getElementById("supTerminalTangier").checked,panama:document.getElementById("supTerminalPanama").checked};
         doc.adherenceDashboards={tangier:document.getElementById("supAdherenceTangier").checked,panama:document.getElementById("supAdherencePanama").checked};
-        if(!doc.terminals.length){alert("Select at least one terminal for this Supervisor.");return;}
         if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama){alert("Select at least one Terminal Dashboard or Adherence Dashboard scope.");return;}
-        const selectedTangier=doc.terminals.some(code=>TERM_CODES.includes(code)),selectedPanama=doc.terminals.some(code=>PANAMA_TERM_CODES.includes(code));
-        if((doc.terminalDashboards.tangier||doc.adherenceDashboards.tangier)&&!selectedTangier){alert("Select at least one Tangier terminal for the enabled Tangier access.");return;}
-        if((doc.terminalDashboards.panama||doc.adherenceDashboards.panama)&&!selectedPanama){alert("Select at least one Panama terminal for the enabled Panama access.");return;}
       }
       if(role==="regional_access"){
         doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
@@ -3954,9 +3969,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(r.role==="terminal")access=r.terminal||"—";
       else if(r.role==="supervisor"){
         const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
-        access=`Terminals: ${roleArray(r.terminals).join(", ")||"All (legacy)"}<br>Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
+        access=`Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
       }else if(r.role==="regional_access")access=`Tangier regions: ${roleArray(r.regions).join(", ")||"None"}`;
       else access="All";
+      access+=`<br>Years: ${roleAllowedYears(r)===null?"All (legacy)":roleArray(r.years).join(", ")||"None"}`;
       tr.innerHTML = `
         <td class="kpi-key-cell">${r.email}</td>
         <td>${ROLE_LABELS[r.role] || r.role}</td>
@@ -3969,10 +3985,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       btn.onclick=()=>{
         const r=roles.find(x=>x.email===btn.dataset.editEmail);if(!r)return;
         document.getElementById("newRoleEmail").value=r.email;document.getElementById("newRoleType").value=r.role;document.getElementById("newRoleType").dispatchEvent(new Event("change"));
+        const selectedYears=new Set(roleArray(r.years));document.querySelectorAll('input[name="roleYear"]').forEach(x=>x.checked=roleAllowedYears(r)===null||selectedYears.has(x.value));
         if(r.role==="terminal")document.getElementById("newRoleTerminal").value=r.terminal||TERM_CODES[0]||"";
         if(r.role==="supervisor"){
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
-          const selected=new Set(roleArray(r.terminals));document.querySelectorAll('input[name="supervisorTerminal"]').forEach(x=>x.checked=!r.terminals||selected.has(x.value));
         }
         if(r.role==="regional_access"){
           const selected=new Set(roleArray(r.regions));document.querySelectorAll('input[name="regionalRegion"]').forEach(x=>x.checked=selected.has(x.value));
@@ -4211,7 +4227,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     P:["#####g","##..##","##..##","##..##","######","##....","##....","##....","##...."]
   };
   function sqdcResolvePeriod(){
-    const options=sqdcMonthOptions(),years=[...new Set(options.map(m=>m.slice(0,4)))].sort();
+    let options=sqdcMonthOptions().filter(m=>canAccessYear(m.slice(0,4)));
+    if(!options.length){const allowed=roleAllowedYears(),fallback=allowed&&allowed.size?[...allowed].sort().pop():String(new Date().getUTCFullYear());options=[`${fallback}-01`];}
+    const years=[...new Set(options.map(m=>m.slice(0,4)))].sort();
     if(!sqdcYear||!years.includes(String(sqdcYear)))sqdcYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const months=options.filter(m=>m.startsWith(sqdcYear+"-"));
     if(!sqdcMonth||!months.includes(sqdcMonth))sqdcMonth=months[months.length-1]||`${sqdcYear}-01`;
@@ -5051,10 +5069,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function adhAuthorizedRows(rows){
     if(!CURRENT_USER)return [];
     if(CURRENT_USER.role==="terminal")return rows.filter(r=>String(r.reg.pod||"").trim()===String(CURRENT_USER.terminal||"").trim());
-    if(CURRENT_USER.role==="supervisor"&&Array.isArray(CURRENT_USER.terminals)){
-      const allowed=new Set(roleArray(CURRENT_USER.terminals));
-      return rows.filter(r=>allowed.has(String(r.reg.pod||"").trim()));
-    }
     return rows;
   }
   function adhDisplayRows(scope,metric,type,period){return adhAuthorizedRows(adhRowsFor(scope,metric,type,period));}
@@ -5187,7 +5201,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function adhOverview(){
     const permittedScopes=allowedAdherenceScopeValues();
     if(!permittedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=permittedScopes[0]||"global";
-    const years=[...new Set(ADHERENCE_ACTUAL.flatMap(r=>[r.year,String(r.week||"").slice(0,4)]).filter(Boolean).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
+    const years=[...new Set(ADHERENCE_ACTUAL.flatMap(r=>[r.year,String(r.week||"").slice(0,4)]).filter(Boolean).concat(Object.keys(ADHERENCE_SCOPE),[String(new Date().getUTCFullYear())]))].filter(canAccessYear).sort();
     if(!adherenceYear||!years.includes(String(adherenceYear))) adherenceYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const periods=adhPeriods(adherenceYear,currentType); if(!adherencePeriod||!periods.includes(adherencePeriod)) adherencePeriod=periods[periods.length-1]||String(adherenceYear);
     const allRows=adhAuthorizedRows(adhRowsForSelection()),availableIds=new Set(allRows.map(r=>r.reg.id));if(adherenceTerminalFilter!=="all"&&!availableIds.has(adherenceTerminalFilter))adherenceTerminalFilter="all";
@@ -5307,7 +5321,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function allowedTerminalsFor(user){
     if (!user) return [];
     if (user.role === "terminal") return [user.terminal];
-    if(user.role==="supervisor")return Array.isArray(user.terminals)?roleArray(user.terminals):null;
+    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")?null:[];
     if(user.role==="regional_access"){
       const regions=new Set(roleArray(user.regions));
       return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
@@ -5316,8 +5330,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function allowedPanamaTerminalsFor(user){
     if(!user)return [];
-    if(user.role==="supervisor"&&Array.isArray(user.terminals))return roleArray(user.terminals).filter(code=>PANAMA_TERM_CODES.includes(code));
-    if(["admin","management","data_analyst"].includes(user.role)||(user.role==="supervisor"&&!Array.isArray(user.terminals)))return null;
+    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","panama")||supervisorModuleAccess(user,"adherence","panama")?null:[];
+    if(["admin","management","data_analyst"].includes(user.role))return null;
     return [];
   }
   function setFirstAllowedPerformanceView(){
