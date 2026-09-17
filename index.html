@@ -407,6 +407,25 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .term-card .stat-row{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-bottom:8px;}
   .term-card .stat-row .v{ font-family:var(--mono); color:var(--text); font-weight:600;}
   .term-card .chips{ display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;}
+  /* Global SPC report — compact executive layout */
+  .gr-toolbar{display:flex;align-items:center;justify-content:flex-end;margin:0 0 14px}.gr-toolbar select{min-width:150px}
+  .gr-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+  .gr-kpi-card,.gr-scope-card,.gr-analysis-card,.gr-pareto-card{background:var(--panel);border:1px solid var(--border);border-radius:14px}
+  .gr-kpi-card{padding:15px 17px}.gr-kpi-card .label{font:600 10px var(--display);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+  .gr-kpi-card .value{font:700 25px var(--mono);margin:8px 0 4px}.gr-kpi-card .sub{font-size:10px;color:var(--text-faint)}
+  .gr-scope-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}
+  .gr-scope-card{padding:15px 17px}.gr-scope-card h3{font:700 13px var(--display);margin:0 0 12px;color:var(--text)}
+  .gr-scope-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.gr-scope-metrics div{background:var(--panel-2);border-radius:9px;padding:9px}
+  .gr-scope-metrics span{display:block;font-size:9px;color:var(--text-muted);margin-bottom:5px}.gr-scope-metrics b{font:700 12px var(--mono);color:var(--text)}
+  .gr-analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.gr-analysis-card{padding:14px 16px}
+  .gr-analysis-card h3,.gr-pareto-card h3{font:700 12px var(--display);margin:0 0 12px}.gr-dist-row{display:grid;grid-template-columns:105px 1fr 28px;gap:8px;align-items:center;margin:8px 0;font-size:10px;color:var(--text-muted)}
+  .gr-dist-track{height:7px;background:var(--panel-2);border-radius:999px;overflow:hidden}.gr-dist-track i{display:block;height:100%;border-radius:999px}.gr-dist-row b{font:700 10px var(--mono);text-align:right;color:var(--text)}
+  .gr-pareto-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}.gr-pareto-card{padding:14px 16px}.gr-pareto-box{height:270px}
+  .gr-terminal-heading{display:flex;align-items:end;justify-content:space-between;margin:22px 0 11px;border-bottom:1px solid var(--border);padding-bottom:8px}.gr-terminal-heading h2{font:700 13px var(--display);margin:0}.gr-terminal-heading span{font-size:10px;color:var(--text-muted)}
+  .gr-terminal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gr-terminal-card{cursor:default}.gr-terminal-card.clickable{cursor:pointer}.gr-terminal-card .gr-volume{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.gr-terminal-card .gr-volume div{background:var(--panel-2);border-radius:8px;padding:8px}.gr-terminal-card .gr-volume span{display:block;font-size:9px;color:var(--text-muted)}.gr-terminal-card .gr-volume b{font:700 12px var(--mono)}
+  .gr-terminal-card .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.gr-terminal-card .chip{white-space:normal;line-height:1.25}
+  @media(max-width:1200px){.gr-kpi-grid{grid-template-columns:repeat(3,1fr)}.gr-scope-metrics{grid-template-columns:repeat(3,1fr)}.gr-terminal-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:850px){.gr-kpi-grid,.gr-analysis-grid,.gr-pareto-grid,.gr-scope-grid,.gr-terminal-grid{grid-template-columns:1fr}.gr-scope-metrics{grid-template-columns:repeat(2,1fr)}}
   .chip{ font-size:10px; font-family:var(--mono); padding:3px 7px; border-radius:6px; background:var(--panel-2); color:var(--text-muted); border:1px solid var(--border-soft);}
   .chip.good{ color:var(--teal); border-color:rgba(47,217,190,0.3);} .chip.watch{ color:var(--amber); border-color:rgba(245,169,63,0.3);} .chip.bad{ color:var(--coral); border-color:rgba(242,96,75,0.3);}
 
@@ -3088,10 +3107,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
   }
 
-  // ---------- Render: SPCs Global Report (Network Rollup x3 + Terminals Performance) ----------
-  // Calls/Moves Adherence values reuse the additive Adherence engine below. Existing score,
-  // volume and period treatments in this report remain unchanged.
+  // ---------- Render: SPCs Global Report ----------
+  // Dashboard membership always comes from Tangier/Panama uploads. Adherence settings are used
+  // only to link the matching calls/moves figures and can never move a dashboard terminal.
+  let globalReportCharts={};
+  function destroyGlobalReportCharts(){Object.values(globalReportCharts).forEach(c=>{if(c&&typeof c.destroy==="function")c.destroy();});globalReportCharts={};}
+  const globalParetoLabels={id:"globalParetoLabels",afterDatasetsDraw(chart){const ctx=chart.ctx;ctx.save();ctx.font="700 10px IBM Plex Mono, monospace";ctx.textAlign="center";ctx.textBaseline="bottom";chart.data.datasets.forEach((ds,di)=>{const meta=chart.getDatasetMeta(di);meta.data.forEach((point,i)=>{const v=Number(ds.data[i]);if(!Number.isFinite(v))return;ctx.fillStyle=ds.type==="line"?"#F5C518":chartTickColor();ctx.fillText(ds.type==="line"?Math.round(v*100)+"%":fmtNum(v,0),point.x,Math.max(12,point.y-5));});});ctx.restore();}};
   function renderGlobalReportView(){
+    destroyGlobalReportCharts();
     ["networkView","terminalView","panamaView"].forEach(id=>document.getElementById(id).style.display="none");
     const gv=document.getElementById("globalReportView");gv.style.display="";
     document.getElementById("brandTitle").textContent="Global SPC Report";
@@ -3105,24 +3128,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const panamaGroup=pGroups.find(g=>pKey(g)===globalReportPeriod)||null;
     if(!periods.length){gv.innerHTML='<div class="empty-note">No data uploaded yet for either Tangier or Panama.</div>';return;}
 
-    gv.innerHTML=`<div class="settings-toolbar" style="margin-bottom:16px;"><select id="globalReportPeriodSelect" class="priority-input" style="width:auto;"></select></div>
-      <div class="section-label">NETWORK ROLLUP — GLOBAL · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grGlobalCards"></div>
-      <div class="section-label">NETWORK ROLLUP — TANGIER · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grTangierCards"></div>
-      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grTangierGrid"></div>
-      <div class="section-label">NETWORK ROLLUP — PANAMA · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grPanamaCards"></div>
-      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grPanamaGrid"></div>`;
+    gv.innerHTML=`<div class="gr-toolbar no-print"><select id="globalReportPeriodSelect" class="priority-input"></select></div>
+      <div class="section-label">GLOBAL SPC PERFORMANCE · ${globalReportPeriod||'–'}</div><div class="gr-kpi-grid" id="grGlobalCards"></div>
+      <div class="section-label">REGIONAL OVERVIEW</div><div class="gr-scope-grid" id="grRegionalOverview"></div>
+      <div class="section-label">TERMINAL ANALYSIS</div><div class="gr-analysis-grid" id="grAnalysis"></div>
+      <div class="section-label">MOST IMPACTING TERMINALS · PARETO</div><div class="gr-pareto-grid">
+        <div class="gr-pareto-card"><h3>Calls Adherence Gap Drivers</h3><div class="gr-pareto-box" id="grCallsParetoBox"><canvas id="grCallsPareto"></canvas></div></div>
+        <div class="gr-pareto-card"><h3>Moves Adherence Gap Drivers</h3><div class="gr-pareto-box" id="grMovesParetoBox"><canvas id="grMovesPareto"></canvas></div></div>
+      </div>
+      <div class="gr-terminal-heading"><h2>TERMINAL PERFORMANCE · TANGIER</h2><span>Active Global KPIs · no-data terminals shown last</span></div><div class="gr-terminal-grid" id="grTangierGrid"></div>
+      <div class="gr-terminal-heading"><h2>TERMINAL PERFORMANCE · PANAMA</h2><span>Active Global KPIs · no-data terminals shown last</span></div><div class="gr-terminal-grid" id="grPanamaGrid"></div>`;
     const select=document.getElementById("globalReportPeriodSelect");periods.forEach(p=>{const o=document.createElement("option");o.value=p;o.textContent=p;select.appendChild(o);});select.value=globalReportPeriod;select.onchange=()=>{globalReportPeriod=select.value;renderGlobalReportView();};
 
     const year=String(globalReportPeriod||"").slice(0,4),summaries=[];
     TERM_CODES.forEach(term=>{
       const rows=(DATA[term]&&DATA[term].rows)||[],groups=groupByKeyFn(rows,def.keyFn),periodRows=groups[globalReportPeriod]||[],vols=volumeAgg(periodRows),kpis=(DATA[term]&&DATA[term].kpis)||[],scoreKpi=kpis.find(k=>k.key==="Vessel Score"),score=scoreKpi?getValue(scoreKpi,periodRows,currentType):null,scoreTarget=scoreKpi?effectiveTarget(scoreKpi,term,year):null;
-      summaries.push({kind:"standard",term,assignment:adhAssignmentForPod(term,"Tangier"),moves:vols["Total Moves Planned"]||0,calls:vols["__calls"]||0,score,scoreTarget,scoreKpi,kpis,periodRows});
+      summaries.push({kind:"standard",scope:"tangier",term,moves:vols["Total Moves Planned"]||0,calls:vols["__calls"]||0,score,scoreTarget,scoreKpi,kpis,periodRows,hasData:periodRows.length>0});
     });
     PANAMA_TERM_CODES.forEach(term=>{
       ensurePanamaSettings(term);const hasData=!!panamaGroup&&panamaGroup.weekKeys.some(wk=>PANAMA_DATA[term]&&PANAMA_DATA[term][wk]),scoreKpi=panamaKpiCatalog().find(k=>k.key==="Overall Score");
-      summaries.push({kind:"panama",term,assignment:adhAssignmentForPod(term,"Panama"),moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Overall Score"):null,scoreTarget:effectiveTarget(scoreKpi,term,year),scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[]});
+      summaries.push({kind:"panama",scope:"panama",term,moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Overall Score"):null,scoreTarget:effectiveTarget(scoreKpi,term,year),scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[],hasData});
     });
-    const grouped={global:summaries,tangier:summaries.filter(x=>x.assignment==="Tangier"),panama:summaries.filter(x=>x.assignment==="Panama")};
+    const grouped={global:summaries,tangier:summaries.filter(x=>x.scope==="tangier"),panama:summaries.filter(x=>x.scope==="panama")};
     const avg=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
     const totals=items=>({moves:items.reduce((a,x)=>a+x.moves,0),calls:items.reduce((a,x)=>a+x.calls,0),score:avg(items.map(x=>x.score)),scoreTarget:avg(items.map(x=>x.scoreTarget))});
     const adherence={
@@ -3134,28 +3161,39 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     function fillCards(id,items,callAdh,moveAdh){
       const t=totals(items),el=document.getElementById(id),cards=[
         {label:"Total Moves",value:fmtNum(t.moves)},{label:"Total Calls",value:fmtNum(t.calls)},
-        {label:"Score",value:Number.isFinite(t.score)?fmtNum(t.score,2):"–",target:t.scoreTarget,targetText:Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"–"},
-        {label:"SPC Calls Adherence",value:adhPct(callAdh.actual),target:callAdh.target,targetText:adhPct(callAdh.target)},
-        {label:"SPC Moves Adherence",value:adhPct(moveAdh.actual),target:moveAdh.target,targetText:adhPct(moveAdh.target)}];
-      cards.forEach(c=>{const d=document.createElement("div"),numeric=c.value==="–"?null:(c.label.includes("Adherence")?c.label.includes("Calls")?callAdh.actual:moveAdh.actual:t.score),st=c.target===undefined?null:targetStatus(numeric,c.target);d.className="ncard";d.innerHTML=`<div class="label">${c.label}</div><div class="value" ${st?`style="color:${STATUS_COLOR[st]}"`:""}>${c.value}</div><div class="sub">${c.target===undefined?"":`Target: ${c.targetText}`}</div>`;el.appendChild(d);});
+        {label:"Global SPC Score",value:Number.isFinite(t.score)?fmtNum(t.score,2):"–",target:t.scoreTarget,targetText:Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"–",numeric:t.score},
+        {label:"Calls Adherence",value:adhPct(callAdh.actual),target:callAdh.target,targetText:adhPct(callAdh.target),numeric:callAdh.actual},
+        {label:"Moves Adherence",value:adhPct(moveAdh.actual),target:moveAdh.target,targetText:adhPct(moveAdh.target),numeric:moveAdh.actual}];
+      cards.forEach(c=>{const st=c.target===undefined?null:targetStatus(c.numeric,c.target),d=document.createElement("div");d.className="gr-kpi-card";d.innerHTML=`<div class="label">${c.label}</div><div class="value" ${st?`style="color:${STATUS_COLOR[st]}"`:""}>${c.value}</div><div class="sub">${c.target===undefined?"Across all reporting terminals":`Target ${c.targetText}`}</div>`;el.appendChild(d);});
     }
     fillCards("grGlobalCards",grouped.global,adherence.globalCalls,adherence.globalMoves);
-    fillCards("grTangierCards",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves);
-    fillCards("grPanamaCards",grouped.panama,adherence.panamaCalls,adherence.panamaMoves);
+
+    function scopeOverview(label,items,callAdh,moveAdh){const t=totals(items),scoreStatus=targetStatus(t.score,t.scoreTarget),callStatus=targetStatus(callAdh.actual,callAdh.target),moveStatus=targetStatus(moveAdh.actual,moveAdh.target);return `<div class="gr-scope-card"><h3>${label}</h3><div class="gr-scope-metrics"><div><span>Score</span><b style="color:${scoreStatus?STATUS_COLOR[scoreStatus]:'var(--text)'}">${Number.isFinite(t.score)?fmtNum(t.score,2):'–'} / ${Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):'–'}</b></div><div><span>Moves</span><b>${fmtNum(t.moves)}</b></div><div><span>Calls</span><b>${fmtNum(t.calls)}</b></div><div><span>Calls Adh.</span><b style="color:${callStatus?STATUS_COLOR[callStatus]:'var(--text)'}">${adhPct(callAdh.actual)}</b></div><div><span>Moves Adh.</span><b style="color:${moveStatus?STATUS_COLOR[moveStatus]:'var(--text)'}">${adhPct(moveAdh.actual)}</b></div></div></div>`;}
+    document.getElementById("grRegionalOverview").innerHTML=scopeOverview("SPC Tangier",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves)+scopeOverview("SPC Panama",grouped.panama,adherence.panamaCalls,adherence.panamaMoves);
+
+    const terminalAdherence=summaries.map(s=>({s,calls:adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),moves:adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod)}));
+    function distribution(items,valueFn,targetFn){const out={good:0,watch:0,bad:0,nodata:0};items.forEach(x=>{const value=valueFn(x),target=targetFn(x);if(!Number.isFinite(value)||!Number.isFinite(target)||target<=0)out.nodata++;else out[targetStatus(value,target)]++;});return out;}
+    const scoreDist=distribution(summaries,x=>x.score,x=>x.scoreTarget),callsDist=distribution(terminalAdherence,x=>x.calls.actual,x=>x.calls.target),movesDist=distribution(terminalAdherence,x=>x.moves.actual,x=>x.moves.target);
+    function distributionCard(title,d){const rows=[["At / above target","good","#3ED17E"],["Below target","watch","#F5C518"],["Critical","bad","#F2483D"],["No data","nodata","#78909C"]],max=Math.max(1,...rows.map(r=>d[r[1]]));return `<div class="gr-analysis-card"><h3>${title}</h3>${rows.map(r=>`<div class="gr-dist-row"><span>${r[0]}</span><div class="gr-dist-track"><i style="width:${d[r[1]]/max*100}%;background:${r[2]}"></i></div><b>${d[r[1]]}</b></div>`).join("")}</div>`;}
+    document.getElementById("grAnalysis").innerHTML=distributionCard("Score Distribution",scoreDist)+distributionCard("Calls Adherence Distribution",callsDist)+distributionCard("Moves Adherence Distribution",movesDist);
+
+    function globalGapDrivers(metric){return adhAuthorizedRows(adhRowsFor("global",metric,currentType,globalReportPeriod)).filter(r=>r.target!=null&&r.expected!=null&&r.expected>r.planned).map(r=>({label:r.reg.displayName||r.reg.biName,gap:r.expected-r.planned})).sort((a,b)=>b.gap-a.gap).slice(0,12);}
+    function renderPareto(metric){const id=metric==="calls"?"grCallsPareto":"grMovesPareto",box=document.getElementById(id+"Box"),canvas=document.getElementById(id),drivers=globalGapDrivers(metric);if(!drivers.length){box.innerHTML='<div class="empty-note">No terminal is causing a target gap for this period.</div>';return;}const total=drivers.reduce((a,x)=>a+x.gap,0),cum=[];let running=0;drivers.forEach(x=>{running+=x.gap;cum.push(total?running/total:0);});globalReportCharts[id]=new Chart(canvas.getContext("2d"),{data:{labels:drivers.map(x=>x.label),datasets:[{type:"bar",label:"Gap contribution",data:drivers.map(x=>x.gap),backgroundColor:"rgba(242,72,61,.72)",borderColor:"#F2483D",borderWidth:1,yAxisID:"y"},{type:"line",label:"Cumulative %",data:cum,borderColor:"#F5C518",backgroundColor:"#F5C518",pointRadius:3,tension:.25,yAxisID:"y1"}]},plugins:[globalParetoLabels],options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:18}},plugins:{legend:{labels:{color:chartTickColor()}},tooltip:{callbacks:{label:c=>c.datasetIndex===0?`${c.dataset.label}: ${fmtNum(c.raw,0)}`:`${c.dataset.label}: ${(c.raw*100).toFixed(0)}%`}}},scales:{x:{ticks:{color:chartTickColor(),maxRotation:32,minRotation:0},grid:{display:false}},y:{beginAtZero:true,ticks:{color:chartTickColor()},grid:{color:chartGridColor()}},y1:{beginAtZero:true,max:1,position:"right",ticks:{color:"#F5C518",callback:v=>(v*100)+"%"},grid:{drawOnChartArea:false}}}}});}
 
     function standardCard(s){
       const status=statusFor(s.scoreKpi,s.score,s.scoreTarget,s.term),color=STATUS_COLOR[status],callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
       const showScore=effectiveActive(s.term,"Vessel Score","global",year);
-      const chips=activeSortedKpis(s.term,"global",year).map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,s.term)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
+      const chips=activeSortedKpis(s.term,"global",year).filter(k=>k.key!=="Vessel Score").map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}" title="Target ${fmtVal(k,t,s.term)}">${adhEsc(k.key)}: ${fmtVal(k,v,s.term)}</span>`;}).join("");
+      const card=document.createElement("div");card.className="term-card gr-terminal-card clickable";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):'–'} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):'–'}</span>`:""}</div><div class="gr-volume"><div><span>Moves</span><b>${fmtNum(s.moves)}</b></div><div><span>Calls</span><b>${fmtNum(s.calls)}</b></div><div><span>Calls Adherence</span><b>${adhPct(callsAdh.actual)}</b></div><div><span>Moves Adherence</span><b>${adhPct(movesAdh.actual)}</b></div></div><div class="chips">${chips||'<span class="chip">No active Global KPI results</span>'}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
     }
     function panamaCard(s){
       const status=targetStatus(s.score,s.scoreTarget),color=STATUS_COLOR[status]||"var(--text-faint)",callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
       const showScore=effectiveActive(s.term,"Overall Score","global",year);
-      const chips=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${panamaFmt(k.key,v)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;return card;
+      const chips=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}" title="Target ${panamaFmt(k.key,t)}">${adhEsc(k.key)}: ${panamaFmt(k.key,v)}</span>`;}).join("");
+      const card=document.createElement("div");card.className="term-card gr-terminal-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):'–'} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):'–'}</span>`:""}</div><div class="gr-volume"><div><span>Moves</span><b>${fmtNum(s.moves)}</b></div><div><span>Calls</span><b>${fmtNum(s.calls)}</b></div><div><span>Calls Adherence</span><b>${adhPct(callsAdh.actual)}</b></div><div><span>Moves Adherence</span><b>${adhPct(movesAdh.actual)}</b></div></div><div class="chips">${chips||'<span class="chip">No active Global KPI results</span>'}</div>`;return card;
     }
-    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>(b.score||0)-(a.score||0)).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
+    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>Number(b.hasData)-Number(a.hasData)||(Number.isFinite(b.score)?b.score:-Infinity)-(Number.isFinite(a.score)?a.score:-Infinity)||a.term.localeCompare(b.term)).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
+    requestAnimationFrame(()=>{renderPareto("calls");renderPareto("moves");});
   }
 
   function renderGlobalReportViewLegacy(){
