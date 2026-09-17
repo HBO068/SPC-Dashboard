@@ -597,6 +597,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   }
   @media print{.sqdc-toolbar,.sqdc-tabs{display:none!important}.sqdc-letter-board{grid-template-columns:repeat(5,1fr)!important}.sqdc-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-letter-card,.sqdc-panel{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  /* SQDCP final presentation: period filters above scope tabs and reference-style day letters. */
+  .sqdc-period-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0 0 12px}.sqdc-filter-field{display:grid;gap:4px}.sqdc-filter-field label{font:700 9px var(--display);letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint)}.sqdc-filter-field select{min-width:115px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:12px var(--mono)}
+  .sqdc-scope-toolbar{margin-bottom:16px}.sqdc-letter-board{align-items:stretch}.sqdc-letter-card{min-height:310px}.sqdc-letter-card h3{text-transform:uppercase;color:var(--text-muted);font-size:11px;letter-spacing:.6px}.sqdc-glyph{grid-template-columns:repeat(6,30px);grid-auto-rows:30px;gap:3px;justify-content:center;max-width:none;margin-top:18px}.sqdc-cell{aspect-ratio:auto;width:30px;height:30px;border-radius:7px;font-size:10px}.sqdc-cell.contour{background:#A8ACAE;border:1px solid #A8ACAE;color:transparent}.sqdc-cell.used.white{background:#F0F2F2;border-color:#D5DADB;color:#7A858A}.sqdc-cell.green{background:#82C64A;border-color:#82C64A;color:#fff}.sqdc-cell.red{background:#E64C55;border-color:#E64C55;color:#fff}.sqdc-cell.amber{background:#F6C34A;border-color:#F6C34A;color:#fff}
+  .sqdc-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.sqdc-chart-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;break-inside:avoid}.sqdc-chart-card h3{font:700 13px var(--display);margin:0 0 8px}.sqdc-chart-box{height:270px;position:relative}.sqdc-chart-box canvas{width:100%!important;height:100%!important}.sqdc-drill{margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft)}
+  @media(max-width:1150px){.sqdc-glyph{grid-template-columns:repeat(6,26px);grid-auto-rows:26px}.sqdc-cell{width:26px;height:26px}.sqdc-letter-card{min-height:275px}}@media(max-width:850px){.sqdc-chart-grid{grid-template-columns:1fr}.sqdc-letter-board{grid-template-columns:repeat(2,1fr)}}
+  @media print{.sqdc-period-toolbar,.sqdc-scope-toolbar{display:none!important}.sqdc-chart-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-chart-box{height:210px!important}.sqdc-letter-card{min-height:230px!important}.sqdc-glyph{grid-template-columns:repeat(6,22px);grid-auto-rows:22px}.sqdc-cell{width:22px;height:22px;font-size:7px}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -714,6 +720,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="sidebar-btn" id="uploadBtn" title="Upload one of the Tangier terminal Excel files">⬆ <span>Upload Tangier Data</span></button>
       <button class="sidebar-btn" id="uploadPanamaBtn" title="Upload Panama's weekly terminal KPI file">⬆ <span>Upload Panama Data</span></button>
       <button class="sidebar-btn" id="uploadAdherenceBtn" title="Upload the Gateways/Hubs Adherence export files">⬆ <span>Upload Adherence Data</span></button>
+      <button class="sidebar-btn" id="sqdcRegistryBtn" title="Open the SQDC daily data registry">▤ <span>SQDC Data Registry</span></button>
       <button class="sidebar-btn" id="eraseDataBtn" title="Permanently erase a terminal's uploaded data" style="display:none; color:#F2483D;">🗑 <span>Erase Data</span></button>
     </div>
     <input type="file" id="uploadFile" accept=".xlsm,.xlsx" style="display:none;">
@@ -724,6 +731,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     <div class="sidebar-section" id="settingsRolesSection">
       <div class="sidebar-section-title">Settings &amp; Roles</div>
       <button class="sidebar-btn" id="settingsBtn" title="Settings">⚙ <span>Settings</span></button>
+      <button class="sidebar-btn" id="sqdcHistoryBtn" title="Open the SQDC audit history">◷ <span>SQDC History</span></button>
       <button class="sidebar-btn" id="rolesBtn" title="Manage user roles" style="display:none;">👤 <span>Roles</span></button>
       <button class="sidebar-btn" id="exportConfigBtn" title="Download the current KPI catalog and settings for every terminal" style="display:none;">📋 <span>Export Config</span></button>
     </div>
@@ -1487,6 +1495,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const terminalDashboardsBtn = document.getElementById("terminalDashboardsBtn");
   const adherenceDashboardsBtn = document.getElementById("adherenceDashboardsBtn");
   const sqdcDashboardsBtn = document.getElementById("sqdcDashboardsBtn");
+  const sqdcRegistryBtn = document.getElementById("sqdcRegistryBtn");
+  const sqdcHistoryBtn = document.getElementById("sqdcHistoryBtn");
   function closeUtilityViews(){
     showingSettings=false; showingRoles=false; showingErase=false;
     document.getElementById("settingsView").style.display="none";
@@ -1500,6 +1510,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(!canViewSqdc())return;
       if(currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="sqdc"; currentTerminal="SQDC";
+      sqdcScope="global";
     }else if(kind==="adherence"){
       if(!hasAdherenceDashboardAccess())return;
       if(currentTerminal!=="ADHERENCE") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
@@ -1519,12 +1530,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
   adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
-  sqdcDashboardsBtn.onclick=()=>openDashboardArea("sqdc");
+  sqdcDashboardsBtn.onclick=()=>{sqdcPage="dashboard";openDashboardArea("sqdc");};
+  sqdcRegistryBtn.onclick=()=>{sqdcPage="registry";openDashboardArea("sqdc");};
+  sqdcHistoryBtn.onclick=()=>{sqdcPage="history";openDashboardArea("sqdc");};
   function updateSidebarContext(){
     const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
     terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC");
     adherenceDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="ADHERENCE");
-    sqdcDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC");
+    sqdcDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="dashboard");
+    sqdcRegistryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="registry");
+    sqdcHistoryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="history");
     const printWrap=document.getElementById("printWrap");
     if(printWrap)printWrap.style.display=dashboardVisible?"":"none";
     [document.getElementById("settingsBtn"),document.getElementById("rolesBtn"),document.getElementById("eraseDataBtn")].forEach(b=>{if(b)b.classList.remove("active");});
@@ -2379,7 +2394,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const mainSectionTabsEl = document.getElementById("mainSectionTabs");
   const globalSubTabsEl = document.getElementById("globalSubTabs");
   function buildMainNav(){
-    if(currentTerminal==="SQDC"){
+    if(currentTerminal==="SQDC" || currentTerminal==="ADHERENCE"){
       mainSectionTabsEl.style.display="none";
       globalSubTabsEl.style.display="none";
       return;
@@ -4139,6 +4154,61 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function renderSqdcView(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";document.getElementById("brandTitle").textContent=sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const months=sqdcMonthOptions();if(!sqdcMonth||!months.includes(sqdcMonth))sqdcMonth=months[months.length-1];if(!sqdcDay||sqdcDay>sqdcDaysInMonth(sqdcMonth))sqdcDay=Math.min(new Date().getUTCDate(),sqdcDaysInMonth(sqdcMonth));const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap"><div class="sqdc-toolbar no-print"><div class="sqdc-tabs">${Object.keys(SQDC_SCOPE_LABELS).map(k=>`<button data-sqdc-scope="${k}" class="${sqdcScope===k?'active':''}">${SQDC_SCOPE_LABELS[k]} ${k==='global'?'SQDCP':'SQDC'}</button>`).join("")}</div><select id="sqdcMonth">${months.map(m=>`<option ${m===sqdcMonth?'selected':''}>${m}</option>`).join("")}</select><select id="sqdcDay">${Array.from({length:sqdcDaysInMonth(sqdcMonth)},(_,i)=>`<option value="${i+1}" ${i+1===Number(sqdcDay)?'selected':''}>Day ${i+1}</option>`).join("")}</select><div class="sqdc-tabs"><button data-sqdc-page="dashboard" class="${sqdcPage==='dashboard'?'active':''}">Dashboard</button><button data-sqdc-page="registry" class="${sqdcPage==='registry'?'active':''}">Data Registry</button><button data-sqdc-page="history" class="${sqdcPage==='history'?'active':''}">History</button></div></div>${sqdcPage==='dashboard'?sqdcDashboardHtml():sqdcPage==='registry'?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.querySelectorAll("[data-sqdc-page]").forEach(b=>b.onclick=()=>{sqdcPage=b.dataset.sqdcPage;render();});document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));}
   function renderSqdcSettingsView(){const year=settingsYear||String(new Date().getUTCFullYear()),t=sqdcTargets(year),editable=CURRENT_USER&&["admin","management"].includes(CURRENT_USER.role),sv=document.getElementById("settingsView");sv.innerHTML=`<div class="settings-wrap">${settingsTabsHtml()}<div class="section-label">Special SQDCP targets</div><div class="settings-toolbar"><select id="sqdcSettingsYear">${Array.from({length:13},(_,i)=>2020+i).map(y=>`<option ${String(y)===String(year)?'selected':''}>${y}</option>`).join("")}</select></div><div class="sqdc-panel"><div class="sqdc-metrics">${[["nearMiss","Near Miss maximum"],["deviations","Deviations maximum"],["safetyWalk","Safety Walks per day"],["workInstructions","Work Instructions per day"],["processConfirmations","Process Confirmations per day"]].map(([k,l])=>`<label>${l}<input type="number" min="0" step="1" class="sqdc-input" data-sqdc-config="${k}" value="${t[k]}" ${editable?'':'disabled'}></label>`).join("")}</div>${editable?'<button class="btn-primary" id="saveSqdcConfig" style="margin-top:14px">Save SQDCP Targets</button>':''}<span id="sqdcConfigStatus" class="sqdc-status"></span></div></div>`;wireSettingsTabs();document.getElementById("sqdcSettingsYear").onchange=e=>{settingsYear=e.target.value;renderSettingsView();};const save=document.getElementById("saveSqdcConfig");if(save)save.onclick=async()=>{SQDC_CONFIG.targetsByYear=SQDC_CONFIG.targetsByYear||{};SQDC_CONFIG.targetsByYear[year]={};document.querySelectorAll("[data-sqdc-config]").forEach(i=>SQDC_CONFIG.targetsByYear[year][i.dataset.sqdcConfig]=Math.max(0,Number(i.value)||0));await storageSet("sqdc_config",JSON.stringify(SQDC_CONFIG),true);document.getElementById("sqdcConfigStatus").textContent=" ✓ Saved.";};}
 
+  // Final SQDC presentation layer. This replaces only SQDC UI functions; Performance and
+  // Adherence calculations remain isolated and unchanged.
+  let sqdcYear=null;
+  let sqdcCharts={};
+  const SQDC_MASKS_FINAL={
+    S:["g####g","######","###ggg","#####g","g#####","ggg###","######","g####g"],
+    Q:["g####g","######","##gg##","##gg##","##gg##","##gg##","######","g###g#"],
+    C:["g####g","######","###ggg","###ggg","###ggg","###ggg","###ggg","######","g####g"],
+    D:["#####g","######","###g##","###g##","###g##","###g##","######","#####g"],
+    P:["#####g","######","##gg##","######","#####g","###ggg","###ggg","###ggg","###ggg"]
+  };
+  function sqdcResolvePeriod(){
+    const options=sqdcMonthOptions(),years=[...new Set(options.map(m=>m.slice(0,4)))].sort();
+    if(!sqdcYear||!years.includes(String(sqdcYear)))sqdcYear=years[years.length-1]||String(new Date().getUTCFullYear());
+    const months=options.filter(m=>m.startsWith(sqdcYear+"-"));
+    if(!sqdcMonth||!months.includes(sqdcMonth))sqdcMonth=months[months.length-1]||`${sqdcYear}-01`;
+    sqdcDay=Math.max(1,Math.min(Number(sqdcDay)||1,sqdcDaysInMonth(sqdcMonth)));
+    return {options,years,months};
+  }
+  function sqdcPeriodToolbarHtml(){
+    const model=sqdcResolvePeriod(),monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `<div class="sqdc-period-toolbar no-print">
+      <div class="sqdc-filter-field"><label>Year</label><select id="sqdcYear">${model.years.map(y=>`<option value="${y}" ${y===sqdcYear?'selected':''}>${y}</option>`).join("")}</select></div>
+      <div class="sqdc-filter-field"><label>Month</label><select id="sqdcMonth">${model.months.map(m=>`<option value="${m}" ${m===sqdcMonth?'selected':''}>${monthNames[Number(m.slice(5,7))-1]}</option>`).join("")}</select></div>
+      <div class="sqdc-filter-field"><label>Day</label><select id="sqdcDay">${Array.from({length:sqdcDaysInMonth(sqdcMonth)},(_,i)=>`<option value="${i+1}" ${i+1===Number(sqdcDay)?'selected':''}>${i+1}</option>`).join("")}</select></div>
+    </div>`;
+  }
+  function sqdcScopeToolbarHtml(){return `<div class="sqdc-tabs sqdc-scope-toolbar no-print">${Object.keys(SQDC_SCOPE_LABELS).map(k=>`<button data-sqdc-scope="${k}" class="${sqdcScope===k?'active':''}">${SQDC_SCOPE_LABELS[k]} ${k==='global'?'SQDCP':'SQDC'}</button>`).join("")}</div>`;}
+  sqdcLetterHtml=function(letter){
+    let day=1,cells="";const maxDay=sqdcDaysInMonth(sqdcMonth);
+    SQDC_MASKS_FINAL[letter].forEach(row=>[...row].forEach(c=>{
+      if(c==="#"&&day<=31){
+        const inMonth=day<=maxDay,shown=inMonth&&day<=Number(sqdcDay),date=`${sqdcMonth}-${String(day).padStart(2,"0")}`,st=shown?sqdcStatus(sqdcScope,date,letter):null;
+        cells+=`<div class="sqdc-cell used ${shown?(st||'white'):'white'}" title="${date}: ${st||'No data / not selected'}">${inMonth?day:''}</div>`;day++;
+      }else if(c==="g"||c==="#")cells+='<div class="sqdc-cell contour"></div>';
+      else cells+='<div class="sqdc-cell"></div>';
+    }));
+    const labels={S:"Safety incidents",Q:"Quality incidents",C:"Cost",D:"Delivery",P:"People"},st=sqdcStatus(sqdcScope,sqdcSelectedDate(),letter);
+    return `<div class="sqdc-letter-card"><h3>${labels[letter]}</h3><div class="sqdc-glyph">${cells}</div><div class="sqdc-summary">Selected day: <b class="${st||''}">${st?st.toUpperCase():"NO DATA"}</b></div></div>`;
+  };
+  function sqdcDailySeries(fn){const n=Math.min(Number(sqdcDay),sqdcDaysInMonth(sqdcMonth)),labels=[],values=[];for(let d=1;d<=n;d++){const date=`${sqdcMonth}-${String(d).padStart(2,"0")}`;labels.push(String(d));values.push(fn(date));}return {labels,values};}
+  function sqdcManualTotal(date,field,globalField){if(globalField){const v=sqdcGlobalEntry(date)[field];return v===""||v===null||v===undefined?null:Number(v)||0;}const vals=sqdcTerms().map(t=>sqdcTerminalEntry(date,t)[field]);if(vals.some(v=>v===""||v===null||v===undefined))return null;return vals.reduce((a,v)=>a+(Number(v)||0),0);}
+  function sqdcDestroyCharts(){Object.values(sqdcCharts).forEach(c=>{try{c.destroy();}catch(e){}});sqdcCharts={};}
+  const sqdcParetoLabels={id:"sqdcParetoLabels",afterDatasetsDraw(chart){const ctx=chart.ctx;ctx.save();ctx.font="700 10px IBM Plex Mono, monospace";ctx.textAlign="center";chart.data.datasets.forEach((ds,di)=>{const meta=chart.getDatasetMeta(di);meta.data.forEach((point,i)=>{const v=Number(ds.data[i]);if(!Number.isFinite(v))return;ctx.fillStyle=ds.type==="line"?"#F5C518":chartTickColor();ctx.textBaseline="bottom";ctx.fillText(ds.type==="line"?Math.round(v)+"%":fmtNum(v,1),point.x,Math.max(12,point.y-5));});});ctx.restore();}};
+  function sqdcLineChart(id,labels,datasets,percent){const canvas=document.getElementById(id);if(!canvas)return;sqdcCharts[id]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:chartTickColor(),boxWidth:18}},tooltip:{callbacks:percent?{label:c=>`${c.dataset.label}: ${Number(c.raw).toFixed(1)}%`}:{} }},scales:{x:{ticks:{color:chartTickColor()},grid:{color:chartGridColor()}},y:{beginAtZero:true,max:percent?100:undefined,ticks:{color:chartTickColor(),callback:v=>percent?v+"%":v},grid:{color:chartGridColor()}}}}});}
+  function sqdcParetoChart(id,items,labelFn,valueFn){const canvas=document.getElementById(id);if(!canvas)return;const clean=items.map(x=>({label:labelFn(x),value:Math.max(0,Number(valueFn(x))||0)})).filter(x=>x.value>0),total=clean.reduce((a,x)=>a+x.value,0),cum=[];let running=0;clean.forEach(x=>{running+=x.value;cum.push(total?running/total*100:0);});sqdcCharts[id]=new Chart(canvas.getContext("2d"),{data:{labels:clean.map(x=>x.label),datasets:[{type:"bar",label:"Impact",data:clean.map(x=>x.value),backgroundColor:"rgba(242,72,61,.72)",borderColor:"#F2483D",borderWidth:1,yAxisID:"y"},{type:"line",label:"Cumulative %",data:cum,borderColor:"#F5C518",backgroundColor:"#F5C518",pointRadius:3,tension:.25,yAxisID:"y1"}]},plugins:[sqdcParetoLabels],options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:18}},plugins:{legend:{labels:{color:chartTickColor(),boxWidth:18}}},scales:{x:{ticks:{color:chartTickColor(),maxRotation:35,minRotation:0},grid:{display:false}},y:{beginAtZero:true,ticks:{color:chartTickColor()},grid:{color:chartGridColor()}},y1:{beginAtZero:true,max:100,position:"right",ticks:{color:"#F5C518",callback:v=>v+"%"},grid:{drawOnChartArea:false}}}}});}
+  function sqdcQualityParetoItems(date){return sqdcScope==="global"?Object.keys(SQDC_POOLS).map(p=>({p,q:sqdcQuality(p,date)})).filter(x=>x.q.actual!==null).sort((a,b)=>(b.q.target-b.q.actual)-(a.q.target-a.q.actual)).slice(0,3):sqdcWorstQuality(sqdcScope,date);}
+  function sqdcDeliveryParetoItems(date){return sqdcScope==="global"?Object.keys(SQDC_POOLS).map(p=>({p,d:sqdcDelivery(p,date)})).filter(x=>x.d.actual!==null).sort((a,b)=>a.d.actual-b.d.actual).slice(0,3):sqdcDelivery(sqdcScope,date).misses.slice(0,3);}
+  function sqdcCostParetoItems(date){return sqdcTerms().map(term=>({term,value:Number(sqdcTerminalEntry(date,term).deviations)||0})).sort((a,b)=>b.value-a.value).slice(0,3);}
+  function sqdcQualityDrill(date){if(sqdcScope!=="global"){const items=sqdcWorstQuality(sqdcScope,date);return items.map(x=>`<b>${adhEsc(sqdcVesselName(x.r))} · ${x.term}</b><div class="sqdc-kpis">${sqdcKpiImpacts(x,date).map(k=>`<span>${adhEsc(k.name)} · ${fmtNum(k.impact*100,1)}</span>`).join("")||'<span>No missed weighted SQDC KPI</span>'}</div>`).join("")||'<div class="empty-note">No vessels for the selected day.</div>';}return sqdcQualityParetoItems(date).map(x=>`<h3>${SQDC_SCOPE_LABELS[x.p]}</h3>${sqdcWorstQuality(x.p,date).map(v=>`<b>${adhEsc(sqdcVesselName(v.r))} · ${v.term}</b><div class="sqdc-kpis">${sqdcKpiImpacts(v,date).map(k=>`<span>${adhEsc(k.name)} · ${fmtNum(k.impact*100,1)}</span>`).join("")||'<span>No missed weighted SQDC KPI</span>'}</div>`).join("")||'<div class="empty-note">No vessels</div>'}`).join("");}
+  function sqdcDeliveryDrill(date){const groups=sqdcScope==="global"?sqdcDeliveryParetoItems(date).map(x=>({name:SQDC_SCOPE_LABELS[x.p],items:x.d.misses.slice(0,3)})):[{name:sqdcScopeLabel(),items:sqdcDelivery(sqdcScope,date).misses.slice(0,3)}];return groups.map(g=>`<h3>${g.name}</h3>${g.items.map(x=>`<div class="sqdc-pareto-row"><span>${adhEsc(sqdcVesselName(x.r))} · ${x.term}</span><div class="sqdc-bar"><i style="width:${Math.min(100,Math.max(3,x.gap*10))}%"></i></div><b>${fmtNum(x.gap,2)} h</b></div>`).join("")||'<div class="empty-note">No vessels below target.</div>'}`).join("");}
+  sqdcDashboardHtml=function(){const date=sqdcSelectedDate(),letters=sqdcScope==="global"?["S","Q","C","D","P"]:["S","Q","C","D"],d=sqdcDelivery(sqdcScope,date);return `<div class="sqdc-letter-board">${letters.map(sqdcLetterHtml).join("")}</div><div class="section-label">Selected day overview</div><div class="sqdc-metrics"><div class="sqdc-metric"><small>Calls</small><b>${fmtNum(d.calls)}</b></div><div class="sqdc-metric"><small>Moves</small><b>${fmtNum(d.moves)}</b></div><div class="sqdc-metric"><small>Delivery actual</small><b>${d.actual==null?'—':(d.actual*100).toFixed(1)+'%'}</b></div><div class="sqdc-metric"><small>Delivery target</small><b>${d.target==null?'—':(d.target*100).toFixed(1)+'%'}</b></div></div><div class="section-label">Daily trends</div><div class="sqdc-chart-grid"><div class="sqdc-chart-card"><h3>Safety · Near Misses${sqdcScope==='global'?' & Safety Walks':''}</h3><div class="sqdc-chart-box"><canvas id="sqdcSafetyChart"></canvas></div></div><div class="sqdc-chart-card"><h3>Quality · Score versus target</h3><div class="sqdc-chart-box"><canvas id="sqdcQualityTrend"></canvas></div></div><div class="sqdc-chart-card"><h3>Cost · Deviations</h3><div class="sqdc-chart-box"><canvas id="sqdcCostChart"></canvas></div></div><div class="sqdc-chart-card"><h3>Delivery · Planning Turnaround adherence</h3><div class="sqdc-chart-box"><canvas id="sqdcDeliveryTrend"></canvas></div></div>${sqdcScope==='global'?'<div class="sqdc-chart-card"><h3>People · Work Instructions & Process Confirmations</h3><div class="sqdc-chart-box"><canvas id="sqdcPeopleChart"></canvas></div></div>':''}</div><div class="section-label">Pareto analysis</div><div class="sqdc-chart-grid"><div class="sqdc-chart-card"><h3>Quality Pareto</h3><div class="sqdc-chart-box"><canvas id="sqdcQualityPareto"></canvas></div><div class="sqdc-drill">${sqdcQualityDrill(date)}</div></div><div class="sqdc-chart-card"><h3>Delivery Pareto</h3><div class="sqdc-chart-box"><canvas id="sqdcDeliveryPareto"></canvas></div><div class="sqdc-drill">${sqdcDeliveryDrill(date)}</div></div><div class="sqdc-chart-card"><h3>Cost Pareto · Most impacting terminals</h3><div class="sqdc-chart-box"><canvas id="sqdcCostPareto"></canvas></div></div></div>`;};
+  function renderSqdcCharts(){sqdcDestroyCharts();const date=sqdcSelectedDate(),base=sqdcDailySeries(()=>0),near=sqdcDailySeries(d=>sqdcManualTotal(d,"nearMiss",false)),safety=sqdcDailySeries(d=>sqdcManualTotal(d,"safetyWalk",true));sqdcLineChart("sqdcSafetyChart",base.labels,[{label:"Near Misses",data:near.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.15)",tension:.25,fill:true},{label:"Safety Walks",data:sqdcScope==='global'?safety.values:[],borderColor:"#3ED17E",backgroundColor:"#3ED17E",tension:.25,hidden:sqdcScope!=="global"}],false);const q=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.actual}),qt=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.target});sqdcLineChart("sqdcQualityTrend",q.labels,[{label:"Actual Score",data:q.values,borderColor:"#4FA6E8",backgroundColor:"rgba(79,166,232,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:qt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:true}],false);const cost=sqdcDailySeries(d=>sqdcManualTotal(d,"deviations",false));sqdcLineChart("sqdcCostChart",cost.labels,[{label:"Deviations",data:cost.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.14)",tension:.25,fill:true}],false);const del=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.actual==null?null:x.actual*100}),delt=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.target==null?null:x.target*100});sqdcLineChart("sqdcDeliveryTrend",del.labels,[{label:"Delivery adherence",data:del.values,borderColor:"#2FD9BE",backgroundColor:"rgba(47,217,190,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:delt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,spanGaps:true}],true);if(sqdcScope==="global"){const wi=sqdcDailySeries(d=>sqdcManualTotal(d,"workInstructions",true)),pc=sqdcDailySeries(d=>sqdcManualTotal(d,"processConfirmations",true));sqdcLineChart("sqdcPeopleChart",wi.labels,[{label:"Work Instructions",data:wi.values,borderColor:"#4FA6E8",backgroundColor:"#4FA6E8",tension:.25},{label:"Process Confirmations",data:pc.values,borderColor:"#2FD9BE",backgroundColor:"#2FD9BE",tension:.25}],false);}const qi=sqdcQualityParetoItems(date),di=sqdcDeliveryParetoItems(date),ci=sqdcCostParetoItems(date);sqdcParetoChart("sqdcQualityPareto",qi,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,x.q.target-x.q.actual):x.gap);sqdcParetoChart("sqdcDeliveryPareto",di,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,1-x.d.actual):x.gap);sqdcParetoChart("sqdcCostPareto",ci,x=>x.term,x=>x.value);}
+  renderSqdcView=function(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";sqdcResolvePeriod();document.getElementById("brandTitle").textContent=sqdcPage==="registry"?"SQDC Data Registry":sqdcPage==="history"?"SQDC History":sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap">${sqdcPeriodToolbarHtml()}${sqdcPage!=="history"?sqdcScopeToolbarHtml():""}${sqdcPage==="dashboard"?sqdcDashboardHtml():sqdcPage==="registry"?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.getElementById("sqdcYear").onchange=e=>{sqdcYear=e.target.value;sqdcMonth=null;sqdcDay=1;render();};document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));if(sqdcPage==="dashboard")requestAnimationFrame(renderSqdcCharts);else sqdcDestroyCharts();};
+
   // ---------- Settings view ----------
   const settingsBtn = document.getElementById("settingsBtn");
   let showingSettings = false;
@@ -5240,8 +5310,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
     document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
     sqdcDashboardsBtn.style.display = canViewSqdc() ? "" : "none";
-    document.getElementById("dataAnalysisSection").style.display = can("upload") ? "" : "none";
-    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"));
+    sqdcRegistryBtn.style.display = canViewSqdc() ? "" : "none";
+    sqdcHistoryBtn.style.display = canViewSqdc() ? "" : "none";
+    document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdc()) ? "" : "none";
+    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload") || canViewSqdc());
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
     if (allowed){
