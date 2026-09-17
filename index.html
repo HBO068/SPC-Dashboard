@@ -1486,14 +1486,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function openDashboardArea(kind){
     closeUtilityViews();
     if(kind==="adherence"){
+      if(!hasAdherenceDashboardAccess())return;
       if(currentTerminal!=="ADHERENCE") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
       if(currentType==="daily")currentType="weekly";
+      const allowedScopes=allowedAdherenceScopeValues();
+      if(!allowedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=allowedScopes[0]||"global";
       adherencePage="overview";
     }else if(currentTerminal==="ADHERENCE"){
       currentSection=lastPerformanceView.section;
       currentGlobalSub=lastPerformanceView.globalSub;
       currentTerminal=lastPerformanceView.terminal;
+      normalizeCurrentViewForRole();
     }
     currentPeriod=null;
     buildMainNav(); buildTerminalPills(); updateTabs(); render();
@@ -2354,17 +2358,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const mainSectionTabsEl = document.getElementById("mainSectionTabs");
   const globalSubTabsEl = document.getElementById("globalSubTabs");
   function buildMainNav(){
-    const restricted = !!allowedTerminalsFor(CURRENT_USER);
-    if (restricted){
-      // Terminal-scoped accounts only ever see their own terminal — no Global structure at all.
+    const singleTerminal=CURRENT_USER&&CURRENT_USER.role==="terminal";
+    if (singleTerminal){
+      // Existing one-terminal accounts retain their established direct terminal view.
       mainSectionTabsEl.style.display = "none";
       globalSubTabsEl.style.display = "none";
       currentSection = "tangier";
+      currentTerminal = TERM_CODES.includes(CURRENT_USER.terminal) ? CURRENT_USER.terminal : (TERM_CODES[0]||CURRENT_USER.terminal);
       return;
     }
+    const tangierAllowed=canViewTerminalDashboardScope("tangier"),panamaAllowed=canViewTerminalDashboardScope("panama");
+    const legacySupervisor=CURRENT_USER&&CURRENT_USER.role==="supervisor"&&(!CURRENT_USER.terminalDashboards||typeof CURRENT_USER.terminalDashboards!=="object");
+    const fullGlobal=!!CURRENT_USER&&(["admin","management","data_analyst"].includes(CURRENT_USER.role)||legacySupervisor);
+    const mainItems=[];
+    if(fullGlobal||panamaAllowed)mainItems.push(["global","Global"]);
+    if(tangierAllowed)mainItems.push(["tangier","SPC Tangier"]);
+    if(!mainItems.length){mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";return;}
+    if(!mainItems.some(x=>x[0]===currentSection))currentSection=mainItems[0][0];
+    if(currentSection==="tangier"&&!TERM_CODES.includes(currentTerminal))currentTerminal=TERM_CODES[0]||"ALL";
     mainSectionTabsEl.style.display = "";
     mainSectionTabsEl.innerHTML = "";
-    [["global","Global"],["tangier","SPC Tangier"]].forEach(([key,label]) => {
+    mainItems.forEach(([key,label]) => {
       const btn = document.createElement("button");
       btn.className = "tab" + (currentSection===key ? " active" : "");
       btn.textContent = label;
@@ -2374,7 +2388,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (key === "tangier"){
           currentTerminal = TERM_CODES[0] || "ALL";
         } else {
-          currentTerminal = currentGlobalSub === "spcs" ? "SPCS" : currentGlobalSub === "adherence" ? "ADHERENCE" : currentGlobalSub === "panama" ? "PANAMA" : "ALL";
+          const permittedSubs=[];if(fullGlobal)permittedSubs.push("spcs");if(panamaAllowed)permittedSubs.push("panama");if(fullGlobal&&tangierAllowed)permittedSubs.push("tangier");
+          if(!permittedSubs.includes(currentGlobalSub))currentGlobalSub=permittedSubs[0]||"panama";
+          currentTerminal = currentGlobalSub === "spcs" ? "SPCS" : currentGlobalSub === "panama" ? "PANAMA" : "ALL";
           if ((currentTerminal === "SPCS" || currentTerminal === "ADHERENCE" || currentTerminal === "PANAMA") && currentType === "daily") currentType = "weekly";
         }
         buildMainNav(); buildTerminalPills(); updateTabs(); render();
@@ -2385,7 +2401,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (currentSection === "global"){
       globalSubTabsEl.style.display = "";
       globalSubTabsEl.innerHTML = "";
-      [["spcs","SPCs","SPCS",null],["panama","All Panama Terminals","PANAMA","PANAMA_FLAG"],["tangier","All Tangier Terminals","ALL","MOROCCO"]].forEach(([key,label,termVal,flagKey]) => {
+      const subItems=[];
+      if(fullGlobal)subItems.push(["spcs","SPCs","SPCS",null]);
+      if(panamaAllowed)subItems.push(["panama","All Panama Terminals","PANAMA","PANAMA_FLAG"]);
+      if(fullGlobal&&tangierAllowed)subItems.push(["tangier","All Tangier Terminals","ALL","MOROCCO"]);
+      if(!subItems.some(x=>x[0]===currentGlobalSub)){currentGlobalSub=subItems[0]?subItems[0][0]:"panama";currentTerminal=currentGlobalSub==="spcs"?"SPCS":currentGlobalSub==="panama"?"PANAMA":"ALL";}
+      subItems.forEach(([key,label,termVal,flagKey]) => {
         const btn = document.createElement("button");
         btn.className = "tab" + (currentGlobalSub===key ? " active" : "");
         const flagHtml = (flagKey && ASSETS.flags[flagKey]) ? `<img src="${ASSETS.flags[flagKey]}" style="width:16px;height:11px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : '';
@@ -2408,8 +2429,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const terminalRow = document.getElementById("terminalRow");
   function buildTerminalPills(){
     terminalRow.innerHTML = "";
-    const restricted = !!allowedTerminalsFor(CURRENT_USER);
-    if (currentSection !== "tangier" && !restricted){
+    if (currentSection !== "tangier" || !canViewTerminalDashboardScope("tangier")){
       terminalRow.style.display = "none";
       return;
     }
@@ -3693,10 +3713,49 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const ROLE_LABELS = {
     admin: "Admin (full access)",
     management: "Management (view all, edit targets/weights)",
-    supervisor: "Supervisor (view all, read-only)",
+    supervisor: "Supervisor (custom read-only access)",
+    regional_access: "Regional Access (Tangier read-only)",
     data_analyst: "Data Analyst (view all, can upload)",
     terminal: "Terminal (view one terminal only)"
   };
+
+  function roleArray(value){ return Array.isArray(value) ? value.map(String).filter(Boolean) : []; }
+  function supervisorModuleAccess(user,module,scope){
+    if(!user||user.role!=="supervisor")return false;
+    const field=module==="adherence"?"adherenceDashboards":"terminalDashboards", config=user[field];
+    // Existing Supervisor documents pre-date configurable access. Preserve their former view-all access
+    // until an administrator explicitly updates them through the new Roles editor.
+    if(!config||typeof config!=="object")return true;
+    return config[scope]===true;
+  }
+  function canViewTerminalDashboardScope(scope,user=CURRENT_USER){
+    if(!user)return false;
+    if(["admin","management","data_analyst"].includes(user.role))return true;
+    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal",scope);
+    if(user.role==="terminal"||user.role==="regional_access")return scope==="tangier";
+    return false;
+  }
+  function canViewAdherenceScope(scope,user=CURRENT_USER){
+    if(!user)return false;
+    if(["admin","management","data_analyst"].includes(user.role))return true;
+    if(user.role==="terminal")return true; // Existing single-terminal access remains unchanged.
+    if(user.role!=="supervisor")return false;
+    const tangier=supervisorModuleAccess(user,"adherence","tangier"),panama=supervisorModuleAccess(user,"adherence","panama");
+    if(scope==="global")return tangier&&panama;
+    return scope==="tangier"?tangier:scope==="panama"?panama:false;
+  }
+  function hasTerminalDashboardAccess(user=CURRENT_USER){return canViewTerminalDashboardScope("tangier",user)||canViewTerminalDashboardScope("panama",user);}
+  function hasAdherenceDashboardAccess(user=CURRENT_USER){return canViewAdherenceScope("tangier",user)||canViewAdherenceScope("panama",user)||canViewAdherenceScope("global",user);}
+  function roleTerminalPool(){
+    return [...TERM_CODES.map(code=>({code,scope:"Tangier"})),...PANAMA_TERM_CODES.map(code=>({code,scope:"Panama"}))];
+  }
+  function configuredRegions(){
+    const fixed=(typeof ADHERENCE_REGION_OPTIONS!=="undefined"?ADHERENCE_REGION_OPTIONS:[]),used=(typeof ADHERENCE_REGISTRY!=="undefined"?ADHERENCE_REGISTRY:[]).map(r=>String(r.region||"").trim()).filter(Boolean);
+    return [...new Set(fixed.concat(used).filter(r=>r.toLowerCase()!=="oceania"))].sort((a,b)=>a.localeCompare(b));
+  }
+  function roleCheckGrid(name,items,formatter){
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px 14px;">${items.map(item=>`<label style="display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;"><input type="checkbox" name="${name}" value="${adhEsc(item.value)}"> ${formatter(item)}</label>`).join("")}</div>`;
+  }
 
   async function fetchAllRoles(){
     if (!FIREBASE_AVAILABLE) return [];
@@ -3710,6 +3769,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   async function renderRolesView(){
     const rv = document.getElementById("rolesView");
+    const terminalItems=roleTerminalPool().map(x=>({value:x.code,label:`${x.code} · ${x.scope}`}));
+    const regionItems=configuredRegions().map(region=>({value:region,label:region}));
     rv.innerHTML = `
       <div class="settings-wrap">
         <div class="section-label">User Roles</div>
@@ -3723,8 +3784,30 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           </select>
           <button class="btn-primary" id="addRoleBtn">Add / Update</button>
         </div>
+        <div id="supervisorRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
+          <h3>Supervisor — Read-only and Print/Export</h3>
+          <div class="adh-upload-grid" style="margin-top:10px;">
+            <div><div class="section-label">Terminal Dashboards</div>
+              <label style="margin-right:16px;"><input type="checkbox" id="supTerminalTangier"> Tangier</label>
+              <label><input type="checkbox" id="supTerminalPanama"> Panama</label>
+            </div>
+            <div><div class="section-label">Adherence Dashboards</div>
+              <label style="margin-right:16px;"><input type="checkbox" id="supAdherenceTangier"> Tangier</label>
+              <label><input type="checkbox" id="supAdherencePanama"> Panama</label>
+              <div class="adh-note" style="margin-top:7px;">Global Adherence appears only when both are selected.</div>
+            </div>
+          </div>
+          <div class="section-label" style="margin-top:14px;">Accessible Terminals</div>
+          ${roleCheckGrid("supervisorTerminal",terminalItems,item=>adhEsc(item.label))}
+        </div>
+        <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
+          <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
+          <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
+          <div class="section-label" style="margin-top:12px;">Accessible Regions</div>
+          ${roleCheckGrid("regionalRegion",regionItems,item=>adhEsc(item.label))}
+        </div>
         <table class="settings-table">
-          <thead><tr><th>Email</th><th>Role</th><th>Terminal</th><th></th></tr></thead>
+          <thead><tr><th>Email</th><th>Role</th><th>Access</th><th></th></tr></thead>
           <tbody id="rolesTbody"><tr><td colspan="4" style="color:var(--text-faint);">Loading…</td></tr></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
@@ -3734,17 +3817,37 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     `;
     const typeSel = document.getElementById("newRoleType");
     const termSel = document.getElementById("newRoleTerminal");
-    typeSel.onchange = () => { termSel.style.display = typeSel.value === "terminal" ? "" : "none"; };
+    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions");
+    const updateRoleFields=()=>{
+      termSel.style.display = typeSel.value === "terminal" ? "" : "none";
+      supervisorOptions.style.display=typeSel.value==="supervisor"?"":"none";
+      regionalOptions.style.display=typeSel.value==="regional_access"?"":"none";
+    };
+    typeSel.onchange = updateRoleFields; updateRoleFields();
     document.getElementById("addRoleBtn").onclick = async () => {
       const email = document.getElementById("newRoleEmail").value.trim().toLowerCase();
       const role = typeSel.value;
       if (!email){ alert("Enter an email first."); return; }
       const doc = { role };
       if (role === "terminal") doc.terminal = termSel.value;
+      if(role==="supervisor"){
+        doc.terminals=[...document.querySelectorAll('input[name="supervisorTerminal"]:checked')].map(x=>x.value);
+        doc.terminalDashboards={tangier:document.getElementById("supTerminalTangier").checked,panama:document.getElementById("supTerminalPanama").checked};
+        doc.adherenceDashboards={tangier:document.getElementById("supAdherenceTangier").checked,panama:document.getElementById("supAdherencePanama").checked};
+        if(!doc.terminals.length){alert("Select at least one terminal for this Supervisor.");return;}
+        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama){alert("Select at least one Terminal Dashboard or Adherence Dashboard scope.");return;}
+        const selectedTangier=doc.terminals.some(code=>TERM_CODES.includes(code)),selectedPanama=doc.terminals.some(code=>PANAMA_TERM_CODES.includes(code));
+        if((doc.terminalDashboards.tangier||doc.adherenceDashboards.tangier)&&!selectedTangier){alert("Select at least one Tangier terminal for the enabled Tangier access.");return;}
+        if((doc.terminalDashboards.panama||doc.adherenceDashboards.panama)&&!selectedPanama){alert("Select at least one Panama terminal for the enabled Panama access.");return;}
+      }
+      if(role==="regional_access"){
+        doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
+        if(!doc.regions.length){alert("Select at least one region for Regional Access.");return;}
+      }
       try {
         await db.collection("roles").doc(email).set(doc);
         document.getElementById("newRoleEmail").value = "";
-        renderRolesTable();
+        renderRolesView();
       } catch(e){ alert("Could not save role: " + e.message); }
     };
     renderRolesTable();
@@ -3760,13 +3863,35 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     roles.forEach(r => {
       const tr = document.createElement("tr");
+      let access="—";
+      if(r.role==="terminal")access=r.terminal||"—";
+      else if(r.role==="supervisor"){
+        const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
+        access=`Terminals: ${roleArray(r.terminals).join(", ")||"All (legacy)"}<br>Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
+      }else if(r.role==="regional_access")access=`Tangier regions: ${roleArray(r.regions).join(", ")||"None"}`;
+      else access="All";
       tr.innerHTML = `
         <td class="kpi-key-cell">${r.email}</td>
         <td>${ROLE_LABELS[r.role] || r.role}</td>
-        <td>${r.terminal || "—"}</td>
-        <td><button class="btn-secondary" data-email="${r.email}">Remove</button></td>
+        <td>${access}</td>
+        <td><button class="btn-secondary role-edit-btn" data-edit-email="${r.email}">Edit</button> <button class="btn-secondary role-remove-btn" data-email="${r.email}">Remove</button></td>
       `;
       tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll("button[data-edit-email]").forEach(btn=>{
+      btn.onclick=()=>{
+        const r=roles.find(x=>x.email===btn.dataset.editEmail);if(!r)return;
+        document.getElementById("newRoleEmail").value=r.email;document.getElementById("newRoleType").value=r.role;document.getElementById("newRoleType").dispatchEvent(new Event("change"));
+        if(r.role==="terminal")document.getElementById("newRoleTerminal").value=r.terminal||TERM_CODES[0]||"";
+        if(r.role==="supervisor"){
+          document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
+          const selected=new Set(roleArray(r.terminals));document.querySelectorAll('input[name="supervisorTerminal"]').forEach(x=>x.checked=!r.terminals||selected.has(x.value));
+        }
+        if(r.role==="regional_access"){
+          const selected=new Set(roleArray(r.regions));document.querySelectorAll('input[name="regionalRegion"]').forEach(x=>x.checked=selected.has(x.value));
+        }
+        document.getElementById("newRoleEmail").scrollIntoView({behavior:"smooth",block:"center"});
+      };
     });
     tbody.querySelectorAll("button[data-email]").forEach(btn => {
       btn.onclick = async () => {
@@ -4695,9 +4820,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
   };
   function destroyAdherenceCharts(){Object.values(adherenceCharts).forEach(c=>{if(c&&typeof c.destroy==="function")c.destroy();});adherenceCharts={};if(adherenceChartObserver){adherenceChartObserver.disconnect();adherenceChartObserver=null;}}
+  function allowedAdherenceScopeValues(user=CURRENT_USER){
+    if(!user)return [];
+    if(["admin","management","data_analyst","terminal"].includes(user.role))return ["global","tangier","panama"];
+    if(user.role!=="supervisor")return [];
+    const tangier=canViewAdherenceScope("tangier",user),panama=canViewAdherenceScope("panama",user),out=[];
+    if(tangier&&panama)out.push("global");
+    if(tangier)out.push("tangier");
+    if(panama)out.push("panama");
+    return out;
+  }
   function adhAuthorizedRows(rows){
-    if(!CURRENT_USER||CURRENT_USER.role!=="terminal")return rows;
-    return rows.filter(r=>String(r.reg.pod||"").trim()===String(CURRENT_USER.terminal||"").trim());
+    if(!CURRENT_USER)return [];
+    if(CURRENT_USER.role==="terminal")return rows.filter(r=>String(r.reg.pod||"").trim()===String(CURRENT_USER.terminal||"").trim());
+    if(CURRENT_USER.role==="supervisor"&&Array.isArray(CURRENT_USER.terminals)){
+      const allowed=new Set(roleArray(CURRENT_USER.terminals));
+      return rows.filter(r=>allowed.has(String(r.reg.pod||"").trim()));
+    }
+    return rows;
   }
   function adhDisplayRows(scope,metric,type,period){return adhAuthorizedRows(adhRowsFor(scope,metric,type,period));}
   function adhVisualStatus(summary){
@@ -4827,6 +4967,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return `<tr><td>${adhEsc(r.reg.displayName||r.reg.biName)}${fallback}</td><td>${r.reg.pod?adhEsc(r.reg.pod):"—"}</td><td>${r.reg.region?adhEsc(r.reg.region):"—"}</td><td class="right">${fmtNum(r.total,0)}</td><td class="right">${fmtNum(r.planned,0)}</td><td class="right">${adhPct(r.target)}</td><td class="right">${r.expected==null?"—":fmtNum(r.expected,1)}</td><td class="right"><span class="pill ${callStatus}">${adhPct(r.adherence)}</span></td><td class="right">${fmtNum(m.total||0,0)}</td><td class="right">${fmtNum(m.planned||0,0)}</td><td class="right">${adhPct(m.target)}</td><td class="right">${m.expected==null?"—":fmtNum(m.expected,1)}</td><td class="right"><span class="pill ${moveStatus}">${adhPct(m.adherence)}</span></td></tr>`;
   }
   function adhOverview(){
+    const permittedScopes=allowedAdherenceScopeValues();
+    if(!permittedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=permittedScopes[0]||"global";
     const years=[...new Set(ADHERENCE_ACTUAL.flatMap(r=>[r.year,String(r.week||"").slice(0,4)]).filter(Boolean).concat(Object.keys(ADHERENCE_SCOPE)))].sort();
     if(!adherenceYear||!years.includes(String(adherenceYear))) adherenceYear=years[years.length-1]||String(new Date().getUTCFullYear());
     const periods=adhPeriods(adherenceYear,currentType); if(!adherencePeriod||!periods.includes(adherencePeriod)) adherencePeriod=periods[periods.length-1]||String(adherenceYear);
@@ -4835,7 +4977,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const summaryScopes=adhSummaryScopes(),filteredScopes=adhFilteredScopes();
     const terminalOptions=allRows.map(r=>`<option value="${adhEsc(r.reg.id)}" ${adherenceTerminalFilter===r.reg.id?"selected":""}>${adhEsc(r.reg.displayName||r.reg.biName)}${r.reg.pod?` (${adhEsc(r.reg.pod)})`:""}${r.reg.region?` · ${adhEsc(r.reg.region)}`:""}</option>`).join("");
     const issueParts=[];if(unmapped.length)issueParts.push(`<span class="adh-unmapped">Unmapped BI terminals excluded:</span> ${unmapped.map(adhEsc).join(", ")}.`);
-    return `<div class="adh-toolbar print-filters"><div class="adh-field"><label>Scope</label><select id="adhScopeFilter"><option value="global" ${adherenceScopeFilter==="global"?"selected":""}>Global</option><option value="tangier" ${adherenceScopeFilter==="tangier"?"selected":""}>Tangier</option><option value="panama" ${adherenceScopeFilter==="panama"?"selected":""}>Panama</option></select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
+    const scopeLabels={global:"Global",tangier:"Tangier",panama:"Panama"};
+    return `<div class="adh-toolbar print-filters"><div class="adh-field"><label>Scope</label><select id="adhScopeFilter">${permittedScopes.map(scope=>`<option value="${scope}" ${adherenceScopeFilter===scope?"selected":""}>${scopeLabels[scope]}</option>`).join("")}</select></div><div class="adh-field"><label>Year</label><select id="adhYear">${years.map(y=>`<option ${String(adherenceYear)===y?"selected":""}>${y}</option>`).join("")}</select></div><div class="adh-field"><label>${PERIOD_TYPES[currentType].label} period</label><select id="adhPeriod">${periods.map(p=>`<option ${adherencePeriod===p?"selected":""}>${p}</option>`).join("")}</select></div></div>
       ${issueParts.length&&(!CURRENT_USER||CURRENT_USER.role!=="terminal")?`<div class="adh-status watch">${issueParts.join(" ")} <button class="btn-secondary no-print" id="adhOpenTerminalSettings">Open Settings → Adherence Terminals</button></div>`:""}
       <section class="adh-section"><h2>A · Calls Adherence %</h2><div class="adh-summary-grid${summaryScopes.length===2?" two":""}">${summaryScopes.map(x=>adhSummaryCard(x[0],x[1],"calls",periods)).join("")}</div></section>
       <section class="adh-section"><h2>B · Moves Adherence %</h2><div class="adh-summary-grid${summaryScopes.length===2?" two":""}">${summaryScopes.map(x=>adhSummaryCard(x[0],x[1],"moves",periods)).join("")}</div></section>
@@ -4930,13 +5073,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   // ---------- Roles ----------
-  // roles/{email} documents look like: { role: "admin"|"management"|"supervisor"|"data_analyst"|"terminal", terminal: "SEGOT" (only for role=terminal) }
-  let CURRENT_USER = null; // { email, role, terminal }
+  // roles/{email}: standard roles; terminal:{terminal}; supervisor:{terminals,terminalDashboards,adherenceDashboards}; regional_access:{regions}.
+  let CURRENT_USER = null;
   function can(action){
     if (!CURRENT_USER) return false;
     const r = CURRENT_USER.role;
     if (r === "admin") return true;
-    if (action === "viewAll") return r === "management" || r === "supervisor" || r === "data_analyst";
+    if (action === "viewAll") return r === "management" || r === "data_analyst";
     if (action === "upload") return r === "data_analyst";
     if (action === "editSettings") return r === "management";
     if (action === "manageRoles") return false; // admin-only, handled by the r==="admin" check above
@@ -4945,7 +5088,36 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function allowedTerminalsFor(user){
     if (!user) return [];
     if (user.role === "terminal") return [user.terminal];
+    if(user.role==="supervisor")return Array.isArray(user.terminals)?roleArray(user.terminals):null;
+    if(user.role==="regional_access"){
+      const regions=new Set(roleArray(user.regions));
+      return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
+    }
     return null; // null = all terminals
+  }
+  function allowedPanamaTerminalsFor(user){
+    if(!user)return [];
+    if(user.role==="supervisor"&&Array.isArray(user.terminals))return roleArray(user.terminals).filter(code=>PANAMA_TERM_CODES.includes(code));
+    if(["admin","management","data_analyst"].includes(user.role)||(user.role==="supervisor"&&!Array.isArray(user.terminals)))return null;
+    return [];
+  }
+  function setFirstAllowedPerformanceView(){
+    if(canViewTerminalDashboardScope("tangier")&&TERM_CODES.length){currentSection="tangier";currentTerminal=TERM_CODES[0];currentGlobalSub="tangier";return true;}
+    if(canViewTerminalDashboardScope("panama")){currentSection="global";currentGlobalSub="panama";currentTerminal="PANAMA";if(currentType==="daily")currentType="weekly";return true;}
+    return false;
+  }
+  function normalizeCurrentViewForRole(){
+    if(currentTerminal==="ADHERENCE"){
+      if(hasAdherenceDashboardAccess())return;
+      if(setFirstAllowedPerformanceView())return;
+    }
+    const currentScope=currentTerminal==="PANAMA"?"panama":"tangier";
+    if(hasTerminalDashboardAccess()&&canViewTerminalDashboardScope(currentScope))return;
+    if(setFirstAllowedPerformanceView())return;
+    if(hasAdherenceDashboardAccess()){
+      currentSection="global";currentGlobalSub="adherence";currentTerminal="ADHERENCE";currentType=currentType==="daily"?"weekly":currentType;
+      const scopes=allowedAdherenceScopeValues();adherenceScopeFilter=scopes[0]||"global";
+    }
   }
 
   async function fetchRole(email){
@@ -4969,7 +5141,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     rolesBtn.style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("exportConfigBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("eraseDataBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
-    document.getElementById("adherenceDashboardsBtn").style.display = (can("viewAll") || (CURRENT_USER && CURRENT_USER.role==="terminal")) ? "" : "none";
+    terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
+    document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
     document.getElementById("dataAnalysisSection").style.display = can("upload") ? "" : "none";
     const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"));
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
@@ -4977,6 +5150,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (allowed){
       TERM_CODES = TERM_CODES.filter(t => allowed.includes(t));
     }
+    const allowedPanama=allowedPanamaTerminalsFor(CURRENT_USER);
+    if(allowedPanama)PANAMA_TERM_CODES=PANAMA_TERM_CODES.filter(t=>allowedPanama.includes(t));
   }
 
   // ---------- Init ----------
@@ -5013,11 +5188,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     initSettingsDefaults();
     await loadAllSettingsFromStorage();
     applyRoleToUI();
+    normalizeCurrentViewForRole();
     buildMainNav();
     buildTerminalPills();
-    if (allowedTerminalsFor(CURRENT_USER) && TERM_CODES.length){
-      currentTerminal = TERM_CODES[0]; // terminal-scoped users land straight on their own terminal
-    }
     render();
   }
 
