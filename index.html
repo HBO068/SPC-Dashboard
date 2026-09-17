@@ -410,6 +410,62 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .chip{ font-size:10px; font-family:var(--mono); padding:3px 7px; border-radius:6px; background:var(--panel-2); color:var(--text-muted); border:1px solid var(--border-soft);}
   .chip.good{ color:var(--teal); border-color:rgba(47,217,190,0.3);} .chip.watch{ color:var(--amber); border-color:rgba(245,169,63,0.3);} .chip.bad{ color:var(--coral); border-color:rgba(242,96,75,0.3);}
 
+  /* Global → SPCs report: compact executive overview plus full terminal analysis. */
+  .gr-report{ display:flex; flex-direction:column; gap:4px; }
+  .gr-summary-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+  .gr-summary-card,.gr-region-card,.gr-analysis-card,.gr-pareto-card,.gr-terminal-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+  }
+  .gr-summary-card{ padding:16px 18px; min-height:100px; }
+  .gr-summary-card .label{ color:var(--text-faint); font-size:10.5px; font-weight:700; letter-spacing:.55px; text-transform:uppercase; }
+  .gr-summary-card .value{ margin-top:7px; font:600 25px var(--mono); }
+  .gr-summary-card .meta{ margin-top:4px; color:var(--text-muted); font-size:10.5px; }
+  .gr-region-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .gr-region-card{ padding:17px 18px; }
+  .gr-region-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; font-weight:700; }
+  .gr-region-score{ font:600 16px var(--mono); }
+  .gr-region-stats,.gr-core-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 18px; }
+  .gr-stat{ border-top:1px solid var(--border-soft); padding-top:8px; min-width:0; }
+  .gr-stat .label{ color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:.35px; }
+  .gr-stat .value{ color:var(--text); font:600 14px var(--mono); margin-top:3px; }
+  .gr-analysis-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .gr-analysis-card,.gr-pareto-card{ padding:16px 18px; }
+  .gr-card-title{ font-weight:700; font-size:13px; margin-bottom:13px; }
+  .gr-dist-row{ display:grid; grid-template-columns:116px 1fr 30px; align-items:center; gap:9px; margin:9px 0; }
+  .gr-dist-name{ color:var(--text-muted); font-size:10.5px; white-space:nowrap; }
+  .gr-dist-track{ height:7px; background:var(--border-soft); border-radius:999px; overflow:hidden; }
+  .gr-dist-fill{ display:block; height:100%; border-radius:999px; min-width:0; }
+  .gr-dist-count{ text-align:right; font:600 11px var(--mono); }
+  .gr-pareto-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .gr-pareto-row{ display:grid; grid-template-columns:minmax(110px,1.4fr) minmax(90px,2fr) 72px; align-items:center; gap:9px; margin:9px 0; }
+  .gr-pareto-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:10.5px; }
+  .gr-pareto-track{ height:15px; border-radius:4px; overflow:hidden; background:var(--border-soft); }
+  .gr-pareto-bar{ height:100%; background:var(--coral); opacity:.82; border-radius:4px; }
+  .gr-pareto-value{ text-align:right; color:var(--text); font:600 10.5px var(--mono); }
+  .gr-terminal-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .gr-terminal-card{ padding:16px 18px; cursor:pointer; transition:border-color .15s ease,transform .15s ease; }
+  .gr-terminal-card:hover{ border-color:var(--teal); transform:translateY(-2px); }
+  .gr-terminal-head{ display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:12px; }
+  .gr-terminal-name{ display:flex; align-items:center; min-width:0; font-weight:700; }
+  .gr-terminal-name span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gr-score-badge{ flex-shrink:0; border-radius:999px; padding:4px 9px; font:600 11px var(--mono); }
+  .gr-kpi-list{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:12px; }
+  .gr-kpi-item{ display:flex; justify-content:space-between; gap:10px; border:1px solid var(--border-soft); border-left:3px solid currentColor; border-radius:7px; padding:7px 8px; min-width:0; background:var(--panel-2); }
+  .gr-kpi-item .name{ color:var(--text-muted); font-size:10px; line-height:1.25; }
+  .gr-kpi-item .reading{ flex-shrink:0; text-align:right; font:600 10px var(--mono); }
+  .gr-kpi-item .target{ display:block; color:var(--text-faint); font-size:8.5px; margin-top:2px; }
+  .gr-empty{ color:var(--text-faint); font-size:11px; padding:8px 0; }
+  @media (max-width:1150px){ .gr-summary-grid{ grid-template-columns:repeat(3,1fr); } .gr-analysis-grid{ grid-template-columns:1fr; } }
+  @media (max-width:760px){ .gr-summary-grid,.gr-region-grid,.gr-pareto-grid,.gr-terminal-grid{ grid-template-columns:1fr; } }
+
+  @media print{
+    .gr-summary-card,.gr-region-card,.gr-analysis-card,.gr-pareto-card,.gr-terminal-card{ break-inside:avoid; page-break-inside:avoid; }
+    .gr-summary-grid{ grid-template-columns:repeat(5,1fr); }
+    .gr-analysis-grid{ grid-template-columns:repeat(3,1fr); }
+    .gr-region-grid,.gr-pareto-grid,.gr-terminal-grid{ grid-template-columns:repeat(2,1fr); }
+    .gr-terminal-card:hover{ transform:none; }
+  }
+
   /* Detail view (single terminal) */
   .hero-row{ display:grid; grid-template-columns: 300px 1fr; gap:28px; margin-bottom: 10px;}
   @media (max-width:900px){ .hero-row{ grid-template-columns:1fr; } }
@@ -3068,11 +3124,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!periods.length){gv.innerHTML='<div class="empty-note">No data uploaded yet for either Tangier or Panama.</div>';return;}
 
     gv.innerHTML=`<div class="settings-toolbar" style="margin-bottom:16px;"><select id="globalReportPeriodSelect" class="priority-input" style="width:auto;"></select></div>
-      <div class="section-label">NETWORK ROLLUP — GLOBAL · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grGlobalCards"></div>
-      <div class="section-label">NETWORK ROLLUP — TANGIER · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grTangierCards"></div>
-      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grTangierGrid"></div>
-      <div class="section-label">NETWORK ROLLUP — PANAMA · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grPanamaCards"></div>
-      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grPanamaGrid"></div>`;
+      <div class="gr-report">
+        <div class="section-label">GLOBAL OVERVIEW · ${globalReportPeriod||'–'}</div><div class="gr-summary-grid" id="grGlobalSummary"></div>
+        <div class="section-label">REGIONAL OVERVIEW</div><div class="gr-region-grid" id="grRegionalOverview"></div>
+        <div class="section-label">TERMINAL ANALYSIS</div><div class="gr-analysis-grid"><div class="gr-analysis-card"><div class="gr-card-title">Score Distribution</div><div id="grScoreDistribution"></div></div><div class="gr-analysis-card"><div class="gr-card-title">Calls Adherence Distribution</div><div id="grCallsDistribution"></div></div><div class="gr-analysis-card"><div class="gr-card-title">Moves Adherence Distribution</div><div id="grMovesDistribution"></div></div></div>
+        <div class="section-label">GAP DRIVERS · PARETO</div><div class="gr-pareto-grid"><div class="gr-pareto-card"><div class="gr-card-title">Calls Gap Drivers</div><div id="grCallsPareto"></div></div><div class="gr-pareto-card"><div class="gr-card-title">Moves Gap Drivers</div><div id="grMovesPareto"></div></div></div>
+        <div class="section-label">TERMINAL PERFORMANCE · TANGIER</div><div class="gr-terminal-grid" id="grTangierGrid"></div>
+        <div class="section-label">TERMINAL PERFORMANCE · PANAMA</div><div class="gr-terminal-grid" id="grPanamaGrid"></div>
+      </div>`;
     const select=document.getElementById("globalReportPeriodSelect");periods.forEach(p=>{const o=document.createElement("option");o.value=p;o.textContent=p;select.appendChild(o);});select.value=globalReportPeriod;select.onchange=()=>{globalReportPeriod=select.value;renderGlobalReportView();};
 
     const year=String(globalReportPeriod||"").slice(0,4),summaries=[];
@@ -3084,40 +3143,60 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       ensurePanamaSettings(term);const hasData=!!panamaGroup&&panamaGroup.weekKeys.some(wk=>PANAMA_DATA[term]&&PANAMA_DATA[term][wk]),scoreKpi=panamaKpiCatalog().find(k=>k.key==="Overall Score");
       summaries.push({kind:"panama",term,assignment:adhAssignmentForPod(term,"Panama"),moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Overall Score"):null,scoreTarget:effectiveTarget(scoreKpi,term,year),scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[]});
     });
+    summaries.forEach(s=>{s.callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod);s.movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);});
     const grouped={global:summaries,tangier:summaries.filter(x=>x.assignment==="Tangier"),panama:summaries.filter(x=>x.assignment==="Panama")};
     const avg=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
-    const totals=items=>({moves:items.reduce((a,x)=>a+x.moves,0),calls:items.reduce((a,x)=>a+x.calls,0),score:avg(items.map(x=>x.score)),scoreTarget:avg(items.map(x=>x.scoreTarget))});
-    const adherence={
-      globalCalls:adhScopeSummary("global","calls",currentType,globalReportPeriod),globalMoves:adhScopeSummary("global","moves",currentType,globalReportPeriod),
-      tangierCalls:adhScopeSummary("tangier","calls",currentType,globalReportPeriod),tangierMoves:adhScopeSummary("tangier","moves",currentType,globalReportPeriod),
-      panamaCalls:adhScopeSummary("panama","calls",currentType,globalReportPeriod),panamaMoves:adhScopeSummary("panama","moves",currentType,globalReportPeriod)
-    };
+    const totals=items=>({moves:items.reduce((a,x)=>a+x.moves,0),calls:items.reduce((a,x)=>a+x.calls,0),score:avg(items.map(x=>x.score)),scoreTarget:avg(items.map(x=>x.scoreTarget)),reporting:items.filter(x=>Number.isFinite(x.score)||x.calls||x.moves).length});
+    const adherence={globalCalls:adhScopeSummary("global","calls",currentType,globalReportPeriod),globalMoves:adhScopeSummary("global","moves",currentType,globalReportPeriod),tangierCalls:adhScopeSummary("tangier","calls",currentType,globalReportPeriod),tangierMoves:adhScopeSummary("tangier","moves",currentType,globalReportPeriod),panamaCalls:adhScopeSummary("panama","calls",currentType,globalReportPeriod),panamaMoves:adhScopeSummary("panama","moves",currentType,globalReportPeriod)};
     function targetStatus(value,target){if(!Number.isFinite(value)||!Number.isFinite(target)||target===0)return null;if(value>=target)return"good";return value>=target*.85?"watch":"bad";}
-    function fillCards(id,items,callAdh,moveAdh){
-      const t=totals(items),el=document.getElementById(id),cards=[
-        {label:"Total Moves",value:fmtNum(t.moves)},{label:"Total Calls",value:fmtNum(t.calls)},
-        {label:"Score",value:Number.isFinite(t.score)?fmtNum(t.score,2):"–",target:t.scoreTarget,targetText:Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"–"},
-        {label:"SPC Calls Adherence",value:adhPct(callAdh.actual),target:callAdh.target,targetText:adhPct(callAdh.target)},
-        {label:"SPC Moves Adherence",value:adhPct(moveAdh.actual),target:moveAdh.target,targetText:adhPct(moveAdh.target)}];
-      cards.forEach(c=>{const d=document.createElement("div"),numeric=c.value==="–"?null:(c.label.includes("Adherence")?c.label.includes("Calls")?callAdh.actual:moveAdh.actual:t.score),st=c.target===undefined?null:targetStatus(numeric,c.target);d.className="ncard";d.innerHTML=`<div class="label">${c.label}</div><div class="value" ${st?`style="color:${STATUS_COLOR[st]}"`:""}>${c.value}</div><div class="sub">${c.target===undefined?"":`Target: ${c.targetText}`}</div>`;el.appendChild(d);});
-    }
-    fillCards("grGlobalCards",grouped.global,adherence.globalCalls,adherence.globalMoves);
-    fillCards("grTangierCards",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves);
-    fillCards("grPanamaCards",grouped.panama,adherence.panamaCalls,adherence.panamaMoves);
+    function colorFor(value,target){const st=targetStatus(value,target);return st?STATUS_COLOR[st]:"var(--text-faint)";}
+    function summaryCard(label,value,meta,color){return`<div class="gr-summary-card"><div class="label">${label}</div><div class="value"${color?` style="color:${color}"`:""}>${value}</div><div class="meta">${meta||"&nbsp;"}</div></div>`;}
 
+    const gt=totals(grouped.global),globalEl=document.getElementById("grGlobalSummary");
+    globalEl.innerHTML=summaryCard("Global SPC Score",Number.isFinite(gt.score)?fmtNum(gt.score,2):"—",`Target ${Number.isFinite(gt.scoreTarget)?fmtNum(gt.scoreTarget,2):"—"} · ${gt.reporting}/${grouped.global.length} terminals reporting`,colorFor(gt.score,gt.scoreTarget))+summaryCard("Total Moves",fmtNum(gt.moves),"Across active reporting terminals")+summaryCard("Total Calls",fmtNum(gt.calls),"Across active reporting terminals")+summaryCard("Calls Adherence",adhPct(adherence.globalCalls.actual),`Target ${adhPct(adherence.globalCalls.target)}`,colorFor(adherence.globalCalls.actual,adherence.globalCalls.target))+summaryCard("Moves Adherence",adhPct(adherence.globalMoves.actual),`Target ${adhPct(adherence.globalMoves.target)}`,colorFor(adherence.globalMoves.actual,adherence.globalMoves.target));
+
+    const regionEl=document.getElementById("grRegionalOverview");
+    [["SPC Tangier",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves],["SPC Panama",grouped.panama,adherence.panamaCalls,adherence.panamaMoves]].forEach(([label,items,ca,ma])=>{
+      const t=totals(items),scoreColor=colorFor(t.score,t.scoreTarget),d=document.createElement("div");d.className="gr-region-card";
+      d.innerHTML=`<div class="gr-region-head"><span>${label}</span><span class="gr-region-score" style="color:${scoreColor}">${Number.isFinite(t.score)?fmtNum(t.score,2):"—"} / ${Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"—"}</span></div><div class="gr-region-stats"><div class="gr-stat"><div class="label">Moves</div><div class="value">${fmtNum(t.moves)}</div></div><div class="gr-stat"><div class="label">Calls</div><div class="value">${fmtNum(t.calls)}</div></div><div class="gr-stat"><div class="label">Calls Adherence</div><div class="value" style="color:${colorFor(ca.actual,ca.target)}">${adhPct(ca.actual)}</div></div><div class="gr-stat"><div class="label">Moves Adherence</div><div class="value" style="color:${colorFor(ma.actual,ma.target)}">${adhPct(ma.actual)}</div></div></div>`;regionEl.appendChild(d);
+    });
+
+    function distributionRows(items,valueFn,targetFn){
+      const buckets=[{name:"At / above target",status:"good",count:0},{name:"Near target",status:"watch",count:0},{name:"Critical",status:"bad",count:0},{name:"No data",status:"none",count:0}];
+      items.forEach(item=>{const v=valueFn(item),t=targetFn(item),st=targetStatus(v,t);const bucket=buckets.find(b=>b.status===(st||"none"));bucket.count++;});
+      const max=Math.max(1,...buckets.map(b=>b.count));
+      return buckets.map(b=>`<div class="gr-dist-row"><span class="gr-dist-name">${b.name}</span><span class="gr-dist-track"><span class="gr-dist-fill" style="width:${b.count/max*100}%;background:${b.status==="none"?"var(--text-faint)":STATUS_COLOR[b.status]}"></span></span><span class="gr-dist-count">${b.count}</span></div>`).join("");
+    }
+    document.getElementById("grScoreDistribution").innerHTML=distributionRows(grouped.global,s=>s.score,s=>s.scoreTarget);
+    document.getElementById("grCallsDistribution").innerHTML=distributionRows(grouped.global,s=>s.callsAdh.actual,s=>s.callsAdh.target);
+    document.getElementById("grMovesDistribution").innerHTML=distributionRows(grouped.global,s=>s.movesAdh.actual,s=>s.movesAdh.target);
+
+    function renderPareto(id,metric){
+      const rows=adhRowsFor("global",metric,currentType,globalReportPeriod).map(r=>({name:r.reg.displayName||r.reg.biName,gap:Number.isFinite(r.expected)?Math.max(0,r.expected-r.planned):0})).filter(r=>r.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,10),el=document.getElementById(id);
+      if(!rows.length){el.innerHTML='<div class="gr-empty">No positive gap to target for this period.</div>';return;}
+      const total=rows.reduce((a,r)=>a+r.gap,0),max=rows[0].gap;let cumulative=0;
+      el.innerHTML=rows.map(r=>{cumulative+=r.gap;return`<div class="gr-pareto-row" title="${adhEsc(r.name)}"><span class="gr-pareto-name">${adhEsc(r.name)}</span><span class="gr-pareto-track"><span class="gr-pareto-bar" style="width:${r.gap/max*100}%"></span></span><span class="gr-pareto-value">${fmtNum(r.gap,metric==="calls"?0:0)} · ${Math.round(cumulative/total*100)}%</span></div>`;}).join("");
+    }
+    renderPareto("grCallsPareto","calls");renderPareto("grMovesPareto","moves");
+
+    function kpiItem(k,v,t,st,term,formatter){
+      const color=STATUS_COLOR[st]||"var(--text-faint)",value=formatter(k,v,term),target=t==null||!Number.isFinite(t)?"—":formatter(k,t,term);
+      return`<div class="gr-kpi-item" style="color:${color}"><span class="name">${adhEsc(kpiPeriodLabel(k.key))}</span><span class="reading">${value}<span class="target">Target ${target}</span></span></div>`;
+    }
+    function coreStats(s){return`<div class="gr-core-grid"><div class="gr-stat"><div class="label">Moves</div><div class="value">${fmtNum(s.moves)}</div></div><div class="gr-stat"><div class="label">Calls</div><div class="value">${fmtNum(s.calls)}</div></div><div class="gr-stat"><div class="label">Calls Adherence</div><div class="value" style="color:${colorFor(s.callsAdh.actual,s.callsAdh.target)}">${adhPct(s.callsAdh.actual)}</div></div><div class="gr-stat"><div class="label">Moves Adherence</div><div class="value" style="color:${colorFor(s.movesAdh.actual,s.movesAdh.target)}">${adhPct(s.movesAdh.actual)}</div></div></div>`;}
+    function terminalHeader(s,showScore){
+      const color=colorFor(s.score,s.scoreTarget),flag=ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:7px;">`:"";
+      return`<div class="gr-terminal-head"><div class="gr-terminal-name">${flag}<span>${adhEsc(adhDisplayNameForPod(s.term))}</span></div>${showScore?`<span class="gr-score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):"—"} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):"—"}</span>`:""}</div>`;
+    }
     function standardCard(s){
-      const status=statusFor(s.scoreKpi,s.score,s.scoreTarget,s.term),color=STATUS_COLOR[status],callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
-      const showScore=effectiveActive(s.term,"Vessel Score","global",year);
-      const chips=activeSortedKpis(s.term,"global",year).map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,s.term)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
+      const showScore=effectiveActive(s.term,"Vessel Score","global",year),items=activeSortedKpis(s.term,"global",year).map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year);return kpiItem(k,v,t,statusFor(k,v,t,s.term),s.term,(x,n,term)=>fmtVal(x,n,term));}).join("");
+      const card=document.createElement("div");card.className="gr-terminal-card";card.innerHTML=terminalHeader(s,showScore)+coreStats(s)+`<div class="gr-kpi-list">${items||'<div class="gr-empty">No additional Global KPIs enabled.</div>'}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
     }
     function panamaCard(s){
-      const status=targetStatus(s.score,s.scoreTarget),color=STATUS_COLOR[status]||"var(--text-faint)",callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
-      const showScore=effectiveActive(s.term,"Overall Score","global",year);
-      const chips=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${panamaFmt(k.key,v)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;return card;
+      const showScore=effectiveActive(s.term,"Overall Score","global",year),items=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year);return kpiItem(k,v,t,statusFor(k,v,t,s.term),s.term,(x,n)=>panamaFmt(x.key,n));}).join("");
+      const card=document.createElement("div");card.className="gr-terminal-card";card.innerHTML=terminalHeader(s,showScore)+coreStats(s)+`<div class="gr-kpi-list">${items||'<div class="gr-empty">No additional Global KPIs enabled.</div>'}</div>`;return card;
     }
-    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>(b.score||0)-(a.score||0)).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
+    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>(Number.isFinite(a.score)?a.score:Infinity)-(Number.isFinite(b.score)?b.score:Infinity)||adhDisplayNameForPod(a.term).localeCompare(adhDisplayNameForPod(b.term))).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
   }
 
   function renderGlobalReportViewLegacy(){
