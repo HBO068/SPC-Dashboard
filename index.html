@@ -410,62 +410,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .chip{ font-size:10px; font-family:var(--mono); padding:3px 7px; border-radius:6px; background:var(--panel-2); color:var(--text-muted); border:1px solid var(--border-soft);}
   .chip.good{ color:var(--teal); border-color:rgba(47,217,190,0.3);} .chip.watch{ color:var(--amber); border-color:rgba(245,169,63,0.3);} .chip.bad{ color:var(--coral); border-color:rgba(242,96,75,0.3);}
 
-  /* Global → SPCs report: compact executive overview plus full terminal analysis. */
-  .gr-report{ display:flex; flex-direction:column; gap:4px; }
-  .gr-summary-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
-  .gr-summary-card,.gr-region-card,.gr-analysis-card,.gr-pareto-card,.gr-terminal-card{
-    background:var(--panel); border:1px solid var(--border); border-radius:14px;
-  }
-  .gr-summary-card{ padding:16px 18px; min-height:100px; }
-  .gr-summary-card .label{ color:var(--text-faint); font-size:10.5px; font-weight:700; letter-spacing:.55px; text-transform:uppercase; }
-  .gr-summary-card .value{ margin-top:7px; font:600 25px var(--mono); }
-  .gr-summary-card .meta{ margin-top:4px; color:var(--text-muted); font-size:10.5px; }
-  .gr-region-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-  .gr-region-card{ padding:17px 18px; }
-  .gr-region-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; font-weight:700; }
-  .gr-region-score{ font:600 16px var(--mono); }
-  .gr-region-stats,.gr-core-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 18px; }
-  .gr-stat{ border-top:1px solid var(--border-soft); padding-top:8px; min-width:0; }
-  .gr-stat .label{ color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:.35px; }
-  .gr-stat .value{ color:var(--text); font:600 14px var(--mono); margin-top:3px; }
-  .gr-analysis-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-  .gr-analysis-card,.gr-pareto-card{ padding:16px 18px; }
-  .gr-card-title{ font-weight:700; font-size:13px; margin-bottom:13px; }
-  .gr-dist-row{ display:grid; grid-template-columns:116px 1fr 30px; align-items:center; gap:9px; margin:9px 0; }
-  .gr-dist-name{ color:var(--text-muted); font-size:10.5px; white-space:nowrap; }
-  .gr-dist-track{ height:7px; background:var(--border-soft); border-radius:999px; overflow:hidden; }
-  .gr-dist-fill{ display:block; height:100%; border-radius:999px; min-width:0; }
-  .gr-dist-count{ text-align:right; font:600 11px var(--mono); }
-  .gr-pareto-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-  .gr-pareto-row{ display:grid; grid-template-columns:minmax(110px,1.4fr) minmax(90px,2fr) 72px; align-items:center; gap:9px; margin:9px 0; }
-  .gr-pareto-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:10.5px; }
-  .gr-pareto-track{ height:15px; border-radius:4px; overflow:hidden; background:var(--border-soft); }
-  .gr-pareto-bar{ height:100%; background:var(--coral); opacity:.82; border-radius:4px; }
-  .gr-pareto-value{ text-align:right; color:var(--text); font:600 10.5px var(--mono); }
-  .gr-terminal-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-  .gr-terminal-card{ padding:16px 18px; cursor:pointer; transition:border-color .15s ease,transform .15s ease; }
-  .gr-terminal-card:hover{ border-color:var(--teal); transform:translateY(-2px); }
-  .gr-terminal-head{ display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:12px; }
-  .gr-terminal-name{ display:flex; align-items:center; min-width:0; font-weight:700; }
-  .gr-terminal-name span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .gr-score-badge{ flex-shrink:0; border-radius:999px; padding:4px 9px; font:600 11px var(--mono); }
-  .gr-kpi-list{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:12px; }
-  .gr-kpi-item{ display:flex; justify-content:space-between; gap:10px; border:1px solid var(--border-soft); border-left:3px solid currentColor; border-radius:7px; padding:7px 8px; min-width:0; background:var(--panel-2); }
-  .gr-kpi-item .name{ color:var(--text-muted); font-size:10px; line-height:1.25; }
-  .gr-kpi-item .reading{ flex-shrink:0; text-align:right; font:600 10px var(--mono); }
-  .gr-kpi-item .target{ display:block; color:var(--text-faint); font-size:8.5px; margin-top:2px; }
-  .gr-empty{ color:var(--text-faint); font-size:11px; padding:8px 0; }
-  @media (max-width:1150px){ .gr-summary-grid{ grid-template-columns:repeat(3,1fr); } .gr-analysis-grid{ grid-template-columns:1fr; } }
-  @media (max-width:760px){ .gr-summary-grid,.gr-region-grid,.gr-pareto-grid,.gr-terminal-grid{ grid-template-columns:1fr; } }
-
-  @media print{
-    .gr-summary-card,.gr-region-card,.gr-analysis-card,.gr-pareto-card,.gr-terminal-card{ break-inside:avoid; page-break-inside:avoid; }
-    .gr-summary-grid{ grid-template-columns:repeat(5,1fr); }
-    .gr-analysis-grid{ grid-template-columns:repeat(3,1fr); }
-    .gr-region-grid,.gr-pareto-grid,.gr-terminal-grid{ grid-template-columns:repeat(2,1fr); }
-    .gr-terminal-card:hover{ transform:none; }
-  }
-
   /* Detail view (single terminal) */
   .hero-row{ display:grid; grid-template-columns: 300px 1fr; gap:28px; margin-bottom: 10px;}
   @media (max-width:900px){ .hero-row{ grid-template-columns:1fr; } }
@@ -615,11 +559,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     @page{size:auto;margin:12mm}.period-row{display:flex!important}#periodTabs{display:none!important}.sidebar,.no-print,#loginScreen,#settingsView,#rolesView,#eraseView,#storageWarningBanner,.crane-accent,.port-skyline,.bg-grid,.footer-note{display:none!important}.main-area .wrap{padding:0!important;max-width:none!important}.topbar{margin-bottom:12px!important}.adh-toolbar select{appearance:none;border:0!important;padding:0!important;background:transparent!important}.adh-section,.adh-panel,.adh-summary-card,.adh-compare,.adh-gap,.chart-card,.table-card,.term-card,.score-card,.vcard,.ncard,.vr-card,.gauge-card,.trend-card,.timeline-card,canvas{break-inside:avoid;page-break-inside:avoid}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.adh-table-wrap{overflow:visible!important}.adh-table{min-width:0!important;width:100%;font-size:8px}.adh-table th,.adh-table td{padding:4px!important}body,.adh-panel,.adh-summary-card,.adh-compare,.adh-gap,.adh-table{background:#fff!important;color:#111!important}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.adh-card-meta,.adh-panel p,.brand-text .t2{color:#444!important}.adh-progress i{background:#111!important}.adh-chart-box{height:230px}.adh-section>h2{color:#333!important}.adh-summary-grid,.adh-compare-grid,.adh-gap-grid{grid-template-columns:repeat(3,1fr)!important}}
 
   /* v14 candidate: SQDC notice and responsive/lazy-rendered terminal Adherence charts. */
-  .sqdc-development-note{font:600 11px var(--display);color:var(--amber);padding:8px 11px;border:1px solid rgba(245,197,24,.35);background:var(--amber-dim);border-radius:8px}
+  .sqdc-wrap{width:100%;max-width:1500px;margin:0 auto}.sqdc-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.sqdc-toolbar select,.sqdc-input{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:12px var(--mono)}
+  .sqdc-tabs{display:flex;gap:6px;flex-wrap:wrap}.sqdc-tabs button{background:var(--panel);color:var(--text-muted);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font:600 11px var(--display);cursor:pointer}.sqdc-tabs button.active{background:var(--teal);border-color:var(--teal);color:#04211c}
+  .sqdc-letter-board{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:12px}.sqdc-letter-card,.sqdc-panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;break-inside:avoid}.sqdc-letter-card h3,.sqdc-panel h3{margin:0 0 10px;font:700 13px var(--display)}
+  .sqdc-glyph{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;max-width:230px;margin:auto}.sqdc-cell{aspect-ratio:1;border-radius:4px;background:transparent;display:flex;align-items:center;justify-content:center;font:700 9px var(--mono);color:transparent}.sqdc-cell.used{color:var(--text);border:1px solid var(--border-soft);background:var(--panel-2)}.sqdc-cell.green{background:var(--teal);border-color:var(--teal);color:#04211c}.sqdc-cell.red{background:var(--coral);border-color:var(--coral);color:#fff}.sqdc-cell.white{background:var(--panel-2);color:var(--text-faint)}
+  .sqdc-summary{margin-top:10px;text-align:center;font:11px var(--mono);color:var(--text-muted)}.sqdc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.sqdc-pareto-row{display:grid;grid-template-columns:minmax(130px,1fr) 3fr auto;gap:8px;align-items:center;margin:7px 0;font:11px var(--mono)}.sqdc-bar{height:12px;background:var(--border-soft);border-radius:5px;overflow:hidden}.sqdc-bar>i{display:block;height:100%;background:var(--coral)}.sqdc-kpis{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 11px 0}.sqdc-kpis span{border:1px solid rgba(242,72,61,.38);background:var(--coral-dim);color:var(--coral);padding:3px 6px;border-radius:5px;font:10px var(--mono)}
+  .sqdc-trend{display:flex;align-items:flex-end;gap:3px;height:100px;padding-top:8px}.sqdc-trend div{flex:1;min-width:3px;background:var(--teal);border-radius:3px 3px 0 0;position:relative}.sqdc-trend div.bad{background:var(--coral)}.sqdc-trend div:hover:after{content:attr(data-tip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;background:#04131b;color:#fff;padding:3px 5px;border-radius:4px;font:9px var(--mono);z-index:3}
+  .sqdc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.sqdc-metric{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:10px}.sqdc-metric b{display:block;font:700 18px var(--mono);margin-top:4px}.sqdc-metric small{color:var(--text-faint)}
+  .sqdc-registry-table input{width:86px}.sqdc-status{font:11px var(--mono);color:var(--text-faint)}.sqdc-audit{max-height:520px;overflow:auto}.sqdc-weight-note{font:11px var(--mono);color:var(--text-muted);margin:8px 0 12px}.sqdc-readonly{opacity:.75}
+  @media(max-width:1100px){.sqdc-letter-board{grid-template-columns:repeat(3,1fr)}}@media(max-width:720px){.sqdc-letter-board,.sqdc-grid{grid-template-columns:1fr}}
   .adh-terminal-chart-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:15px;margin-bottom:12px;break-inside:avoid}.adh-terminal-chart-card>h3{font:700 14px var(--display);margin:0 0 12px}.adh-terminal-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.adh-terminal-chart-grid>div{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:10px}.adh-terminal-chart-grid h4{font:600 11px var(--display);color:var(--text-muted);margin:0 0 5px}.adh-terminal-chart-box{height:210px}.adh-detail-head{display:flex;justify-content:space-between;align-items:end;gap:16px}.adh-detail-head p{margin-bottom:0}.adh-compare small,.adh-gap small{display:block;color:var(--text-muted);font:10px var(--mono);margin-top:8px}.adh-section-note{font-size:12px;color:var(--text-muted);margin:-4px 0 12px}
   .adh-summary-card.good,.adh-compare.good,.adh-gap.good{background:linear-gradient(135deg,var(--panel),rgba(62,209,126,.10))}.adh-summary-card.bad,.adh-compare.bad,.adh-gap.bad{background:linear-gradient(135deg,var(--panel),rgba(242,72,61,.10))}.adh-summary-card.watch,.adh-compare.watch,.adh-gap.watch{background:linear-gradient(135deg,var(--panel),rgba(245,197,24,.09))}.adh-summary-grid.two,.adh-compare-grid.two,.adh-gap-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.adh-pareto-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.adh-pareto-box{height:265px}.adh-pareto-panel h3{font:700 12px var(--display);margin:0 0 8px}.adh-region-group{margin:18px 0 26px}.adh-region-heading{font:700 17px var(--display);color:var(--text);padding:0 0 9px;border-bottom:1px solid var(--border);margin:0 0 12px}.adh-terminal-chart-grid>div.good{background:linear-gradient(135deg,var(--panel-2),rgba(62,209,126,.12))}.adh-terminal-chart-grid>div.bad{background:linear-gradient(135deg,var(--panel-2),rgba(242,72,61,.12))}.adh-terminal-chart-grid>div.watch{background:linear-gradient(135deg,var(--panel-2),rgba(245,197,24,.10))}
   @media(max-width:900px){.adh-pareto-grid{grid-template-columns:1fr}}
-  @media(max-width:720px){.adh-terminal-chart-grid{grid-template-columns:1fr}.adh-detail-head{align-items:stretch;flex-direction:column}.sqdc-development-note{flex-basis:100%}}
+  @media(max-width:720px){.adh-terminal-chart-grid{grid-template-columns:1fr}.adh-detail-head{align-items:stretch;flex-direction:column}}
   @media print{.adh-terminal-chart-grid{grid-template-columns:repeat(2,1fr)!important}.adh-terminal-chart-box{height:180px}.adh-detail-head{display:flex!important;flex-direction:row!important}}
 
   /* Browser-print fallback: preserve the report's active dark/light theme. */
@@ -644,6 +596,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     .adh-terminal-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
     *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   }
+  @media print{.sqdc-toolbar,.sqdc-tabs{display:none!important}.sqdc-letter-board{grid-template-columns:repeat(5,1fr)!important}.sqdc-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-letter-card,.sqdc-panel{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -747,6 +700,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <div class="sidebar-section-title">Dashboards</div>
       <button class="sidebar-btn" id="terminalDashboardsBtn" title="Open Terminal Performance dashboards">▦ <span>Terminal Dashboards</span></button>
       <button class="sidebar-btn" id="adherenceDashboardsBtn" title="Open the Adherence dashboard">◎ <span>Adherence Dashboard</span></button>
+      <button class="sidebar-btn" id="sqdcDashboardsBtn" title="Open Tangier SQDC and Global SQDCP dashboards">◆ <span>SQDCP Dashboards</span></button>
       <div id="printWrap" style="position:relative;">
         <button class="sidebar-btn" id="printBtn" title="Print or export the selected dashboard">🖨 <span>Print / Export</span></button>
         <div id="printMenu" class="print-menu no-print" style="display:none;">
@@ -801,7 +755,6 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div class="period-row" id="periodRow">
     <div class="tabs" id="periodTabs"></div>
     <div class="period-picker" id="periodPicker"></div>
-    <div id="sqdcDevelopmentNotice" class="sqdc-development-note">SQDC Dashboard is under development.</div>
   </div>
 
   <div id="globalReportView" style="display:none"></div>
@@ -809,6 +762,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div id="terminalView" style="display:none"></div>
   <div id="panamaView" style="display:none"></div>
   <div id="adherenceView" style="display:none"></div>
+  <div id="sqdcView" style="display:none"></div>
   </div>
 
   <div id="settingsView" style="display:none"></div>
@@ -1532,6 +1486,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   const terminalDashboardsBtn = document.getElementById("terminalDashboardsBtn");
   const adherenceDashboardsBtn = document.getElementById("adherenceDashboardsBtn");
+  const sqdcDashboardsBtn = document.getElementById("sqdcDashboardsBtn");
   function closeUtilityViews(){
     showingSettings=false; showingRoles=false; showingErase=false;
     document.getElementById("settingsView").style.display="none";
@@ -1541,7 +1496,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function openDashboardArea(kind){
     closeUtilityViews();
-    if(kind==="adherence"){
+    if(kind==="sqdc"){
+      if(!canViewSqdc())return;
+      if(currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      currentSection="global"; currentGlobalSub="sqdc"; currentTerminal="SQDC";
+    }else if(kind==="adherence"){
       if(!hasAdherenceDashboardAccess())return;
       if(currentTerminal!=="ADHERENCE") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
@@ -1549,7 +1508,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const allowedScopes=allowedAdherenceScopeValues();
       if(!allowedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=allowedScopes[0]||"global";
       adherencePage="overview";
-    }else if(currentTerminal==="ADHERENCE"){
+    }else if(currentTerminal==="ADHERENCE" || currentTerminal==="SQDC"){
       currentSection=lastPerformanceView.section;
       currentGlobalSub=lastPerformanceView.globalSub;
       currentTerminal=lastPerformanceView.terminal;
@@ -1560,10 +1519,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
   adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
+  sqdcDashboardsBtn.onclick=()=>openDashboardArea("sqdc");
   function updateSidebarContext(){
     const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
-    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE");
+    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC");
     adherenceDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="ADHERENCE");
+    sqdcDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC");
     const printWrap=document.getElementById("printWrap");
     if(printWrap)printWrap.style.display=dashboardVisible?"":"none";
     [document.getElementById("settingsBtn"),document.getElementById("rolesBtn"),document.getElementById("eraseDataBtn")].forEach(b=>{if(b)b.classList.remove("active");});
@@ -1975,6 +1936,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return currentTerminal || "Report";
   }
   function exportBaseName(){
+    if(currentTerminal === "SQDC"){
+      const scope=sqdcScopeLabel();
+      return `SPC ${scope} ${sqdcScope==="global"?"SQDCP":"SQDC"} Report - ${sqdcMonth}`.replace(/[\/:*?"<>|]/g,"-");
+    }
     if(currentTerminal === "ADHERENCE") return adherenceExportReportName().replace(/[\/:*?"<>|]/g,"-");
     const period = currentPeriod || globalReportPeriod || "Current";
     return `SPC-${exportTerminalName()} Performance - ${exportPeriodName()} ${period}`.replace(/[\/:*?"<>|]/g,"-");
@@ -2414,6 +2379,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const mainSectionTabsEl = document.getElementById("mainSectionTabs");
   const globalSubTabsEl = document.getElementById("globalSubTabs");
   function buildMainNav(){
+    if(currentTerminal==="SQDC"){
+      mainSectionTabsEl.style.display="none";
+      globalSubTabsEl.style.display="none";
+      return;
+    }
     const singleTerminal=CURRENT_USER&&CURRENT_USER.role==="terminal";
     if (singleTerminal){
       // Existing one-terminal accounts retain their established direct terminal view.
@@ -2511,11 +2481,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     tabsEl.appendChild(btn);
   });
   function updateTabs(){
-    const sqdcNotice=document.getElementById("sqdcDevelopmentNotice");
-    const isSqdcView=currentSection === "global" && currentGlobalSub === "tangier" && currentTerminal === "ALL";
-    if(sqdcNotice)sqdcNotice.style.display=isSqdcView ? "" : "none";
     [...tabsEl.children].forEach(b => {
-      b.textContent=PERIOD_TYPES[b.dataset.type].label+(isSqdcView ? " (SQDC)" : "");
+      b.textContent=PERIOD_TYPES[b.dataset.type].label;
       b.classList.toggle("active", b.dataset.type===currentType);
       if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS" || currentTerminal === "ADHERENCE") ? "none" : "";
     });
@@ -3124,14 +3091,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!periods.length){gv.innerHTML='<div class="empty-note">No data uploaded yet for either Tangier or Panama.</div>';return;}
 
     gv.innerHTML=`<div class="settings-toolbar" style="margin-bottom:16px;"><select id="globalReportPeriodSelect" class="priority-input" style="width:auto;"></select></div>
-      <div class="gr-report">
-        <div class="section-label">GLOBAL OVERVIEW · ${globalReportPeriod||'–'}</div><div class="gr-summary-grid" id="grGlobalSummary"></div>
-        <div class="section-label">REGIONAL OVERVIEW</div><div class="gr-region-grid" id="grRegionalOverview"></div>
-        <div class="section-label">TERMINAL ANALYSIS</div><div class="gr-analysis-grid"><div class="gr-analysis-card"><div class="gr-card-title">Score Distribution</div><div id="grScoreDistribution"></div></div><div class="gr-analysis-card"><div class="gr-card-title">Calls Adherence Distribution</div><div id="grCallsDistribution"></div></div><div class="gr-analysis-card"><div class="gr-card-title">Moves Adherence Distribution</div><div id="grMovesDistribution"></div></div></div>
-        <div class="section-label">GAP DRIVERS · PARETO</div><div class="gr-pareto-grid"><div class="gr-pareto-card"><div class="gr-card-title">Calls Gap Drivers</div><div id="grCallsPareto"></div></div><div class="gr-pareto-card"><div class="gr-card-title">Moves Gap Drivers</div><div id="grMovesPareto"></div></div></div>
-        <div class="section-label">TERMINAL PERFORMANCE · TANGIER</div><div class="gr-terminal-grid" id="grTangierGrid"></div>
-        <div class="section-label">TERMINAL PERFORMANCE · PANAMA</div><div class="gr-terminal-grid" id="grPanamaGrid"></div>
-      </div>`;
+      <div class="section-label">NETWORK ROLLUP — GLOBAL · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grGlobalCards"></div>
+      <div class="section-label">NETWORK ROLLUP — TANGIER · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grTangierCards"></div>
+      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grTangierGrid"></div>
+      <div class="section-label">NETWORK ROLLUP — PANAMA · ${globalReportPeriod||'–'}</div><div class="network-grid" id="grPanamaCards"></div>
+      <div class="section-label">TERMINALS PERFORMANCE</div><div class="term-grid" id="grPanamaGrid"></div>`;
     const select=document.getElementById("globalReportPeriodSelect");periods.forEach(p=>{const o=document.createElement("option");o.value=p;o.textContent=p;select.appendChild(o);});select.value=globalReportPeriod;select.onchange=()=>{globalReportPeriod=select.value;renderGlobalReportView();};
 
     const year=String(globalReportPeriod||"").slice(0,4),summaries=[];
@@ -3143,60 +3107,40 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       ensurePanamaSettings(term);const hasData=!!panamaGroup&&panamaGroup.weekKeys.some(wk=>PANAMA_DATA[term]&&PANAMA_DATA[term][wk]),scoreKpi=panamaKpiCatalog().find(k=>k.key==="Overall Score");
       summaries.push({kind:"panama",term,assignment:adhAssignmentForPod(term,"Panama"),moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Overall Score"):null,scoreTarget:effectiveTarget(scoreKpi,term,year),scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[]});
     });
-    summaries.forEach(s=>{s.callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod);s.movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);});
     const grouped={global:summaries,tangier:summaries.filter(x=>x.assignment==="Tangier"),panama:summaries.filter(x=>x.assignment==="Panama")};
     const avg=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
-    const totals=items=>({moves:items.reduce((a,x)=>a+x.moves,0),calls:items.reduce((a,x)=>a+x.calls,0),score:avg(items.map(x=>x.score)),scoreTarget:avg(items.map(x=>x.scoreTarget)),reporting:items.filter(x=>Number.isFinite(x.score)||x.calls||x.moves).length});
-    const adherence={globalCalls:adhScopeSummary("global","calls",currentType,globalReportPeriod),globalMoves:adhScopeSummary("global","moves",currentType,globalReportPeriod),tangierCalls:adhScopeSummary("tangier","calls",currentType,globalReportPeriod),tangierMoves:adhScopeSummary("tangier","moves",currentType,globalReportPeriod),panamaCalls:adhScopeSummary("panama","calls",currentType,globalReportPeriod),panamaMoves:adhScopeSummary("panama","moves",currentType,globalReportPeriod)};
+    const totals=items=>({moves:items.reduce((a,x)=>a+x.moves,0),calls:items.reduce((a,x)=>a+x.calls,0),score:avg(items.map(x=>x.score)),scoreTarget:avg(items.map(x=>x.scoreTarget))});
+    const adherence={
+      globalCalls:adhScopeSummary("global","calls",currentType,globalReportPeriod),globalMoves:adhScopeSummary("global","moves",currentType,globalReportPeriod),
+      tangierCalls:adhScopeSummary("tangier","calls",currentType,globalReportPeriod),tangierMoves:adhScopeSummary("tangier","moves",currentType,globalReportPeriod),
+      panamaCalls:adhScopeSummary("panama","calls",currentType,globalReportPeriod),panamaMoves:adhScopeSummary("panama","moves",currentType,globalReportPeriod)
+    };
     function targetStatus(value,target){if(!Number.isFinite(value)||!Number.isFinite(target)||target===0)return null;if(value>=target)return"good";return value>=target*.85?"watch":"bad";}
-    function colorFor(value,target){const st=targetStatus(value,target);return st?STATUS_COLOR[st]:"var(--text-faint)";}
-    function summaryCard(label,value,meta,color){return`<div class="gr-summary-card"><div class="label">${label}</div><div class="value"${color?` style="color:${color}"`:""}>${value}</div><div class="meta">${meta||"&nbsp;"}</div></div>`;}
-
-    const gt=totals(grouped.global),globalEl=document.getElementById("grGlobalSummary");
-    globalEl.innerHTML=summaryCard("Global SPC Score",Number.isFinite(gt.score)?fmtNum(gt.score,2):"—",`Target ${Number.isFinite(gt.scoreTarget)?fmtNum(gt.scoreTarget,2):"—"} · ${gt.reporting}/${grouped.global.length} terminals reporting`,colorFor(gt.score,gt.scoreTarget))+summaryCard("Total Moves",fmtNum(gt.moves),"Across active reporting terminals")+summaryCard("Total Calls",fmtNum(gt.calls),"Across active reporting terminals")+summaryCard("Calls Adherence",adhPct(adherence.globalCalls.actual),`Target ${adhPct(adherence.globalCalls.target)}`,colorFor(adherence.globalCalls.actual,adherence.globalCalls.target))+summaryCard("Moves Adherence",adhPct(adherence.globalMoves.actual),`Target ${adhPct(adherence.globalMoves.target)}`,colorFor(adherence.globalMoves.actual,adherence.globalMoves.target));
-
-    const regionEl=document.getElementById("grRegionalOverview");
-    [["SPC Tangier",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves],["SPC Panama",grouped.panama,adherence.panamaCalls,adherence.panamaMoves]].forEach(([label,items,ca,ma])=>{
-      const t=totals(items),scoreColor=colorFor(t.score,t.scoreTarget),d=document.createElement("div");d.className="gr-region-card";
-      d.innerHTML=`<div class="gr-region-head"><span>${label}</span><span class="gr-region-score" style="color:${scoreColor}">${Number.isFinite(t.score)?fmtNum(t.score,2):"—"} / ${Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"—"}</span></div><div class="gr-region-stats"><div class="gr-stat"><div class="label">Moves</div><div class="value">${fmtNum(t.moves)}</div></div><div class="gr-stat"><div class="label">Calls</div><div class="value">${fmtNum(t.calls)}</div></div><div class="gr-stat"><div class="label">Calls Adherence</div><div class="value" style="color:${colorFor(ca.actual,ca.target)}">${adhPct(ca.actual)}</div></div><div class="gr-stat"><div class="label">Moves Adherence</div><div class="value" style="color:${colorFor(ma.actual,ma.target)}">${adhPct(ma.actual)}</div></div></div>`;regionEl.appendChild(d);
-    });
-
-    function distributionRows(items,valueFn,targetFn){
-      const buckets=[{name:"At / above target",status:"good",count:0},{name:"Near target",status:"watch",count:0},{name:"Critical",status:"bad",count:0},{name:"No data",status:"none",count:0}];
-      items.forEach(item=>{const v=valueFn(item),t=targetFn(item),st=targetStatus(v,t);const bucket=buckets.find(b=>b.status===(st||"none"));bucket.count++;});
-      const max=Math.max(1,...buckets.map(b=>b.count));
-      return buckets.map(b=>`<div class="gr-dist-row"><span class="gr-dist-name">${b.name}</span><span class="gr-dist-track"><span class="gr-dist-fill" style="width:${b.count/max*100}%;background:${b.status==="none"?"var(--text-faint)":STATUS_COLOR[b.status]}"></span></span><span class="gr-dist-count">${b.count}</span></div>`).join("");
+    function fillCards(id,items,callAdh,moveAdh){
+      const t=totals(items),el=document.getElementById(id),cards=[
+        {label:"Total Moves",value:fmtNum(t.moves)},{label:"Total Calls",value:fmtNum(t.calls)},
+        {label:"Score",value:Number.isFinite(t.score)?fmtNum(t.score,2):"–",target:t.scoreTarget,targetText:Number.isFinite(t.scoreTarget)?fmtNum(t.scoreTarget,2):"–"},
+        {label:"SPC Calls Adherence",value:adhPct(callAdh.actual),target:callAdh.target,targetText:adhPct(callAdh.target)},
+        {label:"SPC Moves Adherence",value:adhPct(moveAdh.actual),target:moveAdh.target,targetText:adhPct(moveAdh.target)}];
+      cards.forEach(c=>{const d=document.createElement("div"),numeric=c.value==="–"?null:(c.label.includes("Adherence")?c.label.includes("Calls")?callAdh.actual:moveAdh.actual:t.score),st=c.target===undefined?null:targetStatus(numeric,c.target);d.className="ncard";d.innerHTML=`<div class="label">${c.label}</div><div class="value" ${st?`style="color:${STATUS_COLOR[st]}"`:""}>${c.value}</div><div class="sub">${c.target===undefined?"":`Target: ${c.targetText}`}</div>`;el.appendChild(d);});
     }
-    document.getElementById("grScoreDistribution").innerHTML=distributionRows(grouped.global,s=>s.score,s=>s.scoreTarget);
-    document.getElementById("grCallsDistribution").innerHTML=distributionRows(grouped.global,s=>s.callsAdh.actual,s=>s.callsAdh.target);
-    document.getElementById("grMovesDistribution").innerHTML=distributionRows(grouped.global,s=>s.movesAdh.actual,s=>s.movesAdh.target);
+    fillCards("grGlobalCards",grouped.global,adherence.globalCalls,adherence.globalMoves);
+    fillCards("grTangierCards",grouped.tangier,adherence.tangierCalls,adherence.tangierMoves);
+    fillCards("grPanamaCards",grouped.panama,adherence.panamaCalls,adherence.panamaMoves);
 
-    function renderPareto(id,metric){
-      const rows=adhRowsFor("global",metric,currentType,globalReportPeriod).map(r=>({name:r.reg.displayName||r.reg.biName,gap:Number.isFinite(r.expected)?Math.max(0,r.expected-r.planned):0})).filter(r=>r.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,10),el=document.getElementById(id);
-      if(!rows.length){el.innerHTML='<div class="gr-empty">No positive gap to target for this period.</div>';return;}
-      const total=rows.reduce((a,r)=>a+r.gap,0),max=rows[0].gap;let cumulative=0;
-      el.innerHTML=rows.map(r=>{cumulative+=r.gap;return`<div class="gr-pareto-row" title="${adhEsc(r.name)}"><span class="gr-pareto-name">${adhEsc(r.name)}</span><span class="gr-pareto-track"><span class="gr-pareto-bar" style="width:${r.gap/max*100}%"></span></span><span class="gr-pareto-value">${fmtNum(r.gap,metric==="calls"?0:0)} · ${Math.round(cumulative/total*100)}%</span></div>`;}).join("");
-    }
-    renderPareto("grCallsPareto","calls");renderPareto("grMovesPareto","moves");
-
-    function kpiItem(k,v,t,st,term,formatter){
-      const color=STATUS_COLOR[st]||"var(--text-faint)",value=formatter(k,v,term),target=t==null||!Number.isFinite(t)?"—":formatter(k,t,term);
-      return`<div class="gr-kpi-item" style="color:${color}"><span class="name">${adhEsc(kpiPeriodLabel(k.key))}</span><span class="reading">${value}<span class="target">Target ${target}</span></span></div>`;
-    }
-    function coreStats(s){return`<div class="gr-core-grid"><div class="gr-stat"><div class="label">Moves</div><div class="value">${fmtNum(s.moves)}</div></div><div class="gr-stat"><div class="label">Calls</div><div class="value">${fmtNum(s.calls)}</div></div><div class="gr-stat"><div class="label">Calls Adherence</div><div class="value" style="color:${colorFor(s.callsAdh.actual,s.callsAdh.target)}">${adhPct(s.callsAdh.actual)}</div></div><div class="gr-stat"><div class="label">Moves Adherence</div><div class="value" style="color:${colorFor(s.movesAdh.actual,s.movesAdh.target)}">${adhPct(s.movesAdh.actual)}</div></div></div>`;}
-    function terminalHeader(s,showScore){
-      const color=colorFor(s.score,s.scoreTarget),flag=ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:7px;">`:"";
-      return`<div class="gr-terminal-head"><div class="gr-terminal-name">${flag}<span>${adhEsc(adhDisplayNameForPod(s.term))}</span></div>${showScore?`<span class="gr-score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):"—"} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):"—"}</span>`:""}</div>`;
-    }
     function standardCard(s){
-      const showScore=effectiveActive(s.term,"Vessel Score","global",year),items=activeSortedKpis(s.term,"global",year).map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year);return kpiItem(k,v,t,statusFor(k,v,t,s.term),s.term,(x,n,term)=>fmtVal(x,n,term));}).join("");
-      const card=document.createElement("div");card.className="gr-terminal-card";card.innerHTML=terminalHeader(s,showScore)+coreStats(s)+`<div class="gr-kpi-list">${items||'<div class="gr-empty">No additional Global KPIs enabled.</div>'}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
+      const status=statusFor(s.scoreKpi,s.score,s.scoreTarget,s.term),color=STATUS_COLOR[status],callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
+      const showScore=effectiveActive(s.term,"Vessel Score","global",year);
+      const chips=activeSortedKpis(s.term,"global",year).map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,s.term)}</span>`;}).join("");
+      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;card.onclick=()=>{currentSection="tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
     }
     function panamaCard(s){
-      const showScore=effectiveActive(s.term,"Overall Score","global",year),items=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year);return kpiItem(k,v,t,statusFor(k,v,t,s.term),s.term,(x,n)=>panamaFmt(x.key,n));}).join("");
-      const card=document.createElement("div");card.className="gr-terminal-card";card.innerHTML=terminalHeader(s,showScore)+coreStats(s)+`<div class="gr-kpi-list">${items||'<div class="gr-empty">No additional Global KPIs enabled.</div>'}</div>`;return card;
+      const status=targetStatus(s.score,s.scoreTarget),color=STATUS_COLOR[status]||"var(--text-faint)",callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
+      const showScore=effectiveActive(s.term,"Overall Score","global",year);
+      const chips=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}">${shortLabel(k.key)} ${panamaFmt(k.key,v)}</span>`;}).join("");
+      const card=document.createElement("div");card.className="term-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(s.score,1)} / ${fmtNum(s.scoreTarget,1)}</span>`:""}</div><div class="stat-row"><span>Moves</span><span class="v">${fmtNum(s.moves)}</span></div><div class="stat-row"><span>Calls</span><span class="v">${fmtNum(s.calls)}</span></div><div class="stat-row"><span>Calls Adherence</span><span class="v">${adhPct(callsAdh.actual)}</span></div><div class="stat-row"><span>Moves Adherence</span><span class="v">${adhPct(movesAdh.actual)}</span></div><div class="chips">${chips}</div>`;return card;
     }
-    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>(Number.isFinite(a.score)?a.score:Infinity)-(Number.isFinite(b.score)?b.score:Infinity)||adhDisplayNameForPod(a.term).localeCompare(adhDisplayNameForPod(b.term))).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
+    ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>(b.score||0)-(a.score||0)).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
   }
 
   function renderGlobalReportViewLegacy(){
@@ -3744,6 +3688,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function renderContent(){
+    if (currentTerminal === "SQDC") { renderSqdcView(); return; }
+    document.getElementById("sqdcView").style.display = "none";
     if (currentTerminal === "ADHERENCE") { renderAdherenceView(); return; }
     destroyAdherenceCharts();
     document.getElementById("adherenceView").style.display = "none";
@@ -3825,6 +3771,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function hasTerminalDashboardAccess(user=CURRENT_USER){return canViewTerminalDashboardScope("tangier",user)||canViewTerminalDashboardScope("panama",user);}
   function hasAdherenceDashboardAccess(user=CURRENT_USER){return canViewAdherenceScope("tangier",user)||canViewAdherenceScope("panama",user)||canViewAdherenceScope("global",user);}
+  function canViewSqdc(user=CURRENT_USER){return !!user&&["admin","management","data_analyst","supervisor"].includes(user.role);}
+  function canEditSqdc(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
   function roleTerminalPool(){
     return [...TERM_CODES.map(code=>({code,scope:"Tangier"})),...PANAMA_TERM_CODES.map(code=>({code,scope:"Panama"}))];
   }
@@ -4141,6 +4089,56 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     invalidateAdherenceCache();
   }
 
+  // ---------- SQDC / SQDCP module (isolated from Performance and Adherence calculations) ----------
+  const SQDC_POOLS={
+    MAMED:["MAMED"],MAPTM:["MAPTM"],EGPSD:["EGPSD"],OMSLL:["OMSLL"],
+    ME:["JOAQJ","BHBAH"],EU:["HRRJK","ITVAD","SEGOT","DKAAR"],WAF:["LRMLW","NGAPP","NGONN"]
+  };
+  const SQDC_SCOPE_LABELS={global:"Global",MAMED:"MAMED",MAPTM:"MAPTM",EGPSD:"EGPSD",OMSLL:"OMSLL",ME:"ME Gateways",EU:"EU Gateways",WAF:"WAF Gateways"};
+  const SQDC_DEFAULT_TARGETS={nearMiss:0,deviations:0,safetyWalk:1,workInstructions:1,processConfirmations:3};
+  let SQDC_CONFIG={targetsByYear:{}},SQDC_REGISTRY={},SQDC_AUDIT={},SQDC_YEARS=[];
+  let sqdcScope="global",sqdcPage="dashboard",sqdcMonth=null,sqdcDay=null;
+  function sqdcScopeLabel(){return SQDC_SCOPE_LABELS[sqdcScope]||sqdcScope;}
+  function sqdcTerms(scope=sqdcScope){return scope==="global"?Object.values(SQDC_POOLS).flat():SQDC_POOLS[scope]||[];}
+  function effectiveSqdcActive(term,key,year){const s=SETTINGS[term]?.[key]||{};return !!(s.activeSqdcByYear&&s.activeSqdcByYear[year]===true);}
+  function effectiveSqdcWeight(term,key,year){const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
+  function sqdcTargets(year){return Object.assign({},SQDC_DEFAULT_TARGETS,SQDC_CONFIG.targetsByYear?.[String(year)]||{});}
+  function sqdcDateKey(d){return d instanceof Date&&!isNaN(d)?`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`:"";}
+  function sqdcRows(terms,date){const set=new Set(terms);return terms.flatMap(t=>(DATA[t]?.rows||[]).filter(r=>set.has(t)&&sqdcDateKey(r._etb)===date).map(r=>Object.assign({_sqdcTerm:t},r)));}
+  function sqdcYearBucket(year){year=String(year);SQDC_REGISTRY[year]=SQDC_REGISTRY[year]||{};SQDC_AUDIT[year]=SQDC_AUDIT[year]||[];return SQDC_REGISTRY[year];}
+  function sqdcRecord(date){return sqdcYearBucket(date.slice(0,4))[date]||{};}
+  function sqdcTerminalEntry(date,term){return sqdcRecord(date).terminals?.[term]||{};}
+  function sqdcGlobalEntry(date){return sqdcRecord(date).global||{};}
+  async function loadSqdcDataFromStorage(){
+    try{const [yr,cfg]=await Promise.all([storageGet("sqdc_years",true),storageGet("sqdc_config",true)]);if(yr?.value)SQDC_YEARS=JSON.parse(yr.value);if(cfg?.value)SQDC_CONFIG=JSON.parse(cfg.value);await Promise.all(SQDC_YEARS.map(async y=>{const [r,a]=await Promise.all([storageGet("sqdc_registry_"+y,true),storageGet("sqdc_audit_"+y,true)]);SQDC_REGISTRY[y]=r?.value?JSON.parse(r.value):{};SQDC_AUDIT[y]=a?.value?JSON.parse(a.value):[];}));}catch(e){console.error("SQDC load failed",e);}
+  }
+  async function persistSqdcYear(year){year=String(year);if(!SQDC_YEARS.includes(year))SQDC_YEARS.push(year);SQDC_YEARS.sort();await Promise.all([storageSet("sqdc_years",JSON.stringify(SQDC_YEARS),true),storageSet("sqdc_registry_"+year,JSON.stringify(SQDC_REGISTRY[year]||{}),true),storageSet("sqdc_audit_"+year,JSON.stringify(SQDC_AUDIT[year]||[]),true)]);}
+  function sqdcAudit(year,path,oldValue,newValue){if(String(oldValue??"")===String(newValue??""))return;SQDC_AUDIT[year]=SQDC_AUDIT[year]||[];SQDC_AUDIT[year].push({path,oldValue:oldValue??null,newValue:newValue??null,editor:CURRENT_USER?.email||"unknown",timestamp:new Date().toISOString()});}
+  function sqdcMonthOptions(){const set=new Set();TERM_CODES.forEach(t=>(DATA[t]?.rows||[]).forEach(r=>{const d=sqdcDateKey(r._etb);if(d)set.add(d.slice(0,7));}));Object.keys(SQDC_REGISTRY).forEach(y=>Object.keys(SQDC_REGISTRY[y]||{}).forEach(d=>set.add(d.slice(0,7))));if(!set.size)set.add(new Date().toISOString().slice(0,7));return [...set].sort();}
+  function sqdcDaysInMonth(month){const [y,m]=month.split("-").map(Number);return new Date(Date.UTC(y,m,0)).getUTCDate();}
+  function sqdcSelectedDate(){return `${sqdcMonth}-${String(sqdcDay).padStart(2,"0")}`;}
+  function sqdcVesselName(r){return String(r["Vessel Name"]||r["Id visit"]||"Vessel");}
+  function sqdcCalls(rows){return new Set(rows.map(r=>String(r["Id visit"]||r["Vessel Name"]||"")).filter(Boolean)).size;}
+  function sqdcMoves(rows){return rows.reduce((a,r)=>a+(Number(r["Total Moves Planned"])||0),0);}
+  function sqdcQuality(scope,date){const rows=sqdcRows(sqdcTerms(scope),date);if(!rows.length)return {status:"green",actual:null,target:null,rows:[]};const pairs=rows.map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>x.key==="Vessel Score"),actual=Number(r["Vessel Score"]),target=k?Number(effectiveTarget(k,term,date.slice(0,4))):NaN;return {r,term,actual,target,gap:Number.isFinite(actual)&&Number.isFinite(target)?Math.max(0,(target-actual)/(Math.abs(target)||1)):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.target));if(!pairs.length)return {status:null,actual:null,target:null,rows:[]};const byTerm={};pairs.forEach(x=>(byTerm[x.term]=byTerm[x.term]||[]).push(x));const termValues=Object.values(byTerm).map(xs=>({actual:xs.reduce((a,x)=>a+x.actual,0)/xs.length,target:xs[0].target}));const actual=termValues.reduce((a,x)=>a+x.actual,0)/termValues.length,target=termValues.reduce((a,x)=>a+x.target,0)/termValues.length;return {status:actual>=target?"green":"red",actual,target,rows:pairs};}
+  function sqdcKpiImpacts(item,date){const {r,term}=item,year=date.slice(0,4);return settingsKpisForTerm(term).filter(k=>k.key!=="Vessel Score"&&k.key!=="Planning Turnaround Time (h)"&&effectiveSqdcActive(term,k.key,year)&&effectiveSqdcWeight(term,k.key,year)>0).map(k=>{const value=Number(r[k.key]),target=Number(effectiveTarget(k,term,year));if(!Number.isFinite(value)||!Number.isFinite(target))return null;const miss=effectiveDirection(k,term)==="lower"?Math.max(0,(value-target)/(Math.abs(target)||1)):Math.max(0,(target-value)/(Math.abs(target)||1));return {name:kpiPeriodLabel(k.key),impact:effectiveSqdcWeight(term,k.key,year)*miss};}).filter(x=>x&&x.impact>0).sort((a,b)=>b.impact-a.impact).slice(0,3);}
+  function sqdcWorstQuality(scope,date){return sqdcQuality(scope,date).rows.slice().sort((a,b)=>b.gap-a.gap).slice(0,3);}
+  function sqdcDelivery(scope,date){const rows=sqdcRows(sqdcTerms(scope),date),calls=sqdcCalls(rows),moves=sqdcMoves(rows);if(!rows.length)return {status:"green",actual:1,target:null,calls,moves,misses:[]};const checks=rows.map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>x.key==="Planning Turnaround Time (h)"),actual=Number(r["Planning Turnaround Time (h)"]),hourTarget=k?Number(effectiveTarget(k,term,date.slice(0,4),"vessel")):NaN,periodTarget=k?Number(effectiveTarget(k,term,date.slice(0,4))):NaN;return {r,term,actual,hourTarget,periodTarget,gap:Number.isFinite(actual)&&Number.isFinite(hourTarget)?Math.max(0,hourTarget-actual):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.hourTarget));if(!checks.length)return {status:null,actual:null,target:null,calls,moves,misses:[]};const actual=checks.filter(x=>x.actual>=x.hourTarget).length/checks.length,targets=[...new Map(checks.filter(x=>Number.isFinite(x.periodTarget)).map(x=>[x.term,x.periodTarget])).values()],target=targets.length?targets.reduce((a,b)=>a+b,0)/targets.length:null;return {status:target===null?null:(actual>=target?"green":"red"),actual,target,calls,moves,misses:checks.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap)};}
+  function sqdcManualStatus(scope,date,field,target=0){const vals=sqdcTerms(scope).map(t=>sqdcTerminalEntry(date,t)[field]);if(vals.some(v=>v===""||v===null||v===undefined))return null;const total=vals.reduce((a,v)=>a+(Number(v)||0),0);return field==="nearMiss"||field==="deviations"?(total<=target?"green":"red"):null;}
+  function sqdcStatus(scope,date,letter){const y=date.slice(0,4),t=sqdcTargets(y),g=sqdcGlobalEntry(date);if(letter==="Q")return sqdcQuality(scope,date).status;if(letter==="D")return sqdcDelivery(scope,date).status;if(letter==="S"){const near=sqdcManualStatus(scope,date,"nearMiss",t.nearMiss);if(scope!=="global")return near;if(near===null||g.safetyWalk===""||g.safetyWalk==null)return null;return near==="green"&&Number(g.safetyWalk)>=t.safetyWalk?"green":"red";}if(letter==="C")return sqdcManualStatus(scope,date,"deviations",t.deviations);if(letter==="P"){if(g.workInstructions===""||g.workInstructions==null||g.processConfirmations===""||g.processConfirmations==null)return null;return Number(g.workInstructions)>=t.workInstructions&&Number(g.processConfirmations)>=t.processConfirmations?"green":"red";}return null;}
+  const SQDC_MASKS={S:["#######","#######","###....","#######","....###","#######","#######"],Q:["#######","#######","##...##","##...##","##.#.##","#######","#######"],D:["#####..","######.","##..###","##...##","##..###","######.","#####.."],C:["#######","#######","###....","##.....","###....","#######","#######"],P:["######.","#######","##...##","#######","######.","##.....","##....."]};
+  function sqdcLetterHtml(letter){let day=1,cells="";for(const row of SQDC_MASKS[letter])for(const c of row){if(c==="#"&&day<=31){const inMonth=day<=sqdcDaysInMonth(sqdcMonth),shown=inMonth&&day<=Number(sqdcDay),date=`${sqdcMonth}-${String(day).padStart(2,"0")}`,st=shown?sqdcStatus(sqdcScope,date,letter):null,cls=!inMonth?"":shown?(st||"white"):"white";cells+=`<div class="sqdc-cell used ${cls}" title="${date}: ${st||"No data / future"}">${day}</div>`;day++;}else cells+='<div class="sqdc-cell"></div>';};const labels={S:"Safety",Q:"Quality",D:"Delivery",C:"Cost",P:"People"};const st=sqdcStatus(sqdcScope,sqdcSelectedDate(),letter);return `<div class="sqdc-letter-card"><h3>${letter} · ${labels[letter]}</h3><div class="sqdc-glyph">${cells}</div><div class="sqdc-summary">Selected day: <b class="${st||""}">${st?st.toUpperCase():"NO DATA"}</b></div></div>`;}
+  function sqdcParetoRows(items,labelFn,valueFn){if(!items.length)return '<div class="empty-note">No impacting items for the selected day.</div>';const max=Math.max(...items.map(valueFn),1);return items.map(x=>`<div class="sqdc-pareto-row"><span>${adhEsc(labelFn(x))}</span><div class="sqdc-bar"><i style="width:${Math.max(2,valueFn(x)/max*100)}%"></i></div><b>${fmtNum(valueFn(x),2)}</b></div>`).join("");}
+  function sqdcQualityAnalysis(date){if(sqdcScope!=="global"){const items=sqdcWorstQuality(sqdcScope,date);return `<div class="sqdc-panel"><h3>Quality · Worst vessels</h3>${sqdcParetoRows(items,x=>`${sqdcVesselName(x.r)} · ${x.term}`,x=>x.gap)}${items.map(x=>`<b>${adhEsc(sqdcVesselName(x.r))}</b><div class="sqdc-kpis">${sqdcKpiImpacts(x,date).map(k=>`<span>${adhEsc(k.name)} · ${fmtNum(k.impact*100,1)}</span>`).join("")||'<span>No missed weighted SQDC KPI</span>'}</div>`).join("")}</div>`;}const pools=Object.keys(SQDC_POOLS).map(p=>({p,q:sqdcQuality(p,date)})).filter(x=>x.q.actual!==null).sort((a,b)=>(b.q.target-b.q.actual)-(a.q.target-a.q.actual)).slice(0,3);return `<div class="sqdc-panel"><h3>Quality · Worst pools → vessels → weighted KPI impact</h3>${sqdcParetoRows(pools,x=>SQDC_SCOPE_LABELS[x.p],x=>Math.max(0,x.q.target-x.q.actual))}${pools.map(x=>{const v=sqdcWorstQuality(x.p,date);return `<h3>${SQDC_SCOPE_LABELS[x.p]}</h3>${v.map(i=>`<b>${adhEsc(sqdcVesselName(i.r))} · ${i.term}</b><div class="sqdc-kpis">${sqdcKpiImpacts(i,date).map(k=>`<span>${adhEsc(k.name)} · ${fmtNum(k.impact*100,1)}</span>`).join("")||'<span>No missed weighted SQDC KPI</span>'}</div>`).join("")||'<div class="empty-note">No vessels</div>'}`;}).join("")}</div>`;}
+  function sqdcDeliveryAnalysis(date){if(sqdcScope!=="global"){const d=sqdcDelivery(sqdcScope,date),items=d.misses.slice(0,3);return `<div class="sqdc-panel"><h3>Delivery · Worst vessels below hourly target</h3>${sqdcParetoRows(items,x=>`${sqdcVesselName(x.r)} · ${x.term}`,x=>x.gap)}</div>`;}const pools=Object.keys(SQDC_POOLS).map(p=>({p,d:sqdcDelivery(p,date)})).filter(x=>x.d.actual!==null).sort((a,b)=>a.d.actual-b.d.actual).slice(0,3);return `<div class="sqdc-panel"><h3>Delivery · Worst pools and vessels</h3>${sqdcParetoRows(pools,x=>SQDC_SCOPE_LABELS[x.p],x=>1-x.d.actual)}${pools.map(x=>`<h3>${SQDC_SCOPE_LABELS[x.p]}</h3>${sqdcParetoRows(x.d.misses.slice(0,3),i=>`${sqdcVesselName(i.r)} · ${i.term}`,i=>i.gap)}`).join("")}</div>`;}
+  function sqdcTrendHtml(field,globalField=false){const n=sqdcDaysInMonth(sqdcMonth),vals=[];for(let d=1;d<=n;d++){const date=`${sqdcMonth}-${String(d).padStart(2,"0")}`;let v;if(globalField)v=Number(sqdcGlobalEntry(date)[field])||0;else v=sqdcTerms().reduce((a,t)=>a+(Number(sqdcTerminalEntry(date,t)[field])||0),0);vals.push(v);}const max=Math.max(...vals,1);return `<div class="sqdc-trend">${vals.map((v,i)=>`<div class="${v>0&&(field==="nearMiss"||field==="deviations")?"bad":""}" style="height:${Math.max(3,v/max*100)}%" data-tip="Day ${i+1}: ${v}"></div>`).join("")}</div>`;}
+  function sqdcDashboardHtml(){const date=sqdcSelectedDate(),letters=sqdcScope==="global"?["S","Q","D","C","P"]:["S","Q","D","C"],d=sqdcDelivery(sqdcScope,date),costByTerm=sqdcTerms().map(t=>({term:t,value:Number(sqdcTerminalEntry(date,t).deviations)||0})).sort((a,b)=>b.value-a.value).slice(0,3);return `<div class="sqdc-letter-board">${letters.map(sqdcLetterHtml).join("")}</div><div class="section-label">Selected day overview</div><div class="sqdc-metrics"><div class="sqdc-metric"><small>Calls</small><b>${fmtNum(d.calls)}</b></div><div class="sqdc-metric"><small>Moves</small><b>${fmtNum(d.moves)}</b></div><div class="sqdc-metric"><small>Delivery actual</small><b>${d.actual==null?'—':(d.actual*100).toFixed(1)+'%'}</b></div><div class="sqdc-metric"><small>Delivery target</small><b>${d.target==null?'—':(d.target*100).toFixed(1)+'%'}</b></div></div><div class="sqdc-grid">${sqdcQualityAnalysis(date)}${sqdcDeliveryAnalysis(date)}<div class="sqdc-panel"><h3>Safety · Daily near misses</h3>${sqdcTrendHtml("nearMiss")}${sqdcScope==="global"?'<h3>Safety walks</h3>'+sqdcTrendHtml("safetyWalk",true):''}</div><div class="sqdc-panel"><h3>Cost · Daily deviations</h3>${sqdcTrendHtml("deviations")}${sqdcScope==="global"?'<h3>Worst terminals</h3>'+sqdcParetoRows(costByTerm,x=>x.term,x=>x.value):''}</div>${sqdcScope==="global"?`<div class="sqdc-panel"><h3>People · Work instructions</h3>${sqdcTrendHtml("workInstructions",true)}</div><div class="sqdc-panel"><h3>People · Process confirmations</h3>${sqdcTrendHtml("processConfirmations",true)}</div>`:""}</div>`;}
+  function sqdcRegistryHtml(){const date=sqdcSelectedDate(),g=sqdcGlobalEntry(date),editable=canEditSqdc(),terms=Object.values(SQDC_POOLS).flat(),delivery=sqdcDelivery(sqdcScope,date).misses.slice(0,3),notes=sqdcRecord(date).deliveryNotes||{};return `<div class="sqdc-panel ${editable?'':'sqdc-readonly'}"><h3>Daily registry · ${date}</h3>${sqdcScope==="global"?`<div class="sqdc-metrics" style="margin-bottom:12px"><label>Safety Walks <input class="sqdc-input" type="number" min="0" data-sqdc-global="safetyWalk" value="${g.safetyWalk??''}" ${editable?'':'disabled'}></label><label>Work Instructions <input class="sqdc-input" type="number" min="0" data-sqdc-global="workInstructions" value="${g.workInstructions??''}" ${editable?'':'disabled'}></label><label>Process Confirmations <input class="sqdc-input" type="number" min="0" data-sqdc-global="processConfirmations" value="${g.processConfirmations??''}" ${editable?'':'disabled'}></label></div>`:''}<div class="table-card"><table class="sqdc-registry-table"><thead><tr><th>Pool</th><th>Terminal</th><th>Near Misses</th><th>Deviations</th></tr></thead><tbody>${terms.map(t=>{const p=Object.keys(SQDC_POOLS).find(k=>SQDC_POOLS[k].includes(t)),e=sqdcTerminalEntry(date,t);return `<tr><td>${SQDC_SCOPE_LABELS[p]}</td><td>${t}</td><td><input class="sqdc-input" type="number" min="0" data-sqdc-term="${t}" data-sqdc-field="nearMiss" value="${e.nearMiss??''}" ${editable?'':'disabled'}></td><td><input class="sqdc-input" type="number" min="0" data-sqdc-term="${t}" data-sqdc-field="deviations" value="${e.deviations??''}" ${editable?'':'disabled'}></td></tr>`;}).join("")}</tbody></table></div><div class="section-label">Delivery investigation · worst vessels</div>${delivery.length?delivery.map(x=>{const id=`${x.term}|${x.r["Id visit"]||sqdcVesselName(x.r)}`,n=notes[id]||{};return `<div class="sqdc-panel" style="margin:8px 0"><b>${adhEsc(sqdcVesselName(x.r))} · ${x.term}</b><div class="sqdc-metrics" style="margin-top:8px"><label>Planning Time Span <input class="sqdc-input" data-sqdc-note="${adhEsc(id)}" data-sqdc-note-field="planningTimeSpan" value="${adhEsc(n.planningTimeSpan||'')}" ${editable?'':'disabled'}></label><label>Planning Duration <input class="sqdc-input" data-sqdc-note="${adhEsc(id)}" data-sqdc-note-field="planningDuration" value="${adhEsc(n.planningDuration||'')}" ${editable?'':'disabled'}></label><label>Approval Time Span <input class="sqdc-input" data-sqdc-note="${adhEsc(id)}" data-sqdc-note-field="approvalTimeSpan" value="${adhEsc(n.approvalTimeSpan||'')}" ${editable?'':'disabled'}></label></div></div>`;}).join(""):'<div class="empty-note">No delivery misses for the selected scope/day.</div>'}${editable?'<button class="btn-primary no-print" id="sqdcSaveRegistry">Save Registry Entry</button>':''}<span id="sqdcSaveStatus" class="sqdc-status"></span></div>`;}
+  function sqdcHistoryHtml(){const rows=(SQDC_AUDIT[sqdcMonth.slice(0,4)]||[]).filter(x=>String(x.path).includes(sqdcMonth)).slice().reverse();return `<div class="sqdc-panel sqdc-audit"><h3>SQDC audit history · ${sqdcMonth}</h3><div class="table-card"><table><thead><tr><th>Timestamp</th><th>Editor</th><th>Field</th><th>Original</th><th>Revised</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${adhEsc(x.timestamp)}</td><td>${adhEsc(x.editor)}</td><td>${adhEsc(x.path)}</td><td>${adhEsc(String(x.oldValue??''))}</td><td>${adhEsc(String(x.newValue??''))}</td></tr>`).join("")||'<tr><td colspan="5">No changes recorded for this month.</td></tr>'}</tbody></table></div></div>`;}
+  async function saveSqdcRegistryFromUi(){const date=sqdcSelectedDate(),year=date.slice(0,4),bucket=sqdcYearBucket(year),rec=bucket[date]=bucket[date]||{terminals:{},global:{},deliveryNotes:{}};rec.terminals=rec.terminals||{};rec.global=rec.global||{};rec.deliveryNotes=rec.deliveryNotes||{};document.querySelectorAll("[data-sqdc-term]").forEach(i=>{const t=i.dataset.sqdcTerm,f=i.dataset.sqdcField;rec.terminals[t]=rec.terminals[t]||{};const old=rec.terminals[t][f],v=i.value===""?null:Math.max(0,Number(i.value)||0);sqdcAudit(year,`${date}.terminals.${t}.${f}`,old,v);rec.terminals[t][f]=v;});document.querySelectorAll("[data-sqdc-global]").forEach(i=>{const f=i.dataset.sqdcGlobal,old=rec.global[f],v=i.value===""?null:Math.max(0,Number(i.value)||0);sqdcAudit(year,`${date}.global.${f}`,old,v);rec.global[f]=v;});document.querySelectorAll("[data-sqdc-note]").forEach(i=>{const id=i.dataset.sqdcNote,f=i.dataset.sqdcNoteField;rec.deliveryNotes[id]=rec.deliveryNotes[id]||{};const old=rec.deliveryNotes[id][f],v=i.value.trim();sqdcAudit(year,`${date}.delivery.${id}.${f}`,old,v);rec.deliveryNotes[id][f]=v;});await persistSqdcYear(year);const s=document.getElementById("sqdcSaveStatus");if(s)s.textContent=" ✓ Saved to Firebase with audit history.";}
+  function renderSqdcView(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";document.getElementById("brandTitle").textContent=sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const months=sqdcMonthOptions();if(!sqdcMonth||!months.includes(sqdcMonth))sqdcMonth=months[months.length-1];if(!sqdcDay||sqdcDay>sqdcDaysInMonth(sqdcMonth))sqdcDay=Math.min(new Date().getUTCDate(),sqdcDaysInMonth(sqdcMonth));const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap"><div class="sqdc-toolbar no-print"><div class="sqdc-tabs">${Object.keys(SQDC_SCOPE_LABELS).map(k=>`<button data-sqdc-scope="${k}" class="${sqdcScope===k?'active':''}">${SQDC_SCOPE_LABELS[k]} ${k==='global'?'SQDCP':'SQDC'}</button>`).join("")}</div><select id="sqdcMonth">${months.map(m=>`<option ${m===sqdcMonth?'selected':''}>${m}</option>`).join("")}</select><select id="sqdcDay">${Array.from({length:sqdcDaysInMonth(sqdcMonth)},(_,i)=>`<option value="${i+1}" ${i+1===Number(sqdcDay)?'selected':''}>Day ${i+1}</option>`).join("")}</select><div class="sqdc-tabs"><button data-sqdc-page="dashboard" class="${sqdcPage==='dashboard'?'active':''}">Dashboard</button><button data-sqdc-page="registry" class="${sqdcPage==='registry'?'active':''}">Data Registry</button><button data-sqdc-page="history" class="${sqdcPage==='history'?'active':''}">History</button></div></div>${sqdcPage==='dashboard'?sqdcDashboardHtml():sqdcPage==='registry'?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.querySelectorAll("[data-sqdc-page]").forEach(b=>b.onclick=()=>{sqdcPage=b.dataset.sqdcPage;render();});document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));}
+  function renderSqdcSettingsView(){const year=settingsYear||String(new Date().getUTCFullYear()),t=sqdcTargets(year),editable=CURRENT_USER&&["admin","management"].includes(CURRENT_USER.role),sv=document.getElementById("settingsView");sv.innerHTML=`<div class="settings-wrap">${settingsTabsHtml()}<div class="section-label">Special SQDCP targets</div><div class="settings-toolbar"><select id="sqdcSettingsYear">${Array.from({length:13},(_,i)=>2020+i).map(y=>`<option ${String(y)===String(year)?'selected':''}>${y}</option>`).join("")}</select></div><div class="sqdc-panel"><div class="sqdc-metrics">${[["nearMiss","Near Miss maximum"],["deviations","Deviations maximum"],["safetyWalk","Safety Walks per day"],["workInstructions","Work Instructions per day"],["processConfirmations","Process Confirmations per day"]].map(([k,l])=>`<label>${l}<input type="number" min="0" step="1" class="sqdc-input" data-sqdc-config="${k}" value="${t[k]}" ${editable?'':'disabled'}></label>`).join("")}</div>${editable?'<button class="btn-primary" id="saveSqdcConfig" style="margin-top:14px">Save SQDCP Targets</button>':''}<span id="sqdcConfigStatus" class="sqdc-status"></span></div></div>`;wireSettingsTabs();document.getElementById("sqdcSettingsYear").onchange=e=>{settingsYear=e.target.value;renderSettingsView();};const save=document.getElementById("saveSqdcConfig");if(save)save.onclick=async()=>{SQDC_CONFIG.targetsByYear=SQDC_CONFIG.targetsByYear||{};SQDC_CONFIG.targetsByYear[year]={};document.querySelectorAll("[data-sqdc-config]").forEach(i=>SQDC_CONFIG.targetsByYear[year][i.dataset.sqdcConfig]=Math.max(0,Number(i.value)||0));await storageSet("sqdc_config",JSON.stringify(SQDC_CONFIG),true);document.getElementById("sqdcConfigStatus").textContent=" ✓ Saved.";};}
+
   // ---------- Settings view ----------
   const settingsBtn = document.getElementById("settingsBtn");
   let showingSettings = false;
@@ -4174,6 +4172,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const canSeeKpi=CURRENT_USER && (CURRENT_USER.role==="admin" || CURRENT_USER.role==="management");
     return `<div class="adh-tabs settings-module-tabs">
       ${canSeeKpi?`<button data-settings-page="kpi" class="${settingsPage==="kpi"?"active":""}">Targets &amp; Toggles</button>`:""}
+      ${canSeeKpi?`<button data-settings-page="sqdc" class="${settingsPage==="sqdc"?"active":""}">Special SQDCP Settings</button>`:""}
       <button data-settings-page="adherence_terminals" class="${settingsPage==="adherence_terminals"?"active":""}">Adherence Terminals</button>
       <button data-settings-page="adherence_scope" class="${settingsPage==="adherence_scope"?"active":""}">Adherence Monthly Scope %</button>
     </div>`;
@@ -4182,6 +4181,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.querySelectorAll(".settings-module-tabs button[data-settings-page]").forEach(b=>b.onclick=()=>{settingsPage=b.dataset.settingsPage;renderSettingsView();});
   }
   function renderSettingsView(){
+    if(settingsPage==="sqdc"){ renderSqdcSettingsView(); return; }
     if(settingsPage==="adherence_terminals" || settingsPage==="adherence_scope"){
       renderAdherenceSettingsView();
       return;
@@ -4200,7 +4200,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     sv.innerHTML = `
       <div class="settings-wrap">
         ${settingsTabsHtml()}
-        <div class="section-label">KPI Settings — targets, activation & priority</div>
+        <div class="section-label">KPI Settings — targets, weights, activation &amp; priority</div>
         <div class="settings-toolbar">
           <select id="settingsTermSelect"></select>
           <select id="settingsYearSelect"></select>
@@ -4210,7 +4210,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
         <table class="settings-table">
-          <thead><tr><th>KPI</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal (${settingsYear||''})</th><th>Show on Global (${settingsYear||''})</th><th>Priority</th><th></th></tr></thead>
+          <thead><tr><th>KPI</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal (${settingsYear||''})</th><th>Show on Global (${settingsYear||''})</th><th>Show in SQDC (${settingsYear||''})</th><th>SQDC Weight %</th><th>Priority</th><th></th></tr></thead>
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
@@ -4400,6 +4400,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const targetDisplay = effTarget!==null && effTarget!==undefined ? (isPct ? (effTarget*100).toFixed(2) : effTarget) : '';
       const activeTerminalYear = effectiveActive(settingsTerm, k.key, "terminal", settingsYear);
       const activeGlobalYear = effectiveActive(settingsTerm, k.key, "global", settingsYear);
+      const isTangierSqdc=TERM_CODES.includes(settingsTerm);
+      const activeSqdcYear=isTangierSqdc&&effectiveSqdcActive(settingsTerm,k.key,settingsYear);
+      const sqdcWeight=isTangierSqdc?effectiveSqdcWeight(settingsTerm,k.key,settingsYear)*100:0;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}${k.registeredManually ? ' <span class="weight-badge" title="Registered manually, not yet in the uploaded Excel">manual</span>' : ''}</td>
@@ -4415,6 +4418,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         </td>
         <td><label class="toggle"><input type="checkbox" ${activeTerminalYear?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
         <td><label class="toggle"><input type="checkbox" ${activeGlobalYear?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
+        <td>${isTangierSqdc?`<label class="toggle"><input type="checkbox" ${activeSqdcYear?'checked':''} data-key="${k.key}" class="active-sqdc-toggle"><span class="slider"></span></label>`:'—'}</td>
+        <td>${isTangierSqdc?`<input type="number" class="priority-input sqdc-weight-input" value="${sqdcWeight.toFixed(2)}" min="0" max="100" step="0.01" data-key="${k.key}" style="width:78px">`:'—'}</td>
         <td><input type="number" class="priority-input" value="${s.priority}" min="1" data-key="${k.key}"></td>
         <td>${k.registeredManually ? `<button class="btn-secondary remove-kpi-btn" data-key="${k.key}" style="border-color:#F2483D; color:#F2483D; padding:4px 8px; font-size:11px;">Remove</button>` : ''}</td>
       `;
@@ -4441,6 +4446,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           </td>
           <td><label class="toggle"><input type="checkbox" ${vesselActiveTerminal?'checked':''} data-key="${k.key}" class="vessel-active-terminal-toggle"><span class="slider"></span></label></td>
           <td><label class="toggle"><input type="checkbox" ${vesselActiveGlobal?'checked':''} data-key="${k.key}" class="vessel-active-global-toggle"><span class="slider"></span></label></td>
+          <td>Delivery</td><td>—</td>
           <td><input type="number" class="priority-input vessel-priority-input" value="${vesselPriority}" min="1" data-key="${k.key}"></td>
           <td></td>`;
         tbody.appendChild(hourTr);
@@ -4493,14 +4499,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
       };
     });
+    tbody.querySelectorAll(".active-sqdc-toggle").forEach(cb=>{
+      cb.onchange=()=>{const s=SETTINGS[settingsTerm][cb.dataset.key];s.activeSqdcByYear=s.activeSqdcByYear||{};s.activeSqdcByYear[settingsYear]=cb.checked;persistSettings(settingsTerm,"Saved SQDC toggle ("+settingsYear+")");};
+    });
+    tbody.querySelectorAll(".sqdc-weight-input").forEach(inp=>{
+      inp.onchange=()=>{const n=Math.max(0,Math.min(100,Number(inp.value)||0)),s=SETTINGS[settingsTerm][inp.dataset.key];s.sqdcWeightByYear=s.sqdcWeightByYear||{};s.sqdcWeightByYear[settingsYear]=n/100;persistSettings(settingsTerm,"Saved SQDC weight ("+settingsYear+")");};
+    });
     tbody.querySelectorAll(".direction-select").forEach(sel => {
       sel.onchange = () => { SETTINGS[settingsTerm][sel.dataset.key].direction = sel.value; persistSettings(settingsTerm, "Saved"); render(); };
     });
-    tbody.querySelectorAll(".priority-input:not(.target-input):not(.vessel-direction-select):not(.vessel-priority-input)").forEach(inp => {
+    tbody.querySelectorAll(".priority-input:not(.target-input):not(.vessel-direction-select):not(.vessel-priority-input):not(.sqdc-weight-input)").forEach(inp => {
       if (inp.classList.contains("direction-select")) return;
       inp.onchange = () => { SETTINGS[settingsTerm][inp.dataset.key].priority = Number(inp.value)||999; persistSettings(settingsTerm, "Saved"); render(); };
     });
-    tbody.querySelectorAll(".target-input").forEach(inp => {
+    tbody.querySelectorAll(".target-input:not(.vessel-target-input)").forEach(inp => {
       inp.onchange = () => {
         const s = SETTINGS[settingsTerm][inp.dataset.key];
         const kpi = settingsKpisForTerm(settingsTerm).find(k=>k.key===inp.dataset.key);
@@ -5146,7 +5158,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   
 // ---------- Master render ----------
   function render(){
-    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE") renderPeriodPicker();
+    document.getElementById("periodRow").style.display=currentTerminal==="SQDC"?"none":"";
+    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE" && currentTerminal !== "SQDC") renderPeriodPicker();
     renderContent();
     updateSidebarContext();
   }
@@ -5186,6 +5199,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return false;
   }
   function normalizeCurrentViewForRole(){
+    if(currentTerminal==="SQDC"){
+      if(canViewSqdc())return;
+      if(setFirstAllowedPerformanceView())return;
+    }
     if(currentTerminal==="ADHERENCE"){
       if(hasAdherenceDashboardAccess())return;
       if(setFirstAllowedPerformanceView())return;
@@ -5222,6 +5239,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.getElementById("eraseDataBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
     document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
+    sqdcDashboardsBtn.style.display = canViewSqdc() ? "" : "none";
     document.getElementById("dataAnalysisSection").style.display = can("upload") ? "" : "none";
     const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"));
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
@@ -5260,7 +5278,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       banner.innerHTML = "⚠ Could not connect to the database. Uploads and Settings changes will not be saved.";
     }
     // These three datasets are independent, so load them in parallel.
-    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage()]);
+    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage(), loadSqdcDataFromStorage()]);
     // Panama terminals share Settings but remain outside the Tangier terminal navigation/data model.
     TERM_CODES = TERM_CODES.filter(t=>!PANAMA_TERM_CODES.includes(t));
     Object.keys(IMPORTED_TARGETS).forEach(ensureTargetTerminalRegistered);
