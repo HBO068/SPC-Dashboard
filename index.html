@@ -1517,6 +1517,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const sqdcDashboardsBtn = document.getElementById("sqdcDashboardsBtn");
   const sqdcRegistryBtn = document.getElementById("sqdcRegistryBtn");
   const sqdcHistoryBtn = document.getElementById("sqdcHistoryBtn");
+  function setUtilityHeader(title,subtitle){
+    document.getElementById("brandTitle").textContent=title;
+    document.getElementById("brandSubtitle").textContent=subtitle;
+    document.getElementById("brandFlag").style.display="none";
+  }
   function closeUtilityViews(){
     showingSettings=false; showingRoles=false; showingErase=false;
     document.getElementById("settingsView").style.display="none";
@@ -1557,8 +1562,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
   adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
   sqdcDashboardsBtn.onclick=()=>{sqdcPage="dashboard";openDashboardArea("sqdc");};
-  sqdcRegistryBtn.onclick=()=>{sqdcPage="registry";openDashboardArea("sqdc");};
-  sqdcHistoryBtn.onclick=()=>{sqdcPage="history";openDashboardArea("sqdc");};
+  sqdcRegistryBtn.onclick=()=>{if(!canViewSqdcRecords())return;sqdcPage="registry";openDashboardArea("sqdc");};
+  sqdcHistoryBtn.onclick=()=>{if(!canViewSqdcRecords())return;sqdcPage="history";openDashboardArea("sqdc");};
   function updateSidebarContext(){
     const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
     terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC");
@@ -3850,6 +3855,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function hasTerminalDashboardAccess(user=CURRENT_USER){return canViewTerminalDashboardScope("tangier",user)||canViewTerminalDashboardScope("panama",user);}
   function hasAdherenceDashboardAccess(user=CURRENT_USER){return canViewAdherenceScope("tangier",user)||canViewAdherenceScope("panama",user)||canViewAdherenceScope("global",user);}
   function canViewSqdc(user=CURRENT_USER){return !!user&&["admin","management","data_analyst","supervisor"].includes(user.role);}
+  function canViewSqdcRecords(user=CURRENT_USER){return !!user&&["admin","management","data_analyst"].includes(user.role);}
   function canEditSqdc(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
   function configuredRegions(){
     const fixed=(typeof ADHERENCE_REGION_OPTIONS!=="undefined"?ADHERENCE_REGION_OPTIONS:[]),used=(typeof ADHERENCE_REGISTRY!=="undefined"?ADHERENCE_REGISTRY:[]).map(r=>String(r.region||"").trim()).filter(Boolean);
@@ -3870,6 +3876,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   async function renderRolesView(){
+    setUtilityHeader("User Roles","Shared Planning Center — Access Management");
     const rv = document.getElementById("rolesView");
     const regionItems=configuredRegions().map(region=>({value:region,label:region}));
     const yearItems=configuredRoleYears().map(year=>({value:year,label:year}));
@@ -4018,6 +4025,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
 
   function renderEraseView(){
+    setUtilityHeader("Erase Data","Shared Planning Center — Data Management");
     const ev = document.getElementById("eraseView");
     const allTerms = [...TERM_CODES.map(t=>({code:t, kind:"Tangier"})), ...PANAMA_TERM_CODES.map(t=>({code:t, kind:"Panama"}))];
     ev.innerHTML = `
@@ -4326,6 +4334,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.querySelectorAll(".settings-module-tabs button[data-settings-page]").forEach(b=>b.onclick=()=>{settingsPage=b.dataset.settingsPage;renderSettingsView();});
   }
   function renderSettingsView(){
+    setUtilityHeader("Settings","Shared Planning Center — Configuration");
     if(settingsPage==="sqdc"){ renderSqdcSettingsView(); return; }
     if(settingsPage==="adherence_terminals" || settingsPage==="adherence_scope"){
       renderAdherenceSettingsView();
@@ -5341,7 +5350,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function normalizeCurrentViewForRole(){
     if(currentTerminal==="SQDC"){
-      if(canViewSqdc())return;
+      if(canViewSqdc()){if(!canViewSqdcRecords()&&sqdcPage!=="dashboard")sqdcPage="dashboard";return;}
       if(setFirstAllowedPerformanceView())return;
     }
     if(currentTerminal==="ADHERENCE"){
@@ -5381,10 +5390,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
     document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
     sqdcDashboardsBtn.style.display = canViewSqdc() ? "" : "none";
-    sqdcRegistryBtn.style.display = canViewSqdc() ? "" : "none";
-    sqdcHistoryBtn.style.display = canViewSqdc() ? "" : "none";
-    document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdc()) ? "" : "none";
-    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload") || canViewSqdc());
+    sqdcRegistryBtn.style.display = canViewSqdcRecords() ? "" : "none";
+    sqdcHistoryBtn.style.display = canViewSqdcRecords() ? "" : "none";
+    document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdcRecords()) ? "" : "none";
+    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload") || canViewSqdcRecords());
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
     if (allowed){
