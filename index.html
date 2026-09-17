@@ -618,11 +618,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   @media print{.sqdc-toolbar,.sqdc-tabs{display:none!important}.sqdc-letter-board{grid-template-columns:repeat(5,1fr)!important}.sqdc-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-letter-card,.sqdc-panel{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   /* SQDCP final presentation: period filters above scope tabs and reference-style day letters. */
   .sqdc-period-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0 0 12px}.sqdc-filter-field{display:grid;gap:4px}.sqdc-filter-field label{font:700 9px var(--display);letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint)}.sqdc-filter-field select{min-width:115px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:12px var(--mono)}
-  .sqdc-scope-toolbar{margin-bottom:16px}.sqdc-letter-board{align-items:stretch}.sqdc-letter-card{min-height:285px}.sqdc-letter-card h3{text-transform:uppercase;color:var(--text-muted);font-size:11px;letter-spacing:.6px}.sqdc-glyph{grid-template-columns:repeat(6,30px);grid-auto-rows:30px;gap:3px;justify-content:center;max-width:none;margin-top:18px}.sqdc-cell{aspect-ratio:auto;width:30px;height:30px;border-radius:7px;font-size:10px}.sqdc-cell.contour{background:transparent;border-color:transparent;color:transparent}.sqdc-cell.used.white{background:#F0F2F2;border-color:#D5DADB;color:#7A858A}.sqdc-cell.green{background:#82C64A;border-color:#82C64A;color:#fff}.sqdc-cell.red{background:#E64C55;border-color:#E64C55;color:#fff}.sqdc-cell.amber{background:#F6C34A;border-color:#F6C34A;color:#fff}
+  .sqdc-scope-toolbar{margin-bottom:16px}.sqdc-letter-board{align-items:stretch}.sqdc-letter-card{min-height:330px}.sqdc-letter-card h3{min-height:14px;text-transform:uppercase;color:var(--text-muted);font-size:11px;letter-spacing:.6px}.sqdc-glyph{grid-template-columns:repeat(6,27px);grid-template-rows:repeat(9,27px);grid-auto-rows:27px;gap:3px;justify-content:center;align-content:start;max-width:none;margin-top:14px}.sqdc-cell{aspect-ratio:auto;width:27px;height:27px;border-radius:7px;font-size:10px}.sqdc-cell.contour{background:rgba(169,179,184,.20);border:1px solid rgba(169,179,184,.18);color:transparent}.sqdc-cell.used.white{background:#F0F2F2;border-color:#D5DADB;color:#7A858A}.sqdc-cell.green{background:#82C64A;border-color:#82C64A;color:#fff}.sqdc-cell.red{background:#E64C55;border-color:#E64C55;color:#fff}.sqdc-cell.amber{background:#F6C34A;border-color:#F6C34A;color:#fff}
   .sqdc-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.sqdc-chart-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;break-inside:avoid}.sqdc-chart-card h3{font:700 13px var(--display);margin:0 0 8px}.sqdc-chart-box{height:270px;position:relative}.sqdc-chart-box canvas{width:100%!important;height:100%!important}.sqdc-drill{margin-top:12px;padding-top:10px;border-top:1px solid var(--border-soft)}
   .sqdc-column-board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:10px;align-items:start;overflow-x:auto;padding-bottom:8px}.sqdc-column-board.four{grid-template-columns:repeat(4,minmax(250px,1fr))}.sqdc-column{display:flex;flex-direction:column;gap:10px;min-width:0}.sqdc-column .sqdc-letter-card{width:100%;box-sizing:border-box}.sqdc-column .sqdc-chart-card{padding:10px;border-radius:11px}.sqdc-column .sqdc-chart-card h3{font-size:11px;line-height:1.3;min-height:28px}.sqdc-column .sqdc-chart-box{height:190px}.sqdc-column .sqdc-pareto-box{height:205px}.sqdc-column .sqdc-drill{font-size:10px;max-height:260px;overflow:auto}.sqdc-column .sqdc-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.sqdc-column .sqdc-metric{padding:8px}.sqdc-column .sqdc-metric b{font-size:14px}.sqdc-column-detail{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:10px;break-inside:avoid}.sqdc-column-detail h3{font:700 11px var(--display);margin:0 0 8px}.sqdc-column-note{font:10px var(--mono);color:var(--text-muted);line-height:1.45}
-  @media(max-width:1150px){.sqdc-glyph{grid-template-columns:repeat(6,26px);grid-auto-rows:26px}.sqdc-cell{width:26px;height:26px}.sqdc-letter-card{min-height:255px}}@media(max-width:850px){.sqdc-chart-grid{grid-template-columns:1fr}.sqdc-letter-board{grid-template-columns:repeat(2,1fr)}}
-  @media print{.sqdc-period-toolbar,.sqdc-scope-toolbar{display:none!important}.sqdc-chart-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-column-board{grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important;gap:5px!important}.sqdc-column-board.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}.sqdc-column{gap:5px!important}.sqdc-column .sqdc-chart-card,.sqdc-column-detail{padding:6px!important}.sqdc-column .sqdc-chart-box{height:145px!important}.sqdc-letter-card{min-height:205px!important;padding:7px!important}.sqdc-glyph{grid-template-columns:repeat(6,18px);grid-auto-rows:18px;gap:2px;margin-top:8px}.sqdc-cell{width:18px;height:18px;font-size:6px}.sqdc-column .sqdc-drill{max-height:none;overflow:visible;font-size:7px}.sqdc-column .sqdc-metric{padding:4px}.sqdc-column .sqdc-metric b{font-size:10px}}
+  @media(max-width:1150px){.sqdc-glyph{grid-template-columns:repeat(6,25px);grid-template-rows:repeat(9,25px);grid-auto-rows:25px}.sqdc-cell{width:25px;height:25px}.sqdc-letter-card{min-height:310px}}@media(max-width:850px){.sqdc-chart-grid{grid-template-columns:1fr}.sqdc-letter-board{grid-template-columns:repeat(2,1fr)}}
+  @media print{.sqdc-period-toolbar,.sqdc-scope-toolbar{display:none!important}.sqdc-chart-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-column-board{grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important;gap:5px!important}.sqdc-column-board.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}.sqdc-column{gap:5px!important}.sqdc-column .sqdc-chart-card,.sqdc-column-detail{padding:6px!important}.sqdc-column .sqdc-chart-box{height:145px!important}.sqdc-letter-card{min-height:205px!important;padding:7px!important}.sqdc-glyph{grid-template-columns:repeat(6,18px);grid-template-rows:repeat(9,18px);grid-auto-rows:18px;gap:2px;margin-top:8px}.sqdc-cell{width:18px;height:18px;font-size:6px}.sqdc-column .sqdc-drill{max-height:none;overflow:visible;font-size:7px}.sqdc-column .sqdc-metric{padding:4px}.sqdc-column .sqdc-metric b{font-size:10px}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -1528,21 +1528,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     closeUtilityViews();
     if(kind==="sqdc"){
       if(!canViewSqdc())return;
-      if(currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="sqdc"; currentTerminal="SQDC";
       sqdcScope="global";
     }else if(kind==="adherence"){
       if(!hasAdherenceDashboardAccess())return;
-      if(currentTerminal!=="ADHERENCE") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
       if(currentType==="daily")currentType="weekly";
       const allowedScopes=allowedAdherenceScopeValues();
       if(!allowedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=allowedScopes[0]||"global";
       adherencePage="overview";
-    }else if(currentTerminal==="ADHERENCE" || currentTerminal==="SQDC"){
-      currentSection=lastPerformanceView.section;
-      currentGlobalSub=lastPerformanceView.globalSub;
-      currentTerminal=lastPerformanceView.terminal;
+    }else if(kind==="performance"){
+      if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"){
+        const saved=lastPerformanceView||{};
+        currentSection=saved.section||"global";
+        currentGlobalSub=saved.globalSub||"tangier";
+        currentTerminal=saved.terminal||"ALL";
+        if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"){
+          currentSection="global";currentGlobalSub="tangier";currentTerminal="ALL";
+        }
+      }
       normalizeCurrentViewForRole();
     }
     currentPeriod=null;
@@ -4198,10 +4204,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let sqdcYear=null;
   let sqdcCharts={};
   const SQDC_MASKS_FINAL={
-    S:["g####g","######","###ggg","#####g","g#####","ggg###","######","g####g"],
-    Q:["g####g","######","##gg##","##gg##","##gg##","##gg##","######","g###g#"],
+    S:["g####g","######","###ggg","#####g","g#####","ggg###","######","g####g","......"],
+    Q:["g####g","######","##gg##","##gg##","##gg##","##gg##","######","g###g#","......"],
     C:["g####g","######","###ggg","###ggg","###ggg","###ggg","###ggg","######","g####g"],
-    D:["#####g","######","###g##","###g##","###g##","###g##","######","#####g"],
+    D:["#####g","######","###g##","###g##","###g##","###g##","######","#####g","......"],
     P:["#####g","######","##gg##","######","#####g","###ggg","###ggg","###ggg","###ggg"]
   };
   function sqdcResolvePeriod(){
@@ -4226,7 +4232,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     SQDC_MASKS_FINAL[letter].forEach(row=>[...row].forEach(c=>{
       if(c==="#"&&day<=31){
         const inMonth=day<=maxDay,shown=inMonth&&day<=Number(sqdcDay),date=`${sqdcMonth}-${String(day).padStart(2,"0")}`,st=shown?sqdcStatus(sqdcScope,date,letter):null;
-        cells+=`<div class="sqdc-cell used ${shown?(st||'white'):'white'}" title="${date}: ${st||'No data / not selected'}">${inMonth?day:''}</div>`;day++;
+        cells+=inMonth?`<div class="sqdc-cell used ${shown?(st||'white'):'white'}" title="${date}: ${st||'No data / not selected'}">${day}</div>`:'<div class="sqdc-cell contour"></div>';day++;
       }else if(c==="g"||c==="#")cells+='<div class="sqdc-cell contour"></div>';
       else cells+='<div class="sqdc-cell"></div>';
     }));
