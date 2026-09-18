@@ -623,6 +623,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .sqdc-column-board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:10px;align-items:start;overflow-x:auto;padding-bottom:8px}.sqdc-column-board.four{grid-template-columns:repeat(4,minmax(250px,1fr))}.sqdc-column{display:flex;flex-direction:column;gap:10px;min-width:0}.sqdc-column .sqdc-letter-card{width:100%;box-sizing:border-box}.sqdc-column .sqdc-chart-card{padding:10px;border-radius:11px}.sqdc-column .sqdc-chart-card h3{font-size:11px;line-height:1.3;min-height:28px}.sqdc-column .sqdc-chart-box{height:190px}.sqdc-column .sqdc-pareto-box{height:205px}.sqdc-column .sqdc-drill{font-size:10px;max-height:260px;overflow:auto}.sqdc-column .sqdc-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.sqdc-column .sqdc-metric{padding:8px}.sqdc-column .sqdc-metric b{font-size:14px}.sqdc-column-detail{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:10px;break-inside:avoid}.sqdc-column-detail h3{font:700 11px var(--display);margin:0 0 8px}.sqdc-column-note{font:10px var(--mono);color:var(--text-muted);line-height:1.45}
   @media(max-width:1150px){.sqdc-glyph{grid-template-columns:repeat(var(--sqdc-cols),25px)}.sqdc-cell{width:25px}.sqdc-letter-card{min-height:310px}}@media(max-width:850px){.sqdc-chart-grid{grid-template-columns:1fr}.sqdc-letter-board{grid-template-columns:repeat(2,1fr)}}
   @media print{.sqdc-period-toolbar,.sqdc-scope-toolbar{display:none!important}.sqdc-chart-grid{grid-template-columns:repeat(2,1fr)!important}.sqdc-column-board{grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important;gap:5px!important}.sqdc-column-board.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}.sqdc-column{gap:5px!important}.sqdc-column .sqdc-chart-card,.sqdc-column-detail{padding:6px!important}.sqdc-column .sqdc-chart-box{height:145px!important}.sqdc-letter-card{min-height:205px!important;padding:7px!important}.sqdc-glyph{grid-template-columns:repeat(var(--sqdc-cols),18px);grid-template-rows:repeat(var(--sqdc-rows),minmax(0,1fr));height:162px;gap:2px;margin-top:8px}.sqdc-cell{width:18px;height:100%;font-size:6px}.sqdc-column .sqdc-drill{max-height:none;overflow:visible;font-size:7px}.sqdc-column .sqdc-metric{padding:4px}.sqdc-column .sqdc-metric b{font-size:10px}}
+  /* Workload Analysis is isolated from the established Performance, Adherence and SQDCP layouts. */
+  .workload-wrap{width:100%;max-width:1500px;margin:0 auto}.workload-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0 0 16px}.workload-field{display:grid;gap:4px}.workload-field label{font:700 9px var(--display);letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint)}.workload-field select{min-width:120px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:12px var(--mono)}
+  .workload-summary-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 10px}.workload-summary-head h2{font:700 16px var(--display);margin:0}.workload-summary-head p{font:10px var(--mono);color:var(--text-muted);margin:0;text-align:right}.workload-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:24px}.workload-summary-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:12px;break-inside:avoid;page-break-inside:avoid}.workload-summary-card.overall{border-color:rgba(47,217,190,.55);background:linear-gradient(135deg,var(--panel),rgba(47,217,190,.07))}.workload-summary-card h3{font:700 12px var(--display);margin:0 0 10px}.workload-summary-period{font:700 8px var(--display);letter-spacing:.65px;text-transform:uppercase;color:var(--text-faint);margin:9px 0 5px}.workload-summary-period:first-of-type{margin-top:0}.workload-summary-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.workload-summary-metric{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;padding:8px}.workload-summary-metric small{display:block;font:9px var(--display);color:var(--text-muted);margin-bottom:4px}.workload-summary-metric b{display:block;font:700 18px var(--mono);color:var(--text)}.workload-summary-metric.calls b{color:#2FD9BE}.workload-summary-metric.moves b{color:#4FA6E8}
+  .workload-section{margin:20px 0 28px}.workload-section>h2{font:700 15px var(--display);margin:0 0 4px}.workload-note{font:11px var(--mono);color:var(--text-muted);margin:0 0 12px}.workload-overall-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.workload-pool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.workload-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;break-inside:avoid;page-break-inside:avoid}.workload-card h3{font:700 12px var(--display);margin:0 0 8px;color:var(--text)}.workload-chart-box{height:270px;position:relative}.workload-pool-card>h3{font-size:14px;margin-bottom:12px}.workload-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.workload-mini{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:9px}.workload-mini h4{font:600 10px var(--display);color:var(--text-muted);margin:0 0 5px}.workload-mini .workload-chart-box{height:175px}
+  @media(max-width:1150px){.workload-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:980px){.workload-pool-grid{grid-template-columns:1fr}}@media(max-width:720px){.workload-overall-grid,.workload-pair,.workload-summary-grid{grid-template-columns:1fr}.workload-summary-head{align-items:start;flex-direction:column}.workload-summary-head p{text-align:left}}
+  @media print{.workload-toolbar{display:none!important}.workload-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important;margin-bottom:12px!important}.workload-summary-card{padding:7px!important}.workload-summary-metric{padding:5px!important}.workload-summary-metric b{font-size:12px!important}.workload-overall-grid,.workload-pool-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.workload-pair{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}.workload-card{padding:8px!important}.workload-chart-box{height:185px!important}.workload-mini .workload-chart-box{height:135px!important}.workload-section{margin:12px 0 16px!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -727,6 +733,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="sidebar-btn" id="terminalDashboardsBtn" title="Open Terminal Performance dashboards">▦ <span>Terminal Dashboards</span></button>
       <button class="sidebar-btn" id="adherenceDashboardsBtn" title="Open the Adherence dashboard">◎ <span>Adherence Dashboard</span></button>
       <button class="sidebar-btn" id="sqdcDashboardsBtn" title="Open Tangier SQDC and Global SQDCP dashboards">◆ <span>SQDCP Dashboards</span></button>
+      <button class="sidebar-btn" id="workloadAnalysisBtn" title="Open the Tangier workload analysis dashboard">▥ <span>Workload Analysis</span></button>
       <div id="printWrap" style="position:relative;">
         <button class="sidebar-btn" id="printBtn" title="Print or export the selected dashboard">🖨 <span>Print / Export</span></button>
         <div id="printMenu" class="print-menu no-print" style="display:none;">
@@ -791,6 +798,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div id="panamaView" style="display:none"></div>
   <div id="adherenceView" style="display:none"></div>
   <div id="sqdcView" style="display:none"></div>
+  <div id="workloadView" style="display:none"></div>
   </div>
 
   <div id="settingsView" style="display:none"></div>
@@ -1515,6 +1523,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const terminalDashboardsBtn = document.getElementById("terminalDashboardsBtn");
   const adherenceDashboardsBtn = document.getElementById("adherenceDashboardsBtn");
   const sqdcDashboardsBtn = document.getElementById("sqdcDashboardsBtn");
+  const workloadAnalysisBtn = document.getElementById("workloadAnalysisBtn");
   const sqdcRegistryBtn = document.getElementById("sqdcRegistryBtn");
   const sqdcHistoryBtn = document.getElementById("sqdcHistoryBtn");
   function setUtilityHeader(title,subtitle){
@@ -1533,24 +1542,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     closeUtilityViews();
     if(kind==="sqdc"){
       if(!canViewSqdc())return;
-      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="sqdc"; currentTerminal="SQDC";
       sqdcScope="global";
+    }else if(kind==="workload"){
+      if(!canViewWorkloadAnalysis())return;
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      currentSection="global";currentGlobalSub="workload";currentTerminal="WORKLOAD";
     }else if(kind==="adherence"){
       if(!hasAdherenceDashboardAccess())return;
-      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
       if(currentType==="daily")currentType="weekly";
       const allowedScopes=allowedAdherenceScopeValues();
       if(!allowedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=allowedScopes[0]||"global";
       adherencePage="overview";
     }else if(kind==="performance"){
-      if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"){
+      if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"){
         const saved=lastPerformanceView||{};
         currentSection=saved.section||"global";
         currentGlobalSub=saved.globalSub||"tangier";
         currentTerminal=saved.terminal||"ALL";
-        if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"){
+        if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"){
           currentSection="global";currentGlobalSub="tangier";currentTerminal="ALL";
         }
       }
@@ -1562,13 +1575,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
   adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
   sqdcDashboardsBtn.onclick=()=>{sqdcPage="dashboard";openDashboardArea("sqdc");};
+  workloadAnalysisBtn.onclick=()=>openDashboardArea("workload");
   sqdcRegistryBtn.onclick=()=>{if(!canViewSqdcRecords())return;sqdcPage="registry";openDashboardArea("sqdc");};
   sqdcHistoryBtn.onclick=()=>{if(!canViewSqdcRecords())return;sqdcPage="history";openDashboardArea("sqdc");};
   function updateSidebarContext(){
     const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
-    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC");
+    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD");
     adherenceDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="ADHERENCE");
     sqdcDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="dashboard");
+    workloadAnalysisBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="WORKLOAD");
     sqdcRegistryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="registry");
     sqdcHistoryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="history");
     const printWrap=document.getElementById("printWrap");
@@ -1982,6 +1997,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return currentTerminal || "Report";
   }
   function exportBaseName(){
+    if(currentTerminal === "WORKLOAD")return `SPC Workload Analysis - Quarter Q${workloadQuarter}, ${workloadYear}`.replace(/[\/:*?"<>|]/g,"-");
     if(currentTerminal === "SQDC"){
       const scope=sqdcScopeLabel();
       return `SPC ${scope} ${sqdcScope==="global"?"SQDCP":"SQDC"} Report - ${sqdcMonth}`.replace(/[\/:*?"<>|]/g,"-");
@@ -2064,7 +2080,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
 
       if (terminalRow){
-        terminalRow.style.display = "flex";
+        terminalRow.style.display = currentTerminal === "WORKLOAD" ? "none" : "flex";
         terminalRow.style.marginTop = "16px";
         terminalRow.style.marginBottom = "16px";
         terminalRow.style.justifyContent = "flex-start";
@@ -2073,7 +2089,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         });
       }
       if (periodRow){
-        periodRow.style.display = "flex";
+        periodRow.style.display = currentTerminal === "WORKLOAD" ? "none" : "flex";
         periodRow.style.marginTop = "0";
         periodRow.style.marginBottom = "18px";
       }
@@ -2425,7 +2441,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const mainSectionTabsEl = document.getElementById("mainSectionTabs");
   const globalSubTabsEl = document.getElementById("globalSubTabs");
   function buildMainNav(){
-    if(currentTerminal==="SQDC" || currentTerminal==="ADHERENCE"){
+    if(currentTerminal==="SQDC" || currentTerminal==="ADHERENCE" || currentTerminal==="WORKLOAD"){
       mainSectionTabsEl.style.display="none";
       globalSubTabsEl.style.display="none";
       return;
@@ -2530,7 +2546,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     [...tabsEl.children].forEach(b => {
       b.textContent=PERIOD_TYPES[b.dataset.type].label;
       b.classList.toggle("active", b.dataset.type===currentType);
-      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS" || currentTerminal === "ADHERENCE") ? "none" : "";
+      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS" || currentTerminal === "ADHERENCE" || currentTerminal === "WORKLOAD") ? "none" : "";
     });
   }
 
@@ -3753,6 +3769,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function renderContent(){
+    if (currentTerminal === "WORKLOAD") { renderWorkloadView(); return; }
+    destroyWorkloadCharts();
+    document.getElementById("workloadView").style.display = "none";
     if (currentTerminal === "SQDC") { renderSqdcView(); return; }
     document.getElementById("sqdcView").style.display = "none";
     if (currentTerminal === "ADHERENCE") { renderAdherenceView(); return; }
@@ -3804,6 +3823,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     admin: "Admin (full access)",
     management: "Management (view all, edit targets/weights)",
     supervisor: "Supervisor (custom read-only access)",
+    planner: "Planner Access — Tangier Terminal Dashboards",
     regional_access: "Regional Access (Tangier read-only)",
     data_analyst: "Data Analyst (view all, can upload)",
     terminal: "Terminal (view one terminal only)"
@@ -3840,7 +3860,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!user)return false;
     if(["admin","management","data_analyst"].includes(user.role))return true;
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal",scope);
-    if(user.role==="terminal"||user.role==="regional_access")return scope==="tangier";
+    if(user.role==="terminal"||user.role==="regional_access"||user.role==="planner")return scope==="tangier";
     return false;
   }
   function canViewAdherenceScope(scope,user=CURRENT_USER){
@@ -3855,6 +3875,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function hasTerminalDashboardAccess(user=CURRENT_USER){return canViewTerminalDashboardScope("tangier",user)||canViewTerminalDashboardScope("panama",user);}
   function hasAdherenceDashboardAccess(user=CURRENT_USER){return canViewAdherenceScope("tangier",user)||canViewAdherenceScope("panama",user)||canViewAdherenceScope("global",user);}
   function canViewSqdc(user=CURRENT_USER){return !!user&&["admin","management","data_analyst","supervisor"].includes(user.role);}
+  function canViewWorkloadAnalysis(user=CURRENT_USER){
+    if(!user)return false;
+    if(["admin","data_analyst"].includes(user.role))return true;
+    return ["supervisor","management"].includes(user.role)&&user.workloadAnalysis===true;
+  }
   function canViewSqdcRecords(user=CURRENT_USER){return !!user&&["admin","management","data_analyst"].includes(user.role);}
   function canEditSqdc(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
   function configuredRegions(){
@@ -3908,6 +3933,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           </div>
           <p class="adh-note" style="margin-top:12px;">Selecting Tangier or Panama automatically grants all uploaded terminals belonging to that side. No terminal-by-terminal selection is required.</p>
         </div>
+        <div id="workloadRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
+          <h3>SPC Workload Analysis</h3>
+          <label><input type="checkbox" id="roleWorkloadAnalysis"> Allow access to the Tangier Workload Analysis dashboard</label>
+        </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
           <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
           <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
@@ -3916,7 +3945,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         </div>
         <div class="adh-panel" style="margin:14px 0;">
           <h3>Accessible Years</h3>
-          <p class="adh-note">Only the checked years will appear in Terminal, Global, Adherence and SQDCP dashboards for this user.</p>
+          <p class="adh-note">Only the checked years will appear in Terminal, Global, Adherence, SQDCP and Workload dashboards for this user.</p>
           ${roleCheckGrid("roleYear",yearItems,item=>adhEsc(item.label))}
         </div>
         <table class="settings-table">
@@ -3930,11 +3959,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     `;
     const typeSel = document.getElementById("newRoleType");
     const termSel = document.getElementById("newRoleTerminal");
-    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions");
+    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions"),workloadOptions=document.getElementById("workloadRoleOptions");
     const updateRoleFields=()=>{
       termSel.style.display = typeSel.value === "terminal" ? "" : "none";
       supervisorOptions.style.display=typeSel.value==="supervisor"?"":"none";
       regionalOptions.style.display=typeSel.value==="regional_access"?"":"none";
+      workloadOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
     };
     typeSel.onchange = updateRoleFields; updateRoleFields();
     document.getElementById("addRoleBtn").onclick = async () => {
@@ -3947,8 +3977,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(role==="supervisor"){
         doc.terminalDashboards={tangier:document.getElementById("supTerminalTangier").checked,panama:document.getElementById("supTerminalPanama").checked};
         doc.adherenceDashboards={tangier:document.getElementById("supAdherenceTangier").checked,panama:document.getElementById("supAdherencePanama").checked};
-        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama){alert("Select at least one Terminal Dashboard or Adherence Dashboard scope.");return;}
+        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama&&!document.getElementById("roleWorkloadAnalysis").checked){alert("Select at least one dashboard scope.");return;}
       }
+      if(role==="supervisor"||role==="management")doc.workloadAnalysis=document.getElementById("roleWorkloadAnalysis").checked;
       if(role==="regional_access"){
         doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
         if(!doc.regions.length){alert("Select at least one region for Regional Access.");return;}
@@ -3978,7 +4009,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
         access=`Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
       }else if(r.role==="regional_access")access=`Tangier regions: ${roleArray(r.regions).join(", ")||"None"}`;
+      else if(r.role==="planner")access="All Tangier terminal dashboards";
       else access="All";
+      if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
       access+=`<br>Years: ${roleAllowedYears(r)===null?"All (legacy)":roleArray(r.years).join(", ")||"None"}`;
       tr.innerHTML = `
         <td class="kpi-key-cell">${r.email}</td>
@@ -3993,6 +4026,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const r=roles.find(x=>x.email===btn.dataset.editEmail);if(!r)return;
         document.getElementById("newRoleEmail").value=r.email;document.getElementById("newRoleType").value=r.role;document.getElementById("newRoleType").dispatchEvent(new Event("change"));
         const selectedYears=new Set(roleArray(r.years));document.querySelectorAll('input[name="roleYear"]').forEach(x=>x.checked=roleAllowedYears(r)===null||selectedYears.has(x.value));
+        document.getElementById("roleWorkloadAnalysis").checked=!!r.workloadAnalysis;
         if(r.role==="terminal")document.getElementById("newRoleTerminal").value=r.terminal||TERM_CODES[0]||"";
         if(r.role==="supervisor"){
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
@@ -4291,6 +4325,87 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
   function renderSqdcCharts(){sqdcDestroyCharts();const date=sqdcSelectedDate(),base=sqdcDailySeries(()=>0),near=sqdcDailySeries(d=>sqdcManualTotal(d,"nearMiss",false)),safety=sqdcDailySeries(d=>sqdcManualTotal(d,"safetyWalk",true));sqdcLineChart("sqdcSafetyChart",base.labels,[{label:"Near Misses",data:near.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.15)",tension:.25,fill:true},{label:"Safety Walks",data:sqdcScope==='global'?safety.values:[],borderColor:"#3ED17E",backgroundColor:"#3ED17E",tension:.25,hidden:sqdcScope!=="global"}],false);const q=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.actual}),qt=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.target});sqdcLineChart("sqdcQualityTrend",q.labels,[{label:"Actual Score",data:q.values,borderColor:"#4FA6E8",backgroundColor:"rgba(79,166,232,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:qt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:true}],false);const cost=sqdcDailySeries(d=>sqdcManualTotal(d,"deviations",false));sqdcLineChart("sqdcCostChart",cost.labels,[{label:"Deviations",data:cost.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.14)",tension:.25,fill:true}],false);const del=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.actual==null?null:x.actual*100}),delt=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.target==null?null:x.target*100});sqdcLineChart("sqdcDeliveryTrend",del.labels,[{label:"Delivery adherence",data:del.values,borderColor:"#2FD9BE",backgroundColor:"rgba(47,217,190,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:delt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,spanGaps:true}],true);if(sqdcScope==="global"){const wi=sqdcDailySeries(d=>sqdcManualTotal(d,"workInstructions",true)),pc=sqdcDailySeries(d=>sqdcManualTotal(d,"processConfirmations",true));sqdcLineChart("sqdcPeopleChart",wi.labels,[{label:"Work Instructions",data:wi.values,borderColor:"#4FA6E8",backgroundColor:"#4FA6E8",tension:.25},{label:"Process Confirmations",data:pc.values,borderColor:"#2FD9BE",backgroundColor:"#2FD9BE",tension:.25}],false);}const qi=sqdcQualityParetoItems(date),di=sqdcDeliveryParetoItems(date),ci=sqdcCostParetoItems(date);sqdcParetoChart("sqdcQualityPareto",qi,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,x.q.target-x.q.actual):x.gap);sqdcParetoChart("sqdcDeliveryPareto",di,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,1-x.d.actual):x.gap);sqdcParetoChart("sqdcCostPareto",ci,x=>x.term,x=>x.value);}
   renderSqdcView=function(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";sqdcResolvePeriod();document.getElementById("brandTitle").textContent=sqdcPage==="registry"?"SQDC Data Registry":sqdcPage==="history"?"SQDC History":sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap">${sqdcPeriodToolbarHtml()}${sqdcPage!=="history"?sqdcScopeToolbarHtml():""}${sqdcPage==="dashboard"?sqdcDashboardHtml():sqdcPage==="registry"?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.getElementById("sqdcYear").onchange=e=>{sqdcYear=e.target.value;sqdcMonth=null;sqdcDay=1;render();};document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));if(sqdcPage==="dashboard")requestAnimationFrame(renderSqdcCharts);else sqdcDestroyCharts();};
+
+  // ---------- Workload Analysis (Tangier ETB data only) ----------
+  let workloadYear=null,workloadQuarter=null,workloadCharts={};
+  function destroyWorkloadCharts(){Object.values(workloadCharts).forEach(c=>{try{c.destroy();}catch(e){}});workloadCharts={};}
+  function workloadAvailableYears(){
+    const years=new Set();
+    TERM_CODES.forEach(t=>(DATA[t]?.rows||[]).forEach(r=>{if(r._year&&canAccessYear(r._year))years.add(String(r._year));}));
+    if(!years.size){const allowed=roleAllowedYears();if(allowed)allowed.forEach(y=>years.add(String(y)));else years.add(String(new Date().getUTCFullYear()));}
+    return [...years].sort((a,b)=>Number(a)-Number(b));
+  }
+  function workloadLatestQuarter(year){
+    let latest=1;
+    TERM_CODES.forEach(t=>(DATA[t]?.rows||[]).forEach(r=>{if(String(r._year)!==String(year)||!(r._etb instanceof Date))return;latest=Math.max(latest,Math.floor(r._etb.getUTCMonth()/3)+1);}));
+    return latest;
+  }
+  function workloadQuarterDates(year,quarter){
+    const startMonth=(Number(quarter)-1)*3,start=new Date(Date.UTC(Number(year),startMonth,1)),end=new Date(Date.UTC(Number(year),startMonth+3,1)),dates=[];
+    for(let d=new Date(start);d<end;d.setUTCDate(d.getUTCDate()+1))dates.push(new Date(d));
+    return dates;
+  }
+  function workloadDailyTotals(terms,year,quarter){
+    const dates=workloadQuarterDates(year,quarter),totals=new Map(dates.map(d=>[sqdcDateKey(d),{calls:0,moves:0}])),termSet=new Set(terms);
+    termSet.forEach(term=>(DATA[term]?.rows||[]).forEach(r=>{if(String(r._year)!==String(year)||!(r._etb instanceof Date)||Math.floor(r._etb.getUTCMonth()/3)+1!==Number(quarter))return;const x=totals.get(sqdcDateKey(r._etb));if(!x)return;x.calls+=1;x.moves+=Number(r["Total Moves Planned"])||0;}));
+    return dates.map(date=>({date,...totals.get(sqdcDateKey(date))}));
+  }
+  function workloadLatestEtbDate(year){
+    let latest=null;
+    Object.values(SQDC_POOLS).flat().forEach(term=>(DATA[term]?.rows||[]).forEach(r=>{if(String(r._year)!==String(year)||!(r._etb instanceof Date)||isNaN(r._etb))return;const d=new Date(Date.UTC(r._etb.getUTCFullYear(),r._etb.getUTCMonth(),r._etb.getUTCDate()));if(!latest||d>latest)latest=d;}));
+    return latest;
+  }
+  function workloadRangeDailyTotals(terms,start,end){
+    if(!(start instanceof Date)||!(end instanceof Date)||end<start)return [];
+    const dates=[];for(let d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1))dates.push(new Date(d));
+    const totals=new Map(dates.map(d=>[sqdcDateKey(d),{calls:0,moves:0}]));
+    new Set(terms).forEach(term=>(DATA[term]?.rows||[]).forEach(r=>{if(!(r._etb instanceof Date))return;const x=totals.get(sqdcDateKey(r._etb));if(!x)return;x.calls+=1;x.moves+=Number(r["Total Moves Planned"])||0;}));
+    return dates.map(date=>({date,...totals.get(sqdcDateKey(date))}));
+  }
+  function workloadDailyAverages(daily){
+    const days=daily.length;if(!days)return {calls:null,moves:null,days:0};
+    return {calls:daily.reduce((s,x)=>s+x.calls,0)/days,moves:daily.reduce((s,x)=>s+x.moves,0)/days,days};
+  }
+  function workloadSummaryCardHtml(key,terms,ytdEnd){
+    const quarter=workloadDailyAverages(workloadDailyTotals(terms,workloadYear,workloadQuarter));
+    const ytd=workloadDailyAverages(ytdEnd?workloadRangeDailyTotals(terms,new Date(Date.UTC(Number(workloadYear),0,1)),ytdEnd):[]);
+    const metric=(label,value,type)=>`<div class="workload-summary-metric ${type}"><small>${label}</small><b>${value==null?'—':fmtNum(value,1)}</b></div>`;
+    const title=key==="Overall"?"Overall Tangier":SQDC_SCOPE_LABELS[key];
+    return `<article class="workload-summary-card ${key==="Overall"?'overall':''}"><h3>${adhEsc(title)}</h3><div class="workload-summary-period">Q${workloadQuarter} daily average</div><div class="workload-summary-metrics">${metric("Calls / day",quarter.calls,"calls")}${metric("Moves / day",quarter.moves,"moves")}</div><div class="workload-summary-period">${workloadYear} YTD daily average</div><div class="workload-summary-metrics">${metric("Calls / day",ytd.calls,"calls")}${metric("Moves / day",ytd.moves,"moves")}</div></article>`;
+  }
+  function workloadAverageSeries(terms,mode){
+    const daily=workloadDailyTotals(terms,workloadYear,workloadQuarter);
+    if(mode==="monthday"){
+      const buckets=Array.from({length:31},()=>[]);daily.forEach(x=>buckets[x.date.getUTCDate()-1].push(x));
+      return {labels:Array.from({length:31},(_,i)=>String(i+1)),calls:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.calls,0)/a.length:0),moves:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.moves,0)/a.length:0)};
+    }
+    const order=[1,2,3,4,5,6,0],buckets=order.map(()=>[]);daily.forEach(x=>{const i=order.indexOf(x.date.getUTCDay());buckets[i].push(x);});
+    return {labels:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],calls:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.calls,0)/a.length:0),moves:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.moves,0)/a.length:0)};
+  }
+  function workloadChart(id,labels,data,metric){
+    const canvas=document.getElementById(id);if(!canvas)return;
+    const color=metric==="calls"?"#2FD9BE":"#4FA6E8",fill=metric==="calls"?"rgba(47,217,190,.70)":"rgba(79,166,232,.70)";
+    workloadCharts[id]=new Chart(canvas.getContext("2d"),{type:"bar",data:{labels,datasets:[{label:metric==="calls"?"Average Calls":"Average Moves",data,backgroundColor:fill,borderColor:color,borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Number(c.raw).toFixed(1)}`}}},scales:{x:{ticks:{color:chartTickColor(),autoSkip:false,maxRotation:0,font:{size:9}},grid:{display:false}},y:{beginAtZero:true,ticks:{color:chartTickColor()},grid:{color:chartGridColor()}}}}});
+  }
+  function workloadPairHtml(prefix,title){return `<div class="workload-card workload-pool-card"><h3>${adhEsc(title)}</h3><div class="workload-pair"><div class="workload-mini"><h4>Average Calls</h4><div class="workload-chart-box"><canvas id="${prefix}Calls"></canvas></div></div><div class="workload-mini"><h4>Average Moves</h4><div class="workload-chart-box"><canvas id="${prefix}Moves"></canvas></div></div></div></div>`;}
+  function renderWorkloadCharts(){
+    destroyWorkloadCharts();
+    const scopes={Overall:Object.values(SQDC_POOLS).flat(),...SQDC_POOLS};
+    ["monthday","weekday"].forEach(mode=>Object.entries(scopes).forEach(([key,terms])=>{const s=workloadAverageSeries(terms,mode),prefix=`wl_${mode}_${key}_`;workloadChart(prefix+"Calls",s.labels,s.calls,"calls");workloadChart(prefix+"Moves",s.labels,s.moves,"moves");}));
+  }
+  function renderWorkloadView(){
+    ["globalReportView","networkView","terminalView","panamaView","adherenceView","sqdcView"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
+    destroyAdherenceCharts();sqdcDestroyCharts();
+    mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";periodPicker.innerHTML="";
+    const years=workloadAvailableYears();if(!workloadYear||!years.includes(String(workloadYear)))workloadYear=years[years.length-1];if(!workloadQuarter)workloadQuarter=workloadLatestQuarter(workloadYear);
+    document.getElementById("brandTitle").textContent="SPC Workload Analysis";document.getElementById("brandSubtitle").textContent=`Shared Planning Center — Tangier · ${workloadYear} Q${workloadQuarter}`;document.getElementById("brandFlag").style.display="none";
+    const pools=Object.keys(SQDC_POOLS),allTerms=Object.values(SQDC_POOLS).flat(),ytdEnd=workloadLatestEtbDate(workloadYear),v=document.getElementById("workloadView");v.style.display="";
+    v.innerHTML=`<div class="workload-wrap"><div class="workload-toolbar no-print"><div class="workload-field"><label>Year</label><select id="workloadYear">${years.map(y=>`<option value="${y}" ${String(workloadYear)===y?'selected':''}>${y}</option>`).join("")}</select></div><div class="workload-field"><label>Quarter</label><select id="workloadQuarter">${[1,2,3,4].map(q=>`<option value="${q}" ${Number(workloadQuarter)===q?'selected':''}>Q${q}</option>`).join("")}</select></div></div>
+      <div class="section-label">AVERAGE DAILY DELIVERY</div><div class="workload-summary-head"><h2>Calls &amp; Moves · Quarter and Year to Date</h2><p>${ytdEnd?`YTD: 01 Jan–${ytdEnd.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'})}`:`No ETB data available for ${workloadYear}`} · Calendar days with no workload are counted as zero.</p></div><div class="workload-summary-grid">${workloadSummaryCardHtml("Overall",allTerms,ytdEnd)}${pools.map(p=>workloadSummaryCardHtml(p,SQDC_POOLS[p],ytdEnd)).join("")}</div>
+      <div class="section-label">DAY-OF-MONTH WORKLOAD · ${workloadYear} Q${workloadQuarter}</div><section class="workload-section"><h2>Overall Tangier</h2><p class="workload-note">Each day number averages all valid calendar dates in the quarter. Zero-workload dates are included; day 31 uses only months that contain it.</p><div class="workload-overall-grid"><div class="workload-card"><h3>Average Calls per Day of Month</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Average Moves per Day of Month</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid">${pools.map(p=>workloadPairHtml(`wl_monthday_${p}_`,SQDC_SCOPE_LABELS[p])).join("")}</div></section>
+      <div class="section-label">WEEKDAY WORKLOAD · ${workloadYear} Q${workloadQuarter}</div><section class="workload-section"><h2>Overall Tangier</h2><p class="workload-note">Average daily workload for every Monday through Sunday in the selected quarter, based on ETB.</p><div class="workload-overall-grid"><div class="workload-card"><h3>Average Calls by Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Average Moves by Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid">${pools.map(p=>workloadPairHtml(`wl_weekday_${p}_`,SQDC_SCOPE_LABELS[p])).join("")}</div></section></div>`;
+    document.getElementById("workloadYear").onchange=e=>{workloadYear=e.target.value;workloadQuarter=workloadLatestQuarter(workloadYear);render();};document.getElementById("workloadQuarter").onchange=e=>{workloadQuarter=Number(e.target.value);render();};requestAnimationFrame(renderWorkloadCharts);
+  }
 
   // ---------- Settings view ----------
   const settingsBtn = document.getElementById("settingsBtn");
@@ -5308,8 +5423,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   
 // ---------- Master render ----------
   function render(){
-    document.getElementById("periodRow").style.display=currentTerminal==="SQDC"?"none":"";
-    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE" && currentTerminal !== "SQDC") renderPeriodPicker();
+    document.getElementById("periodRow").style.display=(currentTerminal==="SQDC"||currentTerminal==="WORKLOAD")?"none":"";
+    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE" && currentTerminal !== "SQDC" && currentTerminal !== "WORKLOAD") renderPeriodPicker();
     renderContent();
     updateSidebarContext();
   }
@@ -5330,7 +5445,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function allowedTerminalsFor(user){
     if (!user) return [];
     if (user.role === "terminal") return [user.terminal];
-    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")?null:[];
+    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)?null:[];
     if(user.role==="regional_access"){
       const regions=new Set(roleArray(user.regions));
       return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
@@ -5349,6 +5464,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return false;
   }
   function normalizeCurrentViewForRole(){
+    if(currentTerminal==="WORKLOAD"){
+      if(canViewWorkloadAnalysis())return;
+      if(setFirstAllowedPerformanceView())return;
+    }
     if(currentTerminal==="SQDC"){
       if(canViewSqdc()){if(!canViewSqdcRecords()&&sqdcPage!=="dashboard")sqdcPage="dashboard";return;}
       if(setFirstAllowedPerformanceView())return;
@@ -5390,6 +5509,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
     document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
     sqdcDashboardsBtn.style.display = canViewSqdc() ? "" : "none";
+    workloadAnalysisBtn.style.display = canViewWorkloadAnalysis() ? "" : "none";
     sqdcRegistryBtn.style.display = canViewSqdcRecords() ? "" : "none";
     sqdcHistoryBtn.style.display = canViewSqdcRecords() ? "" : "none";
     document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdcRecords()) ? "" : "none";
