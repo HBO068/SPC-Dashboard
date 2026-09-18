@@ -1997,7 +1997,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return currentTerminal || "Report";
   }
   function exportBaseName(){
-    if(currentTerminal === "WORKLOAD")return `SPC Workload Analysis - Year to Date, ${workloadYear}`.replace(/[\/:*?"<>|]/g,"-");
+    if(currentTerminal === "WORKLOAD")return `SPC Workload Analysis - Year to Date Summary and Q${workloadQuarter} Analysis, ${workloadYear}`.replace(/[\/:*?"<>|]/g,"-");
     if(currentTerminal === "SQDC"){
       const scope=sqdcScopeLabel();
       return `SPC ${scope} ${sqdcScope==="global"?"SQDCP":"SQDC"} Report - ${sqdcMonth}`.replace(/[\/:*?"<>|]/g,"-");
@@ -4374,7 +4374,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return `<article class="workload-summary-card"><h3>${adhEsc(title)}</h3><div class="workload-summary-period">${workloadYear} year to date</div><div class="workload-summary-metrics">${metric("Calls Per Day",ytd.calls,"calls")}${metric("Moves Per Day",ytd.moves,"moves")}</div></article>`;
   }
   function workloadAverageSeries(terms,mode){
-    const ytdEnd=workloadLatestEtbDate(workloadYear),daily=ytdEnd?workloadRangeDailyTotals(terms,new Date(Date.UTC(Number(workloadYear),0,1)),ytdEnd):[];
+    const daily=workloadDailyTotals(terms,workloadYear,workloadQuarter);
     if(mode==="monthday"){
       const buckets=Array.from({length:31},()=>[]);daily.forEach(x=>buckets[x.date.getUTCDate()-1].push(x));
       return {labels:Array.from({length:31},(_,i)=>String(i+1)),calls:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.calls,0)/a.length:0),moves:buckets.map(a=>a.length?a.reduce((s,x)=>s+x.moves,0)/a.length:0)};
@@ -4409,15 +4409,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     ["globalReportView","networkView","terminalView","panamaView","adherenceView","sqdcView"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
     destroyAdherenceCharts();sqdcDestroyCharts();
     mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";periodPicker.innerHTML="";
-    const years=workloadAvailableYears();if(!workloadYear||!years.includes(String(workloadYear)))workloadYear=years[years.length-1];
-    document.getElementById("brandTitle").textContent="SPC Workload Analysis";document.getElementById("brandSubtitle").textContent=`Shared Planning Center — Tangier · ${workloadYear} Year to Date`;document.getElementById("brandFlag").style.display="none";
+    const years=workloadAvailableYears();if(!workloadYear||!years.includes(String(workloadYear)))workloadYear=years[years.length-1];if(!workloadQuarter)workloadQuarter=workloadLatestQuarter(workloadYear);
+    document.getElementById("brandTitle").textContent="SPC Workload Analysis";document.getElementById("brandSubtitle").textContent=`Shared Planning Center — Tangier · ${workloadYear} YTD Summary · Q${workloadQuarter} Analysis`;document.getElementById("brandFlag").style.display="none";
     const pools=Object.keys(SQDC_POOLS),allTerms=Object.values(SQDC_POOLS).flat(),ytdEnd=workloadLatestEtbDate(workloadYear),v=document.getElementById("workloadView");v.style.display="";
-    v.innerHTML=`<div class="workload-wrap"><div class="workload-toolbar no-print"><div class="workload-field"><label>Year</label><select id="workloadYear">${years.map(y=>`<option value="${y}" ${String(workloadYear)===y?'selected':''}>${y}</option>`).join("")}</select></div></div>
-      <div class="section-label">DAILY DELIVERY</div><div class="workload-summary-head"><h2>Calls &amp; Moves · Year to Date</h2></div><div class="workload-summary-overall">${workloadSummaryCardHtml("Overall",allTerms,ytdEnd)}</div><div class="workload-summary-grid">${pools.map(p=>workloadSummaryCardHtml(p,SQDC_POOLS[p],ytdEnd)).join("")}</div>
-      <div class="section-label">DAILY DELIVERY BY DAY · ${workloadYear} YTD</div><section class="workload-section"><h2>Overall Tangier</h2><div class="workload-overall-grid"><div class="workload-card"><h3>Calls Per Day</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Moves Per Day</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid workload-monthday-pools">${pools.map(p=>workloadPairHtml(`wl_monthday_${p}_`,SQDC_SCOPE_LABELS[p],"monthday")).join("")}</div></section>
-      <div class="section-label">DAILY DELIVERY BY WEEKDAY · ${workloadYear} YTD</div><section class="workload-section"><h2>Overall Tangier</h2><div class="workload-overall-grid"><div class="workload-card"><h3>Calls per Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Moves Per Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid">${pools.map(p=>workloadPairHtml(`wl_weekday_${p}_`,SQDC_SCOPE_LABELS[p],"weekday")).join("")}</div></section>
+    v.innerHTML=`<div class="workload-wrap"><div class="workload-toolbar no-print"><div class="workload-field"><label>Year</label><select id="workloadYear">${years.map(y=>`<option value="${y}" ${String(workloadYear)===y?'selected':''}>${y}</option>`).join("")}</select></div><div class="workload-field"><label>Quarter</label><select id="workloadQuarter">${[1,2,3,4].map(q=>`<option value="${q}" ${Number(workloadQuarter)===q?'selected':''}>Q${q}</option>`).join("")}</select></div></div>
+      <div class="section-label">DAILY DELIVERY</div><div class="workload-summary-head"><h2>Calls &amp; Moves · Year to Date Summary</h2></div><div class="workload-summary-overall">${workloadSummaryCardHtml("Overall",allTerms,ytdEnd)}</div><div class="workload-summary-grid">${pools.map(p=>workloadSummaryCardHtml(p,SQDC_POOLS[p],ytdEnd)).join("")}</div>
+      <div class="section-label">QUARTERLY DELIVERY BY DAY · ${workloadYear} Q${workloadQuarter}</div><section class="workload-section"><h2>Overall Tangier</h2><div class="workload-overall-grid"><div class="workload-card"><h3>Calls Per Day</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Moves Per Day</h3><div class="workload-chart-box"><canvas id="wl_monthday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid workload-monthday-pools">${pools.map(p=>workloadPairHtml(`wl_monthday_${p}_`,SQDC_SCOPE_LABELS[p],"monthday")).join("")}</div></section>
+      <div class="section-label">QUARTERLY DELIVERY BY WEEKDAY · ${workloadYear} Q${workloadQuarter}</div><section class="workload-section"><h2>Overall Tangier</h2><div class="workload-overall-grid"><div class="workload-card"><h3>Calls per Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Calls"></canvas></div></div><div class="workload-card"><h3>Moves Per Weekday</h3><div class="workload-chart-box"><canvas id="wl_weekday_Overall_Moves"></canvas></div></div></div><div class="workload-pool-grid">${pools.map(p=>workloadPairHtml(`wl_weekday_${p}_`,SQDC_SCOPE_LABELS[p],"weekday")).join("")}</div></section>
       </div>`;
-    document.getElementById("workloadYear").onchange=e=>{workloadYear=e.target.value;render();};requestAnimationFrame(renderWorkloadCharts);
+    document.getElementById("workloadYear").onchange=e=>{workloadYear=e.target.value;workloadQuarter=workloadLatestQuarter(workloadYear);render();};document.getElementById("workloadQuarter").onchange=e=>{workloadQuarter=Number(e.target.value);render();};requestAnimationFrame(renderWorkloadCharts);
   }
 
   // ---------- Settings view ----------
