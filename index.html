@@ -629,6 +629,11 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .workload-section{margin:20px 0 28px}.workload-section>h2{font:700 15px var(--display);margin:0 0 4px}.workload-note{font:11px var(--mono);color:var(--text-muted);margin:0 0 12px}.workload-overall-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.workload-pool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.workload-pool-grid.workload-monthday-pools{grid-template-columns:1fr}.workload-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;break-inside:avoid;page-break-inside:avoid}.workload-card h3{font:700 12px var(--display);margin:0 0 8px;color:var(--text)}.workload-chart-box{height:270px;position:relative}.workload-pool-card>h3{font-size:14px;margin-bottom:12px}.workload-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.workload-mini{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:9px}.workload-mini h4{font:600 10px var(--display);color:var(--text-muted);margin:0 0 5px}.workload-mini .workload-chart-box{height:210px}
   @media(max-width:1150px){.workload-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:980px){.workload-pool-grid{grid-template-columns:1fr}}@media(max-width:720px){.workload-overall-grid,.workload-pair,.workload-summary-grid,.workload-overall-summary-periods{grid-template-columns:1fr}.workload-summary-head{align-items:start;flex-direction:column}.workload-summary-head p{text-align:left}}
   @media print{.workload-toolbar{display:none!important}.workload-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important;margin-bottom:12px!important}.workload-summary-card{padding:7px!important}.workload-overall-summary-periods{grid-template-columns:1fr!important;gap:5px!important}.workload-overall-summary-period{padding:5px!important}.workload-summary-metric{padding:5px!important}.workload-summary-metric b{font-size:12px!important}.workload-overall-grid,.workload-pool-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.workload-pool-grid.workload-monthday-pools{grid-template-columns:1fr!important}.workload-pair{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}.workload-card{padding:8px!important}.workload-chart-box{height:185px!important}.workload-mini .workload-chart-box{height:145px!important}.workload-section{margin:12px 0 16px!important}}
+  /* Scope & Data Loss is an isolated Tangier-only module. */
+  .scope-loss-wrap{width:100%;max-width:1540px;margin:0 auto}.scope-loss-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0 0 16px}.scope-loss-field{display:grid;gap:4px}.scope-loss-field label{font:700 9px var(--display);letter-spacing:.7px;text-transform:uppercase;color:var(--text-faint)}.scope-loss-field select{min-width:135px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:12px var(--mono)}
+  .scope-loss-grid{display:grid;grid-template-columns:repeat(4,minmax(245px,1fr));gap:12px}.scope-loss-card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px;min-height:345px;break-inside:avoid;page-break-inside:avoid;overflow:hidden}.scope-loss-card h3{font:700 12px var(--display);text-align:center;margin:0 0 6px}.scope-loss-card-body{display:grid;grid-template-columns:86px minmax(0,1fr);gap:5px;align-items:center}.scope-loss-legend{display:grid;gap:7px;font:9px var(--mono);color:var(--text-muted)}.scope-loss-legend span{display:flex;align-items:center;gap:5px}.scope-loss-legend i{display:inline-block;width:8px;height:8px;border-radius:1px}.scope-loss-chart-box{height:245px;position:relative}.scope-loss-chart-box canvas{width:100%!important;height:100%!important}.scope-loss-stat{position:absolute;left:9px;bottom:9px;z-index:2;padding:7px 8px;border-radius:7px;font:700 9px/1.45 var(--display);color:#071820;box-shadow:0 2px 8px rgba(0,0,0,.10)}.scope-loss-status{font:10px var(--mono);color:var(--text-muted);text-align:center;margin-top:5px}.scope-loss-empty{height:245px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);font:11px var(--mono);padding:16px}.scope-loss-registry{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}.scope-loss-registry h2{font:700 15px var(--display);margin:0 0 4px}.scope-loss-month-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:16px 0}.scope-loss-month-row{background:var(--panel-2);border:1px solid var(--border-soft);border-radius:9px;padding:9px}.scope-loss-month-row label{display:flex;justify-content:space-between;align-items:center;gap:8px;font:11px var(--display)}.scope-loss-month-row input{width:92px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 8px;font:12px var(--mono)}.scope-loss-month-meta{font:9px var(--mono);color:var(--text-faint);margin-top:5px}.scope-loss-save-status{font:11px var(--mono);color:var(--text-muted);margin-left:10px}
+  @media(max-width:1200px){.scope-loss-grid{grid-template-columns:repeat(3,minmax(235px,1fr))}}@media(max-width:900px){.scope-loss-grid{grid-template-columns:repeat(2,minmax(235px,1fr))}.scope-loss-month-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.scope-loss-grid,.scope-loss-month-list{grid-template-columns:1fr}}
+  @media print{.scope-loss-toolbar{display:none!important}.scope-loss-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important}.scope-loss-card{min-height:220px!important;padding:7px!important}.scope-loss-card-body{grid-template-columns:60px minmax(0,1fr)!important}.scope-loss-chart-box{height:175px!important}.scope-loss-stat{font-size:6.5px!important;padding:4px!important}.scope-loss-legend{font-size:6.5px!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -733,6 +738,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="sidebar-btn" id="terminalDashboardsBtn" title="Open Terminal Performance dashboards">▦ <span>Terminal Dashboards</span></button>
       <button class="sidebar-btn" id="adherenceDashboardsBtn" title="Open the Adherence dashboard">◎ <span>Adherence Dashboard</span></button>
       <button class="sidebar-btn" id="sqdcDashboardsBtn" title="Open Tangier SQDC and Global SQDCP dashboards">◆ <span>SQDCP Dashboards</span></button>
+      <button class="sidebar-btn" id="scopeLossDashboardBtn" title="Open the Tangier Scope &amp; Data Loss dashboard">◉ <span>Scope &amp; Data Loss</span></button>
       <button class="sidebar-btn" id="workloadAnalysisBtn" title="Open the Tangier workload analysis dashboard">▥ <span>Workload Analysis</span></button>
       <div id="printWrap" style="position:relative;">
         <button class="sidebar-btn" id="printBtn" title="Print or export the selected dashboard">🖨 <span>Print / Export</span></button>
@@ -748,6 +754,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       <button class="sidebar-btn" id="uploadPanamaBtn" title="Upload Panama's weekly terminal KPI file">⬆ <span>Upload Panama Data</span></button>
       <button class="sidebar-btn" id="uploadAdherenceBtn" title="Upload the Gateways/Hubs Adherence export files">⬆ <span>Upload Adherence Data</span></button>
       <button class="sidebar-btn" id="sqdcRegistryBtn" title="Open the SQDC daily data registry">▤ <span>SQDC Data Registry</span></button>
+      <button class="sidebar-btn" id="scopeLossRegistryBtn" title="Open the monthly Scope &amp; Data Loss registry">▤ <span>Scope &amp; Data Loss Registry</span></button>
       <button class="sidebar-btn" id="eraseDataBtn" title="Permanently erase a terminal's uploaded data" style="display:none; color:#F2483D;">🗑 <span>Erase Data</span></button>
     </div>
     <input type="file" id="uploadFile" accept=".xlsm,.xlsx" style="display:none;">
@@ -798,6 +805,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   <div id="panamaView" style="display:none"></div>
   <div id="adherenceView" style="display:none"></div>
   <div id="sqdcView" style="display:none"></div>
+  <div id="scopeLossView" style="display:none"></div>
   <div id="workloadView" style="display:none"></div>
   </div>
 
@@ -1523,8 +1531,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const terminalDashboardsBtn = document.getElementById("terminalDashboardsBtn");
   const adherenceDashboardsBtn = document.getElementById("adherenceDashboardsBtn");
   const sqdcDashboardsBtn = document.getElementById("sqdcDashboardsBtn");
+  const scopeLossDashboardBtn = document.getElementById("scopeLossDashboardBtn");
   const workloadAnalysisBtn = document.getElementById("workloadAnalysisBtn");
   const sqdcRegistryBtn = document.getElementById("sqdcRegistryBtn");
+  const scopeLossRegistryBtn = document.getElementById("scopeLossRegistryBtn");
   const sqdcHistoryBtn = document.getElementById("sqdcHistoryBtn");
   function setUtilityHeader(title,subtitle){
     document.getElementById("brandTitle").textContent=title;
@@ -1542,28 +1552,33 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     closeUtilityViews();
     if(kind==="sqdc"){
       if(!canViewSqdc())return;
-      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD"&&currentTerminal!=="SCOPELOSS") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="sqdc"; currentTerminal="SQDC";
       sqdcScope="global";
+    }else if(kind==="scopeLoss"){
+      if(!canViewScopeLoss()&&scopeLossPage==="dashboard")return;
+      if(!canEditScopeLoss()&&scopeLossPage==="registry")return;
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD"&&currentTerminal!=="SCOPELOSS") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      currentSection="global";currentGlobalSub="scopeLoss";currentTerminal="SCOPELOSS";
     }else if(kind==="workload"){
       if(!canViewWorkloadAnalysis())return;
-      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD"&&currentTerminal!=="SCOPELOSS") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global";currentGlobalSub="workload";currentTerminal="WORKLOAD";workloadMode="quarterly";
     }else if(kind==="adherence"){
       if(!hasAdherenceDashboardAccess())return;
-      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
+      if(currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD"&&currentTerminal!=="SCOPELOSS") lastPerformanceView={section:currentSection,globalSub:currentGlobalSub,terminal:currentTerminal};
       currentSection="global"; currentGlobalSub="adherence"; currentTerminal="ADHERENCE";
       if(currentType==="daily")currentType="weekly";
       const allowedScopes=allowedAdherenceScopeValues();
       if(!allowedScopes.includes(adherenceScopeFilter))adherenceScopeFilter=allowedScopes[0]||"global";
       adherencePage="overview";
     }else if(kind==="performance"){
-      if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"){
+      if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"||currentTerminal==="SCOPELOSS"){
         const saved=lastPerformanceView||{};
         currentSection=saved.section||"global";
         currentGlobalSub=saved.globalSub||"tangier";
         currentTerminal=saved.terminal||"ALL";
-        if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"){
+        if(currentTerminal==="ADHERENCE"||currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"||currentTerminal==="SCOPELOSS"){
           currentSection="global";currentGlobalSub="tangier";currentTerminal="ALL";
         }
       }
@@ -1575,16 +1590,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   terminalDashboardsBtn.onclick=()=>openDashboardArea("performance");
   adherenceDashboardsBtn.onclick=()=>openDashboardArea("adherence");
   sqdcDashboardsBtn.onclick=()=>{sqdcPage="dashboard";openDashboardArea("sqdc");};
+  scopeLossDashboardBtn.onclick=()=>{scopeLossPage="dashboard";openDashboardArea("scopeLoss");};
   workloadAnalysisBtn.onclick=()=>openDashboardArea("workload");
   sqdcRegistryBtn.onclick=()=>{if(!canViewSqdcRegistry())return;sqdcPage="registry";openDashboardArea("sqdc");};
+  scopeLossRegistryBtn.onclick=()=>{if(!canEditScopeLoss())return;scopeLossPage="registry";openDashboardArea("scopeLoss");};
   sqdcHistoryBtn.onclick=()=>{if(!canViewSqdcHistory())return;sqdcPage="history";openDashboardArea("sqdc");};
   function updateSidebarContext(){
     const dashboardVisible=!showingSettings&&!showingRoles&&!showingErase;
-    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD");
+    terminalDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal!=="ADHERENCE"&&currentTerminal!=="SQDC"&&currentTerminal!=="WORKLOAD"&&currentTerminal!=="SCOPELOSS");
     adherenceDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="ADHERENCE");
     sqdcDashboardsBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="dashboard");
+    scopeLossDashboardBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SCOPELOSS"&&scopeLossPage==="dashboard");
     workloadAnalysisBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="WORKLOAD");
     sqdcRegistryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="registry");
+    scopeLossRegistryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SCOPELOSS"&&scopeLossPage==="registry");
     sqdcHistoryBtn.classList.toggle("active",dashboardVisible&&currentTerminal==="SQDC"&&sqdcPage==="history");
     const printWrap=document.getElementById("printWrap");
     if(printWrap)printWrap.style.display=dashboardVisible?"":"none";
@@ -1998,6 +2017,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function exportBaseName(){
     if(currentTerminal === "WORKLOAD")return (workloadMode==="yearly"?`SPC Yearly Delivery Analysis - Year to Date, ${workloadYear}`:`SPC Quarterly Delivery Analysis - Q${workloadQuarter}, ${workloadYear}`).replace(/[\/:*?"<>|]/g,"-");
+    if(currentTerminal === "SCOPELOSS"){
+      const period=scopeLossMonth==="all"?`Full Year, ${scopeLossYear}`:`${SCOPE_LOSS_MONTHS[Number(scopeLossMonth)-1]}, ${scopeLossYear}`;
+      return `SPC Scope & Data Loss - ${period}`.replace(/[\/:*?"<>|]/g,"-");
+    }
     if(currentTerminal === "SQDC"){
       const scope=sqdcScopeLabel();
       return `SPC ${scope} ${sqdcScope==="global"?"SQDCP":"SQDC"} Report - ${sqdcMonth}`.replace(/[\/:*?"<>|]/g,"-");
@@ -2080,7 +2103,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
 
       if (terminalRow){
-        terminalRow.style.display = currentTerminal === "WORKLOAD" ? "none" : "flex";
+        terminalRow.style.display = (currentTerminal === "WORKLOAD" || currentTerminal === "SCOPELOSS") ? "none" : "flex";
         terminalRow.style.marginTop = "16px";
         terminalRow.style.marginBottom = "16px";
         terminalRow.style.justifyContent = "flex-start";
@@ -2089,7 +2112,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         });
       }
       if (periodRow){
-        periodRow.style.display = currentTerminal === "WORKLOAD" ? "none" : "flex";
+        periodRow.style.display = (currentTerminal === "WORKLOAD" || currentTerminal === "SCOPELOSS") ? "none" : "flex";
         periodRow.style.marginTop = "0";
         periodRow.style.marginBottom = "18px";
       }
@@ -3769,6 +3792,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function renderContent(){
+    if (currentTerminal === "SCOPELOSS") { renderScopeLossView(); return; }
+    scopeLossDestroyCharts();
+    document.getElementById("scopeLossView").style.display = "none";
     if (currentTerminal === "WORKLOAD") { renderWorkloadView(); return; }
     destroyWorkloadCharts();
     document.getElementById("workloadView").style.display = "none";
@@ -3846,6 +3872,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     (ADHERENCE_ACTUAL||[]).forEach(r=>{const y=String(r.year||String(r.week||"").slice(0,4));if(/^\d{4}$/.test(y))years.add(y);});
     Object.keys(ADHERENCE_SCOPE||{}).forEach(y=>{if(/^\d{4}$/.test(y))years.add(y);});
     Object.keys(SQDC_REGISTRY||{}).forEach(y=>{if(/^\d{4}$/.test(y))years.add(y);});
+    Object.keys(SCOPE_LOSS_REGISTRY||{}).forEach(y=>{if(/^\d{4}$/.test(y))years.add(y);});
     return [...years].sort((a,b)=>Number(b)-Number(a));
   }
   function supervisorModuleAccess(user,module,scope){
@@ -3883,6 +3910,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function canViewSqdcRegistry(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
   function canViewSqdcHistory(user=CURRENT_USER){return !!user&&["admin","management","data_analyst"].includes(user.role);}
   function canEditSqdc(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
+  function canViewScopeLoss(user=CURRENT_USER){
+    if(!user)return false;
+    if(["admin","data_analyst"].includes(user.role))return true;
+    return ["management","supervisor"].includes(user.role)&&user.scopeDataLoss===true;
+  }
+  function canEditScopeLoss(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
   function configuredRegions(){
     const fixed=(typeof ADHERENCE_REGION_OPTIONS!=="undefined"?ADHERENCE_REGION_OPTIONS:[]),used=(typeof ADHERENCE_REGISTRY!=="undefined"?ADHERENCE_REGISTRY:[]).map(r=>String(r.region||"").trim()).filter(Boolean);
     return [...new Set(fixed.concat(used).filter(r=>r.toLowerCase()!=="oceania"))].sort((a,b)=>a.localeCompare(b));
@@ -3938,6 +3971,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <h3>SPC Workload Analysis</h3>
           <label><input type="checkbox" id="roleWorkloadAnalysis"> Allow access to the Tangier Workload Analysis dashboard</label>
         </div>
+        <div id="scopeLossRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
+          <h3>Scope &amp; Data Loss — Read-only and Print/Export</h3>
+          <label><input type="checkbox" id="roleScopeDataLoss"> Allow access to the Tangier Scope &amp; Data Loss dashboard</label>
+        </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
           <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
           <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
@@ -3946,7 +3983,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         </div>
         <div class="adh-panel" style="margin:14px 0;">
           <h3>Accessible Years</h3>
-          <p class="adh-note">Only the checked years will appear in Terminal, Global, Adherence, SQDCP and Workload dashboards for this user.</p>
+          <p class="adh-note">Only the checked years will appear in Terminal, Global, Adherence, SQDCP, Scope &amp; Data Loss and Workload dashboards for this user.</p>
           ${roleCheckGrid("roleYear",yearItems,item=>adhEsc(item.label))}
         </div>
         <table class="settings-table">
@@ -3960,12 +3997,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     `;
     const typeSel = document.getElementById("newRoleType");
     const termSel = document.getElementById("newRoleTerminal");
-    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions"),workloadOptions=document.getElementById("workloadRoleOptions");
+    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions"),workloadOptions=document.getElementById("workloadRoleOptions"),scopeLossOptions=document.getElementById("scopeLossRoleOptions");
     const updateRoleFields=()=>{
       termSel.style.display = typeSel.value === "terminal" ? "" : "none";
       supervisorOptions.style.display=typeSel.value==="supervisor"?"":"none";
       regionalOptions.style.display=typeSel.value==="regional_access"?"":"none";
       workloadOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
+      scopeLossOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
     };
     typeSel.onchange = updateRoleFields; updateRoleFields();
     document.getElementById("addRoleBtn").onclick = async () => {
@@ -3978,9 +4016,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(role==="supervisor"){
         doc.terminalDashboards={tangier:document.getElementById("supTerminalTangier").checked,panama:document.getElementById("supTerminalPanama").checked};
         doc.adherenceDashboards={tangier:document.getElementById("supAdherenceTangier").checked,panama:document.getElementById("supAdherencePanama").checked};
-        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama&&!document.getElementById("roleWorkloadAnalysis").checked){alert("Select at least one dashboard scope.");return;}
+        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama&&!document.getElementById("roleWorkloadAnalysis").checked&&!document.getElementById("roleScopeDataLoss").checked){alert("Select at least one dashboard scope.");return;}
       }
       if(role==="supervisor"||role==="management")doc.workloadAnalysis=document.getElementById("roleWorkloadAnalysis").checked;
+      if(role==="supervisor"||role==="management")doc.scopeDataLoss=document.getElementById("roleScopeDataLoss").checked;
       if(role==="regional_access"){
         doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
         if(!doc.regions.length){alert("Select at least one region for Regional Access.");return;}
@@ -4013,6 +4052,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       else if(r.role==="planner")access="All Tangier terminal dashboards";
       else access="All";
       if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
+      if(["supervisor","management"].includes(r.role))access+=`<br>Scope &amp; Data Loss: ${r.scopeDataLoss===true?"Yes":"No"}`;
       access+=`<br>Years: ${roleAllowedYears(r)===null?"All (legacy)":roleArray(r.years).join(", ")||"None"}`;
       tr.innerHTML = `
         <td class="kpi-key-cell">${r.email}</td>
@@ -4028,6 +4068,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         document.getElementById("newRoleEmail").value=r.email;document.getElementById("newRoleType").value=r.role;document.getElementById("newRoleType").dispatchEvent(new Event("change"));
         const selectedYears=new Set(roleArray(r.years));document.querySelectorAll('input[name="roleYear"]').forEach(x=>x.checked=roleAllowedYears(r)===null||selectedYears.has(x.value));
         document.getElementById("roleWorkloadAnalysis").checked=!!r.workloadAnalysis;
+        document.getElementById("roleScopeDataLoss").checked=!!r.scopeDataLoss;
         if(r.role==="terminal")document.getElementById("newRoleTerminal").value=r.terminal||TERM_CODES[0]||"";
         if(r.role==="supervisor"){
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
@@ -4326,6 +4367,97 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
   function renderSqdcCharts(){sqdcDestroyCharts();const date=sqdcSelectedDate(),base=sqdcDailySeries(()=>0),near=sqdcDailySeries(d=>sqdcManualTotal(d,"nearMiss",false)),safety=sqdcDailySeries(d=>sqdcManualTotal(d,"safetyWalk",true));sqdcLineChart("sqdcSafetyChart",base.labels,[{label:"Near Misses",data:near.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.15)",tension:.25,fill:true},{label:"Safety Walks",data:sqdcScope==='global'?safety.values:[],borderColor:"#3ED17E",backgroundColor:"#3ED17E",tension:.25,hidden:sqdcScope!=="global"}],false);const q=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.actual}),qt=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.target});sqdcLineChart("sqdcQualityTrend",q.labels,[{label:"Actual Score",data:q.values,borderColor:"#4FA6E8",backgroundColor:"rgba(79,166,232,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:qt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:true}],false);const cost=sqdcDailySeries(d=>sqdcManualTotal(d,"deviations",false));sqdcLineChart("sqdcCostChart",cost.labels,[{label:"Deviations",data:cost.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.14)",tension:.25,fill:true}],false);const del=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.actual==null?null:x.actual*100}),delt=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.target==null?null:x.target*100});sqdcLineChart("sqdcDeliveryTrend",del.labels,[{label:"Delivery adherence",data:del.values,borderColor:"#2FD9BE",backgroundColor:"rgba(47,217,190,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:delt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,spanGaps:true}],true);if(sqdcScope==="global"){const wi=sqdcDailySeries(d=>sqdcManualTotal(d,"workInstructions",true)),pc=sqdcDailySeries(d=>sqdcManualTotal(d,"processConfirmations",true));sqdcLineChart("sqdcPeopleChart",wi.labels,[{label:"Work Instructions",data:wi.values,borderColor:"#4FA6E8",backgroundColor:"#4FA6E8",tension:.25},{label:"Process Confirmations",data:pc.values,borderColor:"#2FD9BE",backgroundColor:"#2FD9BE",tension:.25}],false);}const qi=sqdcQualityParetoItems(date),di=sqdcDeliveryParetoItems(date),ci=sqdcCostParetoItems(date);sqdcParetoChart("sqdcQualityPareto",qi,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,x.q.target-x.q.actual):x.gap);sqdcParetoChart("sqdcDeliveryPareto",di,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,1-x.d.actual):x.gap);sqdcParetoChart("sqdcCostPareto",ci,x=>x.term,x=>x.value);}
   renderSqdcView=function(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";sqdcResolvePeriod();document.getElementById("brandTitle").textContent=sqdcPage==="registry"?"SQDC Data Registry":sqdcPage==="history"?"SQDC History":sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap">${sqdcPeriodToolbarHtml()}${sqdcPage!=="history"?sqdcScopeToolbarHtml():""}${sqdcPage==="dashboard"?sqdcDashboardHtml():sqdcPage==="registry"?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.getElementById("sqdcYear").onchange=e=>{sqdcYear=e.target.value;sqdcMonth=null;sqdcDay=1;render();};document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));if(sqdcPage==="dashboard")requestAnimationFrame(renderSqdcCharts);else sqdcDestroyCharts();};
+
+  // ---------- Scope & Data Loss (Tangier ETB data + monthly Firebase registry) ----------
+  const SCOPE_LOSS_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const SCOPE_LOSS_COLORS={MAPTM:"#ff006e",MAMED:"#12aee5",OMSLL:"#ff6b00",EGPSD:"#00b956",BHBAH:"#1111ee",JOAQJ:"#1111ee",ITVAD:"#7332a8",SEGOT:"#7332a8",DKAAR:"#7332a8",HRRJK:"#7332a8",NGAPP:"#ffbf00",NGONN:"#ffbf00",LRMLW:"#ffbf00"};
+  let SCOPE_LOSS_REGISTRY={},SCOPE_LOSS_YEARS=[],scopeLossPage="dashboard",scopeLossYear=null,scopeLossMonth="all",scopeLossTerm=null,scopeLossCharts={};
+  async function loadScopeLossDataFromStorage(){
+    try{
+      const yearsRes=await storageGet("scope_loss_years",true);
+      SCOPE_LOSS_YEARS=yearsRes?.value?JSON.parse(yearsRes.value):[];
+      await Promise.all(SCOPE_LOSS_YEARS.map(async year=>{const r=await storageGet("scope_loss_registry_"+year,true);SCOPE_LOSS_REGISTRY[String(year)]=r?.value?JSON.parse(r.value):{};}));
+    }catch(e){console.error("Scope & Data Loss load failed",e);}
+  }
+  async function persistScopeLossYear(year){
+    year=String(year);if(!SCOPE_LOSS_YEARS.includes(year))SCOPE_LOSS_YEARS.push(year);SCOPE_LOSS_YEARS.sort();
+    await Promise.all([storageSet("scope_loss_years",JSON.stringify(SCOPE_LOSS_YEARS),true),storageSet("scope_loss_registry_"+year,JSON.stringify(SCOPE_LOSS_REGISTRY[year]||{}),true)]);
+  }
+  function scopeLossUploadedTerms(){return TERM_CODES.filter(term=>(DATA[term]?.rows||[]).some(r=>String(r["Id visit"]??"").trim()));}
+  function scopeLossAvailableYears(){
+    const years=new Set(SCOPE_LOSS_YEARS.map(String));
+    scopeLossUploadedTerms().forEach(term=>(DATA[term]?.rows||[]).forEach(r=>{if(r._year)years.add(String(r._year));}));
+    if(!years.size)years.add(String(new Date().getUTCFullYear()));
+    return [...years].filter(year=>canAccessYear(year)).sort((a,b)=>Number(b)-Number(a));
+  }
+  function scopeLossVisitCount(term,year,month=null){
+    const visits=new Set();
+    (DATA[term]?.rows||[]).forEach(r=>{
+      if(String(r._year)!==String(year)||!(r._etb instanceof Date))return;
+      if(month!==null&&r._etb.getUTCMonth()!==Number(month))return;
+      const id=String(r["Id visit"]??"").trim();if(id)visits.add(id);
+    });
+    return visits.size;
+  }
+  function scopeLossMonthValue(term,year,month){
+    const key=String(Number(month)+1).padStart(2,"0"),bucket=SCOPE_LOSS_REGISTRY[String(year)]?.[term];
+    if(!bucket||!Object.prototype.hasOwnProperty.call(bucket,key)||bucket[key]===null||bucket[key]===undefined||bucket[key]==="")return null;
+    const value=Number(bucket[key]);return Number.isFinite(value)?value:null;
+  }
+  function scopeLossSummary(term,year,monthValue){
+    if(monthValue!=="all"){
+      const month=Number(monthValue)-1,total=scopeLossVisitCount(term,year,month),missing=scopeLossMonthValue(term,year,month);
+      return {total,missing,complete:missing!==null,relevantMonths:total?1:0};
+    }
+    const total=scopeLossVisitCount(term,year,null),relevant=[];
+    for(let month=0;month<12;month++)if(scopeLossVisitCount(term,year,month)>0)relevant.push(month);
+    const values=relevant.map(month=>scopeLossMonthValue(term,year,month)),complete=values.every(v=>v!==null);
+    return {total,missing:complete?values.reduce((a,v)=>a+v,0):null,complete,relevantMonths:relevant.length};
+  }
+  function scopeLossTermsForPeriod(year,monthValue){
+    const month=monthValue==="all"?null:Number(monthValue)-1;
+    return scopeLossUploadedTerms().filter(term=>scopeLossVisitCount(term,year,month)>0);
+  }
+  function scopeLossPeriodLabel(year,monthValue){return monthValue==="all"?String(year):`${SCOPE_LOSS_MONTHS[Number(monthValue)-1]} ${year}`;}
+  function scopeLossColor(term){return SCOPE_LOSS_COLORS[term]||"#4FA6E8";}
+  function scopeLossDestroyCharts(){Object.values(scopeLossCharts).forEach(chart=>{try{chart.destroy();}catch(e){}});scopeLossCharts={};}
+  const scopeLossLabels={id:"scopeLossLabels",afterDatasetsDraw(chart){const ds=chart.data.datasets[0],total=(ds.data||[]).reduce((a,v)=>a+(Number(v)||0),0);if(!total)return;const ctx=chart.ctx,meta=chart.getDatasetMeta(0);ctx.save();ctx.font="700 10px "+getComputedStyle(document.body).getPropertyValue("--mono");ctx.fillStyle=chartTickColor();ctx.textAlign="center";ctx.textBaseline="middle";meta.data.forEach((arc,i)=>{const value=Number(ds.data[i])||0;if(value<=0)return;const p=arc.getProps(["x","y","startAngle","endAngle","outerRadius"],true),angle=(p.startAngle+p.endAngle)/2,r=p.outerRadius*.73,x=p.x+Math.cos(angle)*r,y=p.y+Math.sin(angle)*r;ctx.fillText((value/total*100).toFixed(value/total<.01?1:0)+"%",x,y);});ctx.restore();}};
+  function scopeLossDashboardHtml(){
+    const years=scopeLossAvailableYears(),period=scopeLossPeriodLabel(scopeLossYear,scopeLossMonth),terms=scopeLossTermsForPeriod(scopeLossYear,scopeLossMonth);
+    return `<div class="scope-loss-toolbar no-print"><div class="scope-loss-field"><label>Year</label><select id="scopeLossYear">${years.map(y=>`<option value="${y}" ${y===scopeLossYear?'selected':''}>${y}</option>`).join("")}</select></div><div class="scope-loss-field"><label>Period</label><select id="scopeLossMonth"><option value="all" ${scopeLossMonth==='all'?'selected':''}>Full Year</option>${SCOPE_LOSS_MONTHS.map((name,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${scopeLossMonth===String(i+1).padStart(2,'0')?'selected':''}>${name}</option>`).join("")}</select></div></div><div class="section-label">SCOPE &amp; DATA LOSS · ${adhEsc(period.toUpperCase())}</div>${terms.length?`<div class="scope-loss-grid">${terms.map(term=>{const s=scopeLossSummary(term,scopeLossYear,scopeLossMonth),color=scopeLossColor(term),available=s.missing===null?null:Math.max(0,s.total-s.missing),missingPct=s.missing===null||!s.total?null:s.missing/s.total*100;return `<div class="scope-loss-card"><h3>${adhEsc(period)} Missing Backups (${adhEsc(term)})</h3>${s.complete?`<div class="scope-loss-card-body"><div class="scope-loss-legend"><span><i style="background:#d40000"></i>${adhEsc(period)} Missing</span><span><i style="background:${color}"></i>${adhEsc(period)} Data</span></div><div class="scope-loss-chart-box"><canvas id="scopeLossChart_${adhEsc(term)}"></canvas></div></div><div class="scope-loss-stat" style="background:${color}55">Total Vessels: ${fmtNum(s.total,0)}<br>Missing Vessels: ${fmtNum(s.missing,0)}</div><div class="scope-loss-status">Available ${(100-missingPct).toFixed(1)}% · Missing ${missingPct.toFixed(1)}%</div>`:`<div class="scope-loss-empty">Missing Backups have not been entered for ${scopeLossMonth==='all'?'every active month in '+scopeLossYear:period}.</div><div class="scope-loss-stat" style="background:${color}55">Total Vessels: ${fmtNum(s.total,0)}<br>Missing Vessels: Not entered</div>`}</div>`;}).join("")}</div>`:'<div class="empty-note">No Tangier dashboard vessel visits are available for the selected period.</div>'}`;
+  }
+  function scopeLossRegistryHtml(){
+    const years=scopeLossAvailableYears(),terms=scopeLossUploadedTerms();
+    if(!terms.length)return '<div class="empty-note">Upload Tangier Dashboard Data before entering Missing Backups.</div>';
+    if(!scopeLossTerm||!terms.includes(scopeLossTerm))scopeLossTerm=terms[0];
+    const bucket=SCOPE_LOSS_REGISTRY[String(scopeLossYear)]?.[scopeLossTerm]||{};
+    return `<div class="scope-loss-toolbar no-print"><div class="scope-loss-field"><label>Year</label><select id="scopeLossYear">${years.map(y=>`<option value="${y}" ${y===scopeLossYear?'selected':''}>${y}</option>`).join("")}</select></div><div class="scope-loss-field"><label>Terminal</label><select id="scopeLossTerm">${terms.map(term=>`<option value="${adhEsc(term)}" ${term===scopeLossTerm?'selected':''}>${adhEsc(term)}</option>`).join("")}</select></div></div><div class="scope-loss-registry"><h2>Missing Backups Registry · ${adhEsc(scopeLossTerm)} · ${adhEsc(scopeLossYear)}</h2><p class="workload-note">Blank means not entered. Enter 0 to confirm that no backup is missing.</p><div class="scope-loss-month-list">${SCOPE_LOSS_MONTHS.map((name,i)=>{const key=String(i+1).padStart(2,"0"),has=Object.prototype.hasOwnProperty.call(bucket,key)&&bucket[key]!==null&&bucket[key]!=="",total=scopeLossVisitCount(scopeLossTerm,scopeLossYear,i);return `<div class="scope-loss-month-row"><label><span>${name}</span><input type="number" min="0" step="1" data-scope-loss-month="${key}" value="${has?bucket[key]:''}" placeholder="Not entered"></label><div class="scope-loss-month-meta">Total unique visits: ${fmtNum(total,0)}</div></div>`;}).join("")}</div><button class="btn-primary no-print" id="scopeLossSaveRegistry">Save Missing Backups</button><span class="scope-loss-save-status" id="scopeLossSaveStatus"></span></div>`;
+  }
+  async function saveScopeLossRegistry(){
+    const year=String(scopeLossYear),term=scopeLossTerm,values={};
+    for(const input of document.querySelectorAll("[data-scope-loss-month]")){
+      const key=input.dataset.scopeLossMonth,raw=input.value.trim();if(raw==="")continue;
+      const value=Number(raw),month=Number(key)-1,total=scopeLossVisitCount(term,year,month);
+      if(!Number.isInteger(value)||value<0){input.focus();throw new Error("Missing Backups must be a whole number of 0 or more.");}
+      if(value>total){input.focus();throw new Error(`${SCOPE_LOSS_MONTHS[month]} Missing Backups (${value}) cannot exceed its ${total} unique vessel visits.`);}
+      values[key]=value;
+    }
+    SCOPE_LOSS_REGISTRY[year]=SCOPE_LOSS_REGISTRY[year]||{};SCOPE_LOSS_REGISTRY[year][term]=values;
+    await persistScopeLossYear(year);
+  }
+  function renderScopeLossCharts(){
+    scopeLossDestroyCharts();
+    scopeLossTermsForPeriod(scopeLossYear,scopeLossMonth).forEach(term=>{const s=scopeLossSummary(term,scopeLossYear,scopeLossMonth),canvas=document.getElementById("scopeLossChart_"+term);if(!canvas||!s.complete)return;const available=Math.max(0,s.total-s.missing);scopeLossCharts[term]=new Chart(canvas.getContext("2d"),{type:"pie",data:{labels:["Missing","Data"],datasets:[{data:[s.missing,available],backgroundColor:["#d40000",scopeLossColor(term)],borderColor:[getComputedStyle(document.body).getPropertyValue("--panel"),getComputedStyle(document.body).getPropertyValue("--panel")],borderWidth:4,offset:[14,0]}]},plugins:[scopeLossLabels],options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:18},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtNum(c.raw,0)} (${s.total?(Number(c.raw)/s.total*100).toFixed(1):'0.0'}%)`}}}}});});
+  }
+  function renderScopeLossView(){
+    ["globalReportView","networkView","terminalView","panamaView","adherenceView","sqdcView","workloadView"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
+    destroyWorkloadCharts();destroyAdherenceCharts();sqdcDestroyCharts();scopeLossDestroyCharts();mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";
+    const years=scopeLossAvailableYears();if(!scopeLossYear||!years.includes(String(scopeLossYear)))scopeLossYear=years[0]||String(new Date().getUTCFullYear());
+    document.getElementById("brandTitle").textContent=scopeLossPage==="registry"?"Scope & Data Loss Registry":"Scope & Data Loss";document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Missing Backups";document.getElementById("brandFlag").style.display="none";
+    const view=document.getElementById("scopeLossView");view.style.display="";view.innerHTML=`<div class="scope-loss-wrap">${scopeLossPage==="registry"?scopeLossRegistryHtml():scopeLossDashboardHtml()}</div>`;
+    const year=document.getElementById("scopeLossYear");if(year)year.onchange=()=>{scopeLossYear=year.value;render();};const month=document.getElementById("scopeLossMonth");if(month)month.onchange=()=>{scopeLossMonth=month.value;render();};const term=document.getElementById("scopeLossTerm");if(term)term.onchange=()=>{scopeLossTerm=term.value;render();};const save=document.getElementById("scopeLossSaveRegistry");if(save)save.onclick=async()=>{const status=document.getElementById("scopeLossSaveStatus");save.disabled=true;status.textContent="Saving…";try{await saveScopeLossRegistry();status.textContent="✓ Saved to database.";}catch(e){status.textContent="✗ "+e.message;}finally{save.disabled=false;}};
+    if(scopeLossPage==="dashboard")requestAnimationFrame(renderScopeLossCharts);
+  }
 
   // ---------- Workload Analysis (Tangier ETB data only) ----------
   let workloadYear=null,workloadQuarter=null,workloadMode="quarterly",workloadCharts={};
@@ -5439,8 +5571,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   
 // ---------- Master render ----------
   function render(){
-    document.getElementById("periodRow").style.display=(currentTerminal==="SQDC"||currentTerminal==="WORKLOAD")?"none":"";
-    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE" && currentTerminal !== "SQDC" && currentTerminal !== "WORKLOAD") renderPeriodPicker();
+    document.getElementById("periodRow").style.display=(currentTerminal==="SQDC"||currentTerminal==="WORKLOAD"||currentTerminal==="SCOPELOSS")?"none":"";
+    if (currentTerminal !== "PANAMA" && currentTerminal !== "SPCS" && currentTerminal !== "ADHERENCE" && currentTerminal !== "SQDC" && currentTerminal !== "WORKLOAD" && currentTerminal !== "SCOPELOSS") renderPeriodPicker();
     renderContent();
     updateSidebarContext();
   }
@@ -5461,7 +5593,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function allowedTerminalsFor(user){
     if (!user) return [];
     if (user.role === "terminal") return [user.terminal];
-    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)?null:[];
+    if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)||canViewScopeLoss(user)?null:[];
     if(user.role==="regional_access"){
       const regions=new Set(roleArray(user.regions));
       return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
@@ -5480,6 +5612,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return false;
   }
   function normalizeCurrentViewForRole(){
+    if(currentTerminal==="SCOPELOSS"){
+      if(scopeLossPage==="registry"&&canEditScopeLoss())return;
+      if(scopeLossPage==="dashboard"&&canViewScopeLoss())return;
+      if(canViewScopeLoss()){scopeLossPage="dashboard";return;}
+      if(setFirstAllowedPerformanceView())return;
+    }
     if(currentTerminal==="WORKLOAD"){
       if(canViewWorkloadAnalysis())return;
       if(setFirstAllowedPerformanceView())return;
@@ -5502,7 +5640,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(hasAdherenceDashboardAccess()){
       currentSection="global";currentGlobalSub="adherence";currentTerminal="ADHERENCE";currentType=currentType==="daily"?"weekly":currentType;
       const scopes=allowedAdherenceScopeValues();adherenceScopeFilter=scopes[0]||"global";
+      return;
     }
+    if(canViewScopeLoss()){currentSection="global";currentGlobalSub="scopeLoss";currentTerminal="SCOPELOSS";scopeLossPage="dashboard";}
   }
 
   async function fetchRole(email){
@@ -5529,10 +5669,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     terminalDashboardsBtn.style.display = hasTerminalDashboardAccess() ? "" : "none";
     document.getElementById("adherenceDashboardsBtn").style.display = hasAdherenceDashboardAccess() ? "" : "none";
     sqdcDashboardsBtn.style.display = canViewSqdc() ? "" : "none";
+    scopeLossDashboardBtn.style.display = canViewScopeLoss() ? "" : "none";
     workloadAnalysisBtn.style.display = canViewWorkloadAnalysis() ? "" : "none";
     sqdcRegistryBtn.style.display = canViewSqdcRegistry() ? "" : "none";
+    scopeLossRegistryBtn.style.display = canEditScopeLoss() ? "" : "none";
     sqdcHistoryBtn.style.display = canViewSqdcHistory() ? "" : "none";
-    document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdcRegistry()) ? "" : "none";
+    document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdcRegistry() || canEditScopeLoss()) ? "" : "none";
     const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload") || canViewSqdcHistory());
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
@@ -5570,7 +5712,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       banner.innerHTML = "⚠ Could not connect to the database. Uploads and Settings changes will not be saved.";
     }
     // These three datasets are independent, so load them in parallel.
-    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage(), loadSqdcDataFromStorage()]);
+    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage(), loadSqdcDataFromStorage(), loadScopeLossDataFromStorage()]);
     // Panama terminals share Settings but remain outside the Tangier terminal navigation/data model.
     TERM_CODES = TERM_CODES.filter(t=>!PANAMA_TERM_CODES.includes(t));
     Object.keys(IMPORTED_TARGETS).forEach(ensureTargetTerminalRegistered);
