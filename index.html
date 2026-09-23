@@ -2464,7 +2464,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const mainSectionTabsEl = document.getElementById("mainSectionTabs");
   const globalSubTabsEl = document.getElementById("globalSubTabs");
   function buildMainNav(){
-    if(currentTerminal==="SQDC" || currentTerminal==="ADHERENCE" || currentTerminal==="WORKLOAD"){
+    if(currentTerminal==="SQDC" || currentTerminal==="ADHERENCE" || currentTerminal==="WORKLOAD" || currentTerminal==="SCOPELOSS"){
       mainSectionTabsEl.style.display="none";
       globalSubTabsEl.style.display="none";
       return;
@@ -2569,7 +2569,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     [...tabsEl.children].forEach(b => {
       b.textContent=PERIOD_TYPES[b.dataset.type].label;
       b.classList.toggle("active", b.dataset.type===currentType);
-      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS" || currentTerminal === "ADHERENCE" || currentTerminal === "WORKLOAD") ? "none" : "";
+      if (b.dataset.type === "daily") b.style.display = (currentTerminal === "PANAMA" || currentTerminal === "SPCS" || currentTerminal === "ADHERENCE" || currentTerminal === "WORKLOAD" || currentTerminal === "SCOPELOSS") ? "none" : "";
     });
   }
 
