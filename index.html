@@ -4526,6 +4526,36 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const qi=sqdcQualityParetoItems(date),di=sqdcDeliveryParetoItems(date),ci=sqdcCostParetoItems(date);sqdcParetoChart("sqdcQualityPareto",qi,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,x.q.target-x.q.actual):x.gap);sqdcParetoChart("sqdcDeliveryPareto",di,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,1-x.d.actual):x.gap);sqdcParetoChart("sqdcCostPareto",ci,x=>x.term,x=>x.value);
   };
 
+  // Daily-dashboard parity corrections. SQDCP now consumes the same Excel-native
+  // Daily/Monthly KPI result columns and visit-count rules as Terminal Dashboards.
+  function sqdcUniqueVisitRows(rows){const seen=new Set();return rows.filter(r=>{const id=String(r["Id visit"]??"").trim()||`${r._sqdcTerm}|${sqdcVesselName(r)}|${sqdcDateKey(r._etb)}`;if(seen.has(id))return false;seen.add(id);return true;});}
+  sqdcCalls=function(rows){return volumeAgg(rows).__calls;};
+  function sqdcOfficialKpi(scope,rows,period,key){
+    const values=[];sqdcTerms(scope).forEach(term=>{const termRows=rows.filter(r=>r._sqdcTerm===term);if(!termRows.length)return;const k=(DATA[term]?.kpis||[]).find(x=>x.key===key);if(!k)return;const actual=getValue(k,termRows,period),target=effectiveTarget(k,term,termRows[0]._year);if(Number.isFinite(Number(actual))&&Number.isFinite(Number(target)))values.push({term,k,actual:Number(actual),target:Number(target)});});
+    if(!values.length)return {actual:null,target:null,values:[]};return {actual:values.reduce((a,x)=>a+x.actual,0)/values.length,target:values.reduce((a,x)=>a+x.target,0)/values.length,values};
+  }
+  sqdcQuality=function(scope,date){
+    const rows=sqdcRows(sqdcTerms(scope),date),official=sqdcOfficialKpi(scope,rows,"daily","Vessel Score"),pairs=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>x.key==="Vessel Score"),actual=Number(r["Vessel Score"]),target=k?Number(effectiveTarget(k,term,date.slice(0,4),"vessel")):NaN;return {r,term,actual,target,gap:Number.isFinite(actual)&&Number.isFinite(target)?Math.max(0,(target-actual)/(Math.abs(target)||1)):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.target));
+    if(!rows.length||official.actual==null)return {status:"green",actual:null,target:null,rows:pairs};return {status:official.actual>=official.target?"green":"red",actual:official.actual,target:official.target,rows:pairs};
+  };
+  sqdcDelivery=function(scope,date){
+    const rows=sqdcRows(sqdcTerms(scope),date),vol=volumeAgg(rows),official=sqdcOfficialKpi(scope,rows,"daily","Planning Turnaround Time (h)"),checks=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>x.key==="Planning Turnaround Time (h)"),actual=Number(r["Planning Turnaround Time (h)"]),hourTarget=k?Number(effectiveTarget(k,term,date.slice(0,4),"vessel")):NaN,periodTarget=k?Number(effectiveTarget(k,term,date.slice(0,4))):NaN;return {r,term,actual,hourTarget,periodTarget,gap:Number.isFinite(actual)&&Number.isFinite(hourTarget)?Math.max(0,hourTarget-actual):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.hourTarget));
+    if(!rows.length)return {status:"green",actual:1,target:null,calls:vol.__calls,moves:vol["Total Moves Planned"],misses:[]};if(official.actual==null)return {status:null,actual:null,target:null,calls:vol.__calls,moves:vol["Total Moves Planned"],misses:checks.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap)};return {status:official.actual>=official.target?"green":"red",actual:official.actual,target:official.target,calls:vol.__calls,moves:vol["Total Moves Planned"],misses:checks.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap)};
+  };
+  sqdcWorstQuality=function(scope,date){return sqdcQuality(scope,date).rows.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap).slice(0,3);};
+  sqdcKpiImpacts=function(item,date){
+    const {r,term}=item,year=date.slice(0,4);return settingsKpisForTerm(term).filter(k=>k.key!=="Vessel Score"&&k.key!=="Planning Turnaround Time (h)"&&effectiveSqdcActive(term,k.key,year)&&effectiveSqdcWeight(term,k.key,year)>0).map(k=>{const value=Number(r[k.key]),target=Number(effectiveTarget(k,term,year,"vessel"));if(!Number.isFinite(value)||!Number.isFinite(target))return null;const lower=effectiveVesselDirection(k,term)==="lower",miss=lower?Math.max(0,(value-target)/(Math.abs(target)||1)):Math.max(0,(target-value)/(Math.abs(target)||1));return {name:kpiPeriodLabel(k.key),impact:effectiveSqdcWeight(term,k.key,year)*miss,weight:effectiveSqdcWeight(term,k.key,year)};}).filter(x=>x&&x.impact>0).sort((a,b)=>b.impact-a.impact||b.weight-a.weight).slice(0,3);
+  };
+  sqdcQualityFromRows=function(rows,year){
+    if(!rows.length)return {actual:null,target:null,status:"green",rows:[]};const scope=sqdcScope,official=sqdcOfficialKpi(scope,rows,"monthly","Vessel Score");return {actual:official.actual,target:official.target,status:official.actual==null?"green":official.actual>=official.target?"green":"red",rows:[]};
+  };
+  sqdcDeliveryFromRows=function(rows,year){
+    if(!rows.length)return {actual:null,target:null,status:"green",misses:[]};const official=sqdcOfficialKpi(sqdcScope,rows,"monthly","Planning Turnaround Time (h)");return {actual:official.actual,target:official.target,status:official.actual==null?null:official.actual>=official.target?"green":"red",misses:[]};
+  };
+  sqdcScoreChart=function(id,labels,actual,target,percent){
+    const canvas=document.getElementById(id);if(!canvas)return;const colors=actual.map((v,i)=>v==null||target[i]==null?"#F5C518":Number(v)>=Number(target[i])?"#3ED17E":"#F2483D");sqdcCharts[id]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels,datasets:[{label:"Actual",data:actual,borderColor:colors[0]||"#4FA6E8",pointBackgroundColor:colors,pointBorderColor:colors,pointRadius:4,backgroundColor:"rgba(79,166,232,.10)",fill:true,tension:.25,spanGaps:false,segment:{borderColor:ctx=>colors[ctx.p1DataIndex]||"#4FA6E8"}},{label:"Target",data:target,borderColor:"#F5C518",backgroundColor:"#F5C518",borderDash:[6,4],pointRadius:2,tension:0,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:chartTickColor(),boxWidth:18}}},scales:{x:{ticks:{color:chartTickColor(),autoSkip:false},grid:{color:chartGridColor()}},y:{beginAtZero:true,max:percent?100:undefined,ticks:{color:chartTickColor(),callback:v=>percent?v+"%":v},grid:{color:chartGridColor()}}}}});
+  };
+
   // ---------- Scope & Data Loss (Tangier ETB data + monthly Firebase registry) ----------
   const SCOPE_LOSS_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
   const SCOPE_LOSS_COLORS={MAPTM:"#ff006e",MAMED:"#12aee5",OMSLL:"#ff6b00",EGPSD:"#00b956",BHBAH:"#1111ee",JOAQJ:"#1111ee",ITVAD:"#7332a8",SEGOT:"#7332a8",DKAAR:"#7332a8",HRRJK:"#7332a8",NGAPP:"#ffbf00",NGONN:"#ffbf00",LRMLW:"#ffbf00"};
