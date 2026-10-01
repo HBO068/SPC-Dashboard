@@ -3668,7 +3668,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="section-label">Vessel Call Detail</div>
       <div class="table-card">
         <table>
-          <thead><tr><th>Vessel</th><th>Service</th><th>Line</th><th>ETB</th><th>ETD</th><th>Moves</th><th>TEU</th><th>${scoreKpi?shortLabel('Vessel Score'):''}</th></tr></thead>
+          <thead><tr><th>Vessel</th><th>Service</th><th>Line</th><th>ETB</th><th>ETD</th><th>Load Moves</th><th>Discharge Moves</th><th>TEU</th><th>${scoreKpi?shortLabel('Vessel Score'):''}</th></tr></thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
@@ -3783,7 +3783,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           "Visit: " + visitId,
           "ETB: " + etbStr,
           "ETD: " + etdStr,
-          "Moves: " + fmtNum(r["Total Moves Planned"]) + "   TEU: " + fmtNum(r["Total TEU Planned"]),
+          "Load Moves: " + fmtNum(r["Load Planned"]) + "   Discharge Moves: " + fmtNum(r["Discharge Planned"]) + "   TEU: " + fmtNum(r["Total TEU Planned"]),
           "Vessel Score: " + (hasScoreVal ? fmtNum(score,1) : "–") + " / target " + (hasTargetVal ? fmtNum(target,1) : "–") + " (" + statusLabel + ")"
         ].join("\n");
         card.innerHTML = `
@@ -3816,7 +3816,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <td>${r["Vessel Name"]}</td><td>${r["Service"]||""}</td><td>${r["Line op"]||""}</td>
           <td>${r._etb.toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})}</td>
           <td>${r._etd ? r._etd.toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'UTC'}) : '–'}</td>
-          <td>${fmtNum(r["Total Moves Planned"])}</td><td>${fmtNum(r["Total TEU Planned"])}</td>
+          <td>${fmtNum(r["Load Planned"])}</td><td>${fmtNum(r["Discharge Planned"])}</td><td>${fmtNum(r["Total TEU Planned"])}</td>
           <td><span class="pill ${status}">${fmtNum(score,1)}</span></td>
         `;
         tbody.appendChild(tr);
