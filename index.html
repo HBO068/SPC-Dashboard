@@ -83,7 +83,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsx file; XLSX: window.XLSX (SheetJS)
-  function parseWorkbook(workbookArrayBuffer, XLSX){
+  function parseWorkbook(workbookArrayBuffer, XLSX, registeredKpis){
     const wb = XLSX.read(workbookArrayBuffer, {type:"array", cellDates:true});
     const weekSheetName = wb.SheetNames.find(n => /^WEEK_\d{6}$/i.test(n)) || wb.SheetNames[0];
     const m = weekSheetName.match(/(\d{4})(\d{2})/);
@@ -1102,7 +1102,14 @@ window.__FIREBASE_CONFIG__ = {
     // Build KPI catalog directly from this terminal's own Dashboards Data headers.
     const seenCols = new Set();
     const kpiMap = {};
-    CANONICAL_KPI_NAMES.forEach(name => {
+    const requestedKpis = CANONICAL_KPI_NAMES.map(name=>({name}));
+    (Array.isArray(registeredKpis)?registeredKpis:[]).forEach(item=>{
+      const name=norm(typeof item==="string"?item:item&&item.name);
+      if(!name || requestedKpis.some(x=>norm(x.name).toLowerCase()===name.toLowerCase())) return;
+      requestedKpis.push({name,isPercent:!!(item&&item.isPercent),direction:item&&item.direction});
+    });
+    requestedKpis.forEach(requested => {
+      const name=requested.name;
       const {col} = findBaseColumn(name, rawHeaders);
       if (!col || seenCols.has(col)) return;
       seenCols.add(col);
@@ -1118,7 +1125,8 @@ window.__FIREBASE_CONFIG__ = {
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
         if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      kpiMap[col] = {key: name, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(name) ? "lower" : "higher"};
+      if(requested.isPercent) isPercent=true;
+      kpiMap[col] = {key: name, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: requested.direction || (DEFAULT_LOWER_BETTER.has(name) ? "lower" : "higher")};
     });
 
     // Planning Turnaround Time: use the '%' compliance-rate columns instead of '(h)' hours at
@@ -1630,11 +1638,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function sum(rows, f){ return rows.reduce((a,r)=> a + (Number(r[f])||0), 0); }
   function normalizedFieldName(v){ return String(v??"").replace(/\s+/g," ").trim(); }
+  function normalizedFieldLookup(v){ return normalizedFieldName(v).toLocaleLowerCase(); }
   function rowFieldValue(row, field){
     if (!row) return undefined;
     if (Object.prototype.hasOwnProperty.call(row,field)) return row[field];
-    const wanted=normalizedFieldName(field);
-    const matched=Object.keys(row).find(k=>normalizedFieldName(k)===wanted);
+    const wanted=normalizedFieldLookup(field);
+    const matched=Object.keys(row).find(k=>normalizedFieldLookup(k)===wanted);
     return matched===undefined?undefined:row[matched];
   }
   function avgSkipNull(rows, f){
@@ -1884,7 +1893,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let KPI_NAME_REGISTRY=[];
   function mergeKpiRegistryEntry(name,isPercent){
     const clean=normalizedFieldName(name);if(!clean)return null;
-    let entry=KPI_NAME_REGISTRY.find(x=>normalizedFieldName(x.name)===clean);
+    let entry=KPI_NAME_REGISTRY.find(x=>normalizedFieldLookup(x.name)===normalizedFieldLookup(clean));
     if(entry){if(isPercent!==undefined)entry.isPercent=!!isPercent;return entry;}
     entry={name:clean,isPercent:!!isPercent};KPI_NAME_REGISTRY.push(entry);
     KPI_NAME_REGISTRY.sort((a,b)=>a.name.localeCompare(b.name));return entry;
@@ -1900,14 +1909,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   function buildMergedCatalog(term, freshCatalog){
     const existing = (DATA[term] && DATA[term].kpis) ? DATA[term].kpis : [];
-    const oldByKey = Object.fromEntries(existing.map(k=>[normalizedFieldName(k.key),k]));
+    const oldByKey = Object.fromEntries(existing.map(k=>[normalizedFieldLookup(k.key),k]));
     const merged = freshCatalog.map(k => {
-      const old=oldByKey[normalizedFieldName(k.key)];
+      const old=oldByKey[normalizedFieldLookup(k.key)];
       // Preserve the registered standard key while allowing harmless Excel whitespace differences.
       return old ? Object.assign({}, old, k, {key:old.key,targets_by_year:Object.assign({},old.targets_by_year||{})}) : k;
     });
     // Keep KPIs intentionally registered in Settings even if this particular workbook does not have the column yet.
-    existing.filter(k=>k.registeredManually && !merged.some(n=>normalizedFieldName(n.key)===normalizedFieldName(k.key))).forEach(k=>merged.push(k));
+    existing.filter(k=>k.registeredManually && !merged.some(n=>normalizedFieldLookup(n.key)===normalizedFieldLookup(k.key))).forEach(k=>merged.push(k));
     return merged;
   }
 
@@ -2229,7 +2238,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     setUploadStatus("Reading " + file.name + "…", false);
     try {
       const buf = await file.arrayBuffer();
-      const result = window.SPCParser.parseWorkbook(buf, window.XLSX);
+      // Registered KPIs participate in Excel discovery, so their base and period columns are
+      // actually extracted instead of creating an empty graph-only configuration.
+      const registeredKpis=[...KPI_NAME_REGISTRY];
+      Object.values(DATA).forEach(d=>(d?.kpis||[]).forEach(k=>{
+        if(!registeredKpis.some(x=>normalizedFieldLookup(x.name)===normalizedFieldLookup(k.key)))
+          registeredKpis.push({name:k.key,isPercent:!!k.isPercent,direction:k.direction});
+      }));
+      const result = window.SPCParser.parseWorkbook(buf, window.XLSX, registeredKpis);
       const mergedCatalog = buildMergedCatalog(result.terminal, result.catalog);
       const isFirstUpload = !DATA[result.terminal] || !DATA[result.terminal].kpis || !DATA[result.terminal].kpis.length;
       // Persist first. If Firestore fails, the on-screen dashboard remains on the previously confirmed data.
@@ -2435,7 +2451,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
   }
   async function loadAllSettingsFromStorage(){
-    for (const term of [...new Set([...TERM_CODES,...PANAMA_TERM_CODES])]){
+    await Promise.all([...new Set([...TERM_CODES,...PANAMA_TERM_CODES])].map(async term=>{
       try {
         const res = await storageGet("settings:"+term, true);
         if (res && res.value){
@@ -2443,7 +2459,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           SETTINGS[term] = Object.assign({}, SETTINGS[term], stored);
         }
       } catch(e){ /* no stored settings yet for this terminal */ }
-    }
+    }));
   }
   async function saveSettingsForTerm(term){
     await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); // let a failure propagate — callers must know if this didn't actually save
@@ -4300,7 +4316,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function sqdcScopeLabel(){return SQDC_SCOPE_LABELS[sqdcScope]||sqdcScope;}
   function sqdcTerms(scope=sqdcScope){return scope==="global"?Object.values(SQDC_POOLS).flat():SQDC_POOLS[scope]||[];}
   function effectiveSqdcActive(term,key,year){const s=SETTINGS[term]?.[key]||{};return !!(s.activeSqdcByYear&&s.activeSqdcByYear[year]===true);}
-  function effectiveSqdcWeight(term,key,year){const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
+  function effectiveSqdcWeight(term,key,year){if(normalizedFieldLookup(key)==="vessel score")return 0;const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
   function sqdcTargets(year){return Object.assign({},SQDC_DEFAULT_TARGETS,SQDC_CONFIG.targetsByYear?.[String(year)]||{});}
   function sqdcDateKey(d){return d instanceof Date&&!isNaN(d)?`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`:"";}
   let SQDC_ROW_INDEX=null;
@@ -4602,7 +4618,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Daily/Monthly KPI result columns and visit-count rules as Terminal Dashboards.
   function sqdcUniqueVisitRows(rows){const seen=new Set();return rows.filter(r=>{const id=String(r["Id visit"]??"").trim()||`${r._sqdcTerm}|${sqdcVesselName(r)}|${sqdcDateKey(r._etb)}`;if(seen.has(id))return false;seen.add(id);return true;});}
   sqdcCalls=function(rows){return volumeAgg(rows).__calls;};
-  function sqdcKpiDefinition(term,key){const wanted=normalizedFieldName(key);return settingsKpisForTerm(term).find(x=>normalizedFieldName(x.key)===wanted)||null;}
+  function sqdcKpiDefinition(term,key){const wanted=normalizedFieldLookup(key);return settingsKpisForTerm(term).find(x=>normalizedFieldLookup(x.key)===wanted)||null;}
   function sqdcOfficialKpi(scope,rows,period,key){
     const values=[];sqdcTerms(scope).forEach(term=>{const termRows=rows.filter(r=>r._sqdcTerm===term);if(!termRows.length)return;const k=sqdcKpiDefinition(term,key);if(!k)return;const actual=getValue(k,termRows,period),target=effectiveTarget(k,term,termRows[0]._year);if(actual!==null&&actual!==""&&target!==null&&target!==""&&Number.isFinite(Number(actual))&&Number.isFinite(Number(target)))values.push({term,k,actual:Number(actual),target:Number(target)});});
     if(!values.length)return {actual:null,target:null,values:[]};return {actual:values.reduce((a,x)=>a+x.actual,0)/values.length,target:values.reduce((a,x)=>a+x.target,0)/values.length,values};
@@ -5047,7 +5063,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       document.getElementById("newKpiStatus").textContent="Panama KPI names come from the Panama upload format.";
     } else {
       const nameInp=document.getElementById("newKpiName"),typeSel=document.getElementById("newKpiType");
-      nameInp.oninput=()=>{const found=KPI_NAME_REGISTRY.find(x=>normalizedFieldName(x.name)===normalizedFieldName(nameInp.value));if(found)typeSel.value=found.isPercent?"percent":"number";};
+      nameInp.oninput=()=>{const found=KPI_NAME_REGISTRY.find(x=>normalizedFieldLookup(x.name)===normalizedFieldLookup(nameInp.value));if(found)typeSel.value=found.isPercent?"percent":"number";};
       newKpiBtn.onclick = async () => {
       const nameInp = document.getElementById("newKpiName");
       const dirSel = document.getElementById("newKpiDirection");
@@ -5056,7 +5072,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const statusEl = document.getElementById("newKpiStatus");
       const name = normalizedFieldName(nameInp.value),isPercent=typeSel.value==="percent",weight=Math.max(0,Math.min(100,Number(weightInp.value)||0));
       if (!name){ statusEl.textContent = "Enter a KPI/column name first."; return; }
-      if (DATA[settingsTerm].kpis.some(k=>normalizedFieldName(k.key)===name)){ statusEl.textContent = "This KPI already exists for " + settingsTerm + "."; return; }
+      if (DATA[settingsTerm].kpis.some(k=>normalizedFieldLookup(k.key)===normalizedFieldLookup(name))){ statusEl.textContent = "This KPI already exists for " + settingsTerm + "."; return; }
       const newKpi = { key:name, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent, direction: dirSel.value, registeredManually:true };
       DATA[settingsTerm].kpis.push(newKpi);
       SETTINGS[settingsTerm][name] = { activeTerminal:true, activeGlobal:true, activeSqdc:true, isPercent, priority: DATA[settingsTerm].kpis.length, targetOverrides:{}, activeTerminalByYear:{[settingsYear]:true}, activeGlobalByYear:{[settingsYear]:true}, activeSqdcByYear:{[settingsYear]:true}, sqdcWeightByYear:{[settingsYear]:weight/100}, direction: dirSel.value };
@@ -5153,6 +5169,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const isTangierSqdc=TERM_CODES.includes(settingsTerm);
       const activeSqdcYear=isTangierSqdc&&effectiveSqdcActive(settingsTerm,k.key,settingsYear);
       const sqdcWeight=isTangierSqdc?effectiveSqdcWeight(settingsTerm,k.key,settingsYear)*100:0;
+      const isQualityMeasure=k.key==="Vessel Score";
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}${k.registeredManually ? ' <span class="weight-badge" title="Registered manually, not yet in the uploaded Excel">manual</span>' : ''}</td>
@@ -5168,8 +5185,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         </td>
         <td><label class="toggle"><input type="checkbox" ${activeTerminalYear?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
         <td><label class="toggle"><input type="checkbox" ${activeGlobalYear?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
-        <td>${isTangierSqdc?`<label class="toggle"><input type="checkbox" ${activeSqdcYear?'checked':''} data-key="${k.key}" class="active-sqdc-toggle"><span class="slider"></span></label>`:'—'}</td>
-        <td>${isTangierSqdc?`<input type="number" class="priority-input sqdc-weight-input" value="${sqdcWeight.toFixed(2)}" min="0" max="100" step="0.01" data-key="${k.key}" style="width:78px">`:'—'}</td>
+        <td>${isTangierSqdc?(isQualityMeasure?'<span class="weight-badge">Quality measure</span>':`<label class="toggle"><input type="checkbox" ${activeSqdcYear?'checked':''} data-key="${k.key}" class="active-sqdc-toggle"><span class="slider"></span></label>`):'—'}</td>
+        <td>${isTangierSqdc?(isQualityMeasure?'—':`<input type="number" class="priority-input sqdc-weight-input" value="${sqdcWeight.toFixed(2)}" min="0" max="100" step="0.01" data-key="${k.key}" style="width:78px">`):'—'}</td>
         <td><input type="number" class="priority-input" value="${s.priority}" min="1" data-key="${k.key}"></td>
         <td>${k.registeredManually ? `<button class="btn-secondary remove-kpi-btn" data-key="${k.key}" style="border-color:#F2483D; color:#F2483D; padding:4px 8px; font-size:11px;">Remove</button>` : ''}</td>
       `;
