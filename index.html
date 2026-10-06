@@ -1375,10 +1375,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const byMonth = {};
     rows.forEach(r => { const mk = monthKeyOfRow(r); (byMonth[mk] = byMonth[mk]||[]).push(r); });
     const yearRef = db.collection("terminals").doc(term).collection("years").doc(String(year));
-    // Replace the year atomically at the month-document level: either the batch commits, or the old year stays.
-    const existing = await yearRef.collection("months").get();
+    // Replace only months present in this upload. Months absent from the Excel are preserved.
+    // Each included month document is overwritten as one complete monthly snapshot.
     const batch = db.batch();
-    existing.forEach(doc => batch.delete(doc.ref));
     Object.keys(byMonth).forEach(mk => {
       const safeId = mk.replace(/[\/]/g, "_");
       batch.set(yearRef.collection("months").doc(safeId), { rows: sanitizeForFirestore(byMonth[mk]) });
@@ -1961,8 +1960,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (!TERM_CODES.includes(term)){ TERM_CODES.push(term); TERM_CODES = sortTermCodes(TERM_CODES); }
     Object.keys(rowsByYear).forEach(year => {
       const newRows = normalizeRows(rowsByYear[year]);
-      // Re-uploading the same terminal/year REPLACES that year's rows; it never appends duplicates.
-      DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(newRows);
+      // Replace only months included in this upload. Other months of the same year remain.
+      const incomingMonths=new Set(rowsByYear[year].map(monthKeyOfRow));
+      DATA[term].rows = DATA[term].rows.filter(r => !(r._year===String(year)&&incomingMonths.has(monthKeyOfRow(r)))).concat(newRows);
     });
     DATA[term].kpis = mergedCatalog;
     if (!SETTINGS[term]) SETTINGS[term] = {};
@@ -4183,8 +4183,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="settings-wrap">
         <div class="section-label" style="color:#F2483D;">⚠ Erase Terminal Data</div>
         <div class="footer-note" style="text-align:left; margin:10px 0 16px;">
-          This permanently deletes only the uploaded operational data for the selected terminal — every year of vessel-call
-          data (Tangier) or every uploaded week (Panama). KPI targets, imported Targets Excel values, Direction, visibility,
+          This permanently deletes only the selected year of uploaded operational data for the selected terminal.
+          KPI targets, imported Targets Excel values, Direction, visibility,
           priority and other Settings are kept untouched. Configuration can only be reset separately from Settings.
           This cannot be undone for the operational data being erased.
         </div>
@@ -4192,6 +4192,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <select id="eraseTermSelect" class="priority-input" style="width:220px;">
             ${allTerms.map(t=>`<option value="${t.kind}:${t.code}">${t.code} (${t.kind})</option>`).join("")}
           </select>
+          <select id="eraseYearSelect" class="priority-input" style="width:120px;"></select>
           <button class="btn-secondary" id="eraseConfirmBtn" style="border-color:#F2483D; color:#F2483D;">Permanently Erase</button>
         </div>
         <div id="eraseStatus" style="margin-top:12px; font-family:var(--mono); font-size:12.5px;"></div>
@@ -4210,18 +4211,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <div id="eraseAdherenceStatus" style="margin-top:12px; font-family:var(--mono); font-size:12.5px;"></div>
       </div>
     `;
+    const eraseTermSelect=document.getElementById("eraseTermSelect"),eraseYearSelect=document.getElementById("eraseYearSelect");
+    const refreshEraseYears=()=>{
+      const [kind,code]=eraseTermSelect.value.split(":"),years=new Set();
+      if(kind==="Tangier")((DATA[code]&&DATA[code].rows)||[]).forEach(r=>{if(r._year||r.Year)years.add(String(r._year||r.Year));});
+      else Object.keys(PANAMA_DATA[code]||{}).forEach(k=>{const m=String(k).match(/20\d{2}/);if(m)years.add(m[0]);});
+      const sorted=[...years].sort();eraseYearSelect.innerHTML=sorted.length?sorted.map(y=>`<option>${y}</option>`).join(""):'<option value="">No data</option>';
+    };
+    eraseTermSelect.onchange=refreshEraseYears;refreshEraseYears();
     document.getElementById("eraseConfirmBtn").onclick = async () => {
-      const [kind, code] = document.getElementById("eraseTermSelect").value.split(":");
-      const typed = prompt(`This will permanently delete the uploaded operational data for ${code} (${kind}) while keeping its Targets and Settings. Type the terminal code "${code}" exactly to confirm:`);
-      if (typed !== code){
+      const [kind, code] = eraseTermSelect.value.split(":"),year=eraseYearSelect.value;
+      if(!year){document.getElementById("eraseStatus").textContent="No stored year is available for this terminal.";return;}
+      const typed = prompt(`This will permanently delete ${code} operational data for ${year} only, while keeping every other year, Targets and Settings. Type "${code}-${year}" exactly to confirm:`);
+      if (typed !== `${code}-${year}`){
         document.getElementById("eraseStatus").textContent = typed === null ? "Cancelled." : "Typed text didn't match — nothing was deleted.";
         return;
       }
       document.getElementById("eraseStatus").textContent = "Erasing " + code + "…";
       try {
-        if (kind === "Tangier") await eraseTangierTerminal(code);
-        else await erasePanamaTerminal(code);
-        document.getElementById("eraseStatus").textContent = "✓ " + code + " operational data erased. Targets and Settings were preserved.";
+        if (kind === "Tangier") await eraseTangierTerminal(code,year);
+        else await erasePanamaTerminal(code,year);
+        document.getElementById("eraseStatus").textContent = "✓ " + code + " " + year + " operational data erased. Other years, Targets and Settings were preserved.";
         buildTerminalPills();
         renderEraseView();
       } catch(e){
@@ -4248,12 +4258,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     };
   }
 
-  async function eraseTangierTerminal(term){
+  async function eraseTangierTerminal(term,year){
     // DATA ONLY: targets/catalog/settings are deliberately independent and must survive a data erase.
     const yres = await storageGet("years:"+term, true);
-    const years = (yres && yres.value) ? JSON.parse(yres.value) : [];
-    for (const year of years){
-      try {
+    const years = (yres && yres.value) ? JSON.parse(yres.value).map(String) : [];
+    try {
         const monthsSnap = await db.collection("terminals").doc(term).collection("years").doc(String(year)).collection("months").get();
         const docs = [];
         monthsSnap.forEach(doc => docs.push(doc));
@@ -4263,27 +4272,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           docs.slice(i,i+400).forEach(doc => batch.delete(doc.ref));
           await batch.commit();
         }
-      } catch(e){ console.error("Could not erase operational rows for", term, year, e); throw e; }
-    }
-    // Clear only the years registry. Do NOT delete catalog, settings, targets or known_terminals.
-    await db.collection("terminals").doc(term).collection("meta").doc("years").delete().catch(()=>{});
+    } catch(e){ console.error("Could not erase operational rows for", term, year, e); throw e; }
+    // Remove only this year from the registry. Never delete catalog/settings/targets.
+    await storageSet("years:"+term,JSON.stringify(years.filter(y=>y!==String(year))),true);
 
-    if (DATA[term]) DATA[term].rows = [];
+    if (DATA[term]) DATA[term].rows = DATA[term].rows.filter(r=>String(r._year)!==String(year));
     currentPeriod = null;
   }
 
-  async function erasePanamaTerminal(code){
+  async function erasePanamaTerminal(code,year){
     const weeksSnap = await db.collection("panama").doc(code).collection("weeks").get();
     const batch = db.batch();
-    weeksSnap.forEach(doc => batch.delete(doc.ref));
+    weeksSnap.forEach(doc => {if(String(doc.id).includes(String(year)))batch.delete(doc.ref);});
     await batch.commit();
-    let known = [];
-    try { const kres = await storageGet("panama_known_terminals", true); if (kres && kres.value) known = JSON.parse(kres.value); } catch(e){}
-    known = known.filter(t => t !== code);
-    await storageSet("panama_known_terminals", JSON.stringify(known), true);
-
-    PANAMA_TERM_CODES = PANAMA_TERM_CODES.filter(t => t !== code);
-    delete PANAMA_DATA[code];
+    Object.keys(PANAMA_DATA[code]||{}).forEach(k=>{if(String(k).includes(String(year)))delete PANAMA_DATA[code][k];});
   }
 
   async function eraseAdherenceBiData(){
