@@ -3824,22 +3824,26 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
   }
 
+  function hideAllDashboardViews(){
+    ["scopeLossView","workloadView","sqdcView","adherenceView","globalReportView","panamaView","networkView","terminalView"].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display="none";
+    });
+  }
   function renderContent(){
+    // A navigation action must always leave exactly one dashboard visible.
+    // Previously the early returns below could leave the former special module
+    // (SQDC, Workload, Scope Loss or Adherence) visible underneath the new one.
+    hideAllDashboardViews();
+    if (currentTerminal !== "SCOPELOSS") scopeLossDestroyCharts();
+    if (currentTerminal !== "WORKLOAD") destroyWorkloadCharts();
+    if (currentTerminal !== "SQDC") sqdcDestroyCharts();
+    if (currentTerminal !== "ADHERENCE") destroyAdherenceCharts();
     if (currentTerminal === "SCOPELOSS") { renderScopeLossView(); return; }
-    scopeLossDestroyCharts();
-    document.getElementById("scopeLossView").style.display = "none";
     if (currentTerminal === "WORKLOAD") { renderWorkloadView(); return; }
-    destroyWorkloadCharts();
-    document.getElementById("workloadView").style.display = "none";
     if (currentTerminal === "SQDC") { renderSqdcView(); return; }
-    document.getElementById("sqdcView").style.display = "none";
     if (currentTerminal === "ADHERENCE") { renderAdherenceView(); return; }
-    destroyAdherenceCharts();
-    document.getElementById("adherenceView").style.display = "none";
     if (currentTerminal === "SPCS") { renderGlobalReportView(); return; }
-    document.getElementById("globalReportView").style.display = "none";
     if (currentTerminal === "PANAMA") { renderPanamaView(); return; }
-    document.getElementById("panamaView").style.display = "none";
     if (currentTerminal === "ALL") renderNetworkView();
     else renderTerminalView();
   }
@@ -4302,12 +4306,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!year||!month||!day)return false;
     // SQDC must use the exact same Excel-native period identity as the working
     // Daily Terminal Dashboard. Raw ETB remains a safe fallback for legacy rows.
-    const rowYear=Number(r._year||r["Year"]),monthRaw=String(r["Month By ETB"]??"").trim(),dayRaw=String(r["Day by ETB"]??"").trim();
+    const rowYear=Number(r._year||r["Year"]),monthRaw=String(r["Month By ETB"]??"").trim(),dayValue=r["Day by ETB"],dayRaw=String(dayValue??"").trim();
     const monthNames=["january","february","march","april","may","june","july","august","september","october","november","december"];
-    const monthNumber=/^\d+$/.test(monthRaw)?Number(monthRaw):monthNames.findIndex(x=>monthRaw.toLowerCase().startsWith(x.slice(0,3)))+1;
-    const dayNumber=(dayRaw.match(/\d{1,2}/)||[])[0];
+    const isoDay=dayRaw.match(/(20\d{2})[-\/]([01]?\d)[-\/]([0-3]?\d)/),monthFilter=String(r["Month Filter"]??"").trim(),filterMonth=monthFilter.match(/(20\d{2})[-\/]([01]?\d)/);
+    const monthNumber=filterMonth&&Number(filterMonth[1])===year?Number(filterMonth[2]):/^\d+$/.test(monthRaw)?Number(monthRaw):monthNames.findIndex(x=>monthRaw.toLowerCase().startsWith(x.slice(0,3)))+1;
+    const dayNumber=dayValue instanceof Date?dayValue.getUTCDate():isoDay?Number(isoDay[3]):/^\d+(?:\.0+)?$/.test(dayRaw)?Number(dayRaw):(dayRaw.match(/(?:^|\D)([0-3]?\d)(?:\D|$)/)||[])[1];
     if(rowYear===year&&monthNumber===month&&Number(dayNumber)===day)return true;
-    const monthFilter=String(r["Month Filter"]??"").trim();
     if(rowYear===year&&monthFilter&&monthFilter.includes(`${year}-${String(month).padStart(2,"0")}`)&&Number(dayNumber)===day)return true;
     return sqdcDateKey(r._etb)===date;
   }
@@ -4576,13 +4580,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Daily/Monthly KPI result columns and visit-count rules as Terminal Dashboards.
   function sqdcUniqueVisitRows(rows){const seen=new Set();return rows.filter(r=>{const id=String(r["Id visit"]??"").trim()||`${r._sqdcTerm}|${sqdcVesselName(r)}|${sqdcDateKey(r._etb)}`;if(seen.has(id))return false;seen.add(id);return true;});}
   sqdcCalls=function(rows){return volumeAgg(rows).__calls;};
+  function sqdcKpiDefinition(term,key){const wanted=normalizedFieldName(key);return settingsKpisForTerm(term).find(x=>normalizedFieldName(x.key)===wanted)||null;}
   function sqdcOfficialKpi(scope,rows,period,key){
-    const values=[];sqdcTerms(scope).forEach(term=>{const termRows=rows.filter(r=>r._sqdcTerm===term);if(!termRows.length)return;const wanted=normalizedFieldName(key),k=(DATA[term]?.kpis||[]).find(x=>normalizedFieldName(x.key)===wanted);if(!k)return;const actual=getValue(k,termRows,period),target=effectiveTarget(k,term,termRows[0]._year);if(Number.isFinite(Number(actual))&&Number.isFinite(Number(target)))values.push({term,k,actual:Number(actual),target:Number(target)});});
+    const values=[];sqdcTerms(scope).forEach(term=>{const termRows=rows.filter(r=>r._sqdcTerm===term);if(!termRows.length)return;const k=sqdcKpiDefinition(term,key);if(!k)return;const actual=getValue(k,termRows,period),target=effectiveTarget(k,term,termRows[0]._year);if(actual!==null&&actual!==""&&target!==null&&target!==""&&Number.isFinite(Number(actual))&&Number.isFinite(Number(target)))values.push({term,k,actual:Number(actual),target:Number(target)});});
     if(!values.length)return {actual:null,target:null,values:[]};return {actual:values.reduce((a,x)=>a+x.actual,0)/values.length,target:values.reduce((a,x)=>a+x.target,0)/values.length,values};
   }
   sqdcQuality=function(scope,date){
-    const rows=sqdcRows(sqdcTerms(scope),date),official=sqdcOfficialKpi(scope,rows,"daily","Vessel Score"),pairs=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>normalizedFieldName(x.key)==="Vessel Score"),actual=Number(rowFieldValue(r,"Vessel Score")),target=k?Number(effectiveTarget(k,term,date.slice(0,4))):NaN;return {r,term,actual,target,gap:Number.isFinite(actual)&&Number.isFinite(target)?Math.max(0,(target-actual)/(Math.abs(target)||1)):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.target));
-    if(!rows.length||official.actual==null)return {status:"green",actual:null,target:null,rows:pairs};return {status:official.actual>=official.target?"green":"red",actual:official.actual,target:official.target,rows:pairs};
+    const rows=sqdcRows(sqdcTerms(scope),date),official=sqdcOfficialKpi(scope,rows,"daily","Vessel Score"),pairs=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=sqdcKpiDefinition(term,"Vessel Score"),raw=rowFieldValue(r,"Vessel Score"),actual=raw===null||raw===undefined||raw===""?NaN:Number(raw),configured=k?effectiveTarget(k,term,date.slice(0,4)):null,target=configured===null||configured===undefined||configured===""?NaN:Number(configured);return {r,term,actual,target,gap:Number.isFinite(actual)&&Number.isFinite(target)?Math.max(0,(target-actual)/(Math.abs(target)||1)):0};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.target));
+    if(!rows.length)return {status:"green",actual:null,target:null,rows:[]};
+    if(official.actual!=null&&official.target!=null)return {status:official.actual>=official.target?"green":"red",actual:official.actual,target:official.target,rows:pairs};
+    if(!pairs.length)return {status:null,actual:null,target:null,rows:[]};
+    const byTerm={};pairs.forEach(x=>(byTerm[x.term]=byTerm[x.term]||[]).push(x));const terminalScores=Object.values(byTerm).map(xs=>({actual:xs.reduce((a,x)=>a+x.actual,0)/xs.length,target:xs.reduce((a,x)=>a+x.target,0)/xs.length})),actual=terminalScores.reduce((a,x)=>a+x.actual,0)/terminalScores.length,target=terminalScores.reduce((a,x)=>a+x.target,0)/terminalScores.length;
+    return {status:actual>=target?"green":"red",actual,target,rows:pairs};
   };
   sqdcDelivery=function(scope,date){
     const rows=sqdcRows(sqdcTerms(scope),date),vol=volumeAgg(rows),official=sqdcOfficialKpi(scope,rows,"daily","Planning Turnaround Time (h)"),checks=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=(DATA[term]?.kpis||[]).find(x=>normalizedFieldName(x.key)==="Planning Turnaround Time (h)"),actual=Number(rowFieldValue(r,"Planning Turnaround Time (h)")),hourTarget=k?Number(effectiveTarget(k,term,date.slice(0,4),"vessel")):NaN,periodTarget=k?Number(effectiveTarget(k,term,date.slice(0,4))):NaN,gapHours=Number.isFinite(actual)&&Number.isFinite(hourTarget)?Math.max(0,hourTarget-actual):0,gap=Number.isFinite(actual)&&Number.isFinite(hourTarget)?gapHours/(Math.abs(hourTarget)||1):0;return {r,term,actual,hourTarget,periodTarget,gap,gapHours};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.hourTarget));
@@ -4611,7 +4620,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       .slice(0,3);
   };
   sqdcQualityFromRows=function(rows,year){
-    if(!rows.length)return {actual:null,target:null,status:"green",rows:[]};const scope=sqdcScope,official=sqdcOfficialKpi(scope,rows,"monthly","Vessel Score");return {actual:official.actual,target:official.target,status:official.actual==null?"green":official.actual>=official.target?"green":"red",rows:[]};
+    if(!rows.length)return {actual:null,target:null,status:"green",rows:[]};const scope=sqdcScope,official=sqdcOfficialKpi(scope,rows,"monthly","Vessel Score");
+    if(official.actual!=null&&official.target!=null)return {actual:official.actual,target:official.target,status:official.actual>=official.target?"green":"red",rows:[]};
+    const pairs=sqdcUniqueVisitRows(rows).map(r=>{const term=r._sqdcTerm,k=sqdcKpiDefinition(term,"Vessel Score"),raw=rowFieldValue(r,"Vessel Score"),actual=raw===null||raw===undefined||raw===""?NaN:Number(raw),configured=k?effectiveTarget(k,term,year):null,target=configured===null||configured===undefined||configured===""?NaN:Number(configured);return {term,actual,target};}).filter(x=>Number.isFinite(x.actual)&&Number.isFinite(x.target));
+    if(!pairs.length)return {actual:null,target:null,status:"green",rows:[]};const byTerm={};pairs.forEach(x=>(byTerm[x.term]=byTerm[x.term]||[]).push(x));const terminalScores=Object.values(byTerm).map(xs=>({actual:xs.reduce((a,x)=>a+x.actual,0)/xs.length,target:xs.reduce((a,x)=>a+x.target,0)/xs.length})),actual=terminalScores.reduce((a,x)=>a+x.actual,0)/terminalScores.length,target=terminalScores.reduce((a,x)=>a+x.target,0)/terminalScores.length;return {actual,target,status:actual>=target?"green":"red",rows:[]};
   };
   sqdcDeliveryFromRows=function(rows,year){
     if(!rows.length)return {actual:null,target:null,status:"green",misses:[]};const official=sqdcOfficialKpi(sqdcScope,rows,"monthly","Planning Turnaround Time (h)");return {actual:official.actual,target:official.target,status:official.actual==null?null:official.actual>=official.target?"green":"red",misses:[]};
