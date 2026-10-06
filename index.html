@@ -1812,7 +1812,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
       try {
         const cres = await storageGet("catalog:"+term, true);
-        if (cres && cres.value) DATA[term].kpis = JSON.parse(cres.value);
+        if (cres && cres.value){
+          const storedCatalog=JSON.parse(cres.value);
+          // Never let an accidental empty upload catalog erase the platform's preserved
+          // KPI definitions. Settings/targets live separately and remain recoverable.
+          if(Array.isArray(storedCatalog)&&storedCatalog.length) DATA[term].kpis=storedCatalog;
+        }
       } catch(e){ /* keep bootstrap catalog */ }
 
       const loadedYears = await Promise.all(years.map(async year => {
@@ -1915,8 +1920,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // Preserve the registered standard key while allowing harmless Excel whitespace differences.
       return old ? Object.assign({}, old, k, {key:old.key,targets_by_year:Object.assign({},old.targets_by_year||{})}) : k;
     });
-    // Keep KPIs intentionally registered in Settings even if this particular workbook does not have the column yet.
-    existing.filter(k=>k.registeredManually && !merged.some(n=>normalizedFieldLookup(n.key)===normalizedFieldLookup(k.key))).forEach(k=>merged.push(k));
+    // An upload may add/refresh definitions, but it must never silently remove an already
+    // configured KPI. This also protects the complete catalog if Excel discovery returns empty.
+    existing.filter(k=>!merged.some(n=>normalizedFieldLookup(n.key)===normalizedFieldLookup(k.key))).forEach(k=>merged.push(k));
     return merged;
   }
 
@@ -2246,6 +2252,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           registeredKpis.push({name:k.key,isPercent:!!k.isPercent,direction:k.direction});
       }));
       const result = window.SPCParser.parseWorkbook(buf, window.XLSX, registeredKpis);
+      if(!Array.isArray(result.catalog)||!result.catalog.length){
+        throw new Error("No KPI columns were detected. Upload cancelled and the existing KPI catalog/settings were kept unchanged.");
+      }
       const mergedCatalog = buildMergedCatalog(result.terminal, result.catalog);
       const isFirstUpload = !DATA[result.terminal] || !DATA[result.terminal].kpis || !DATA[result.terminal].kpis.length;
       // Persist first. If Firestore fails, the on-screen dashboard remains on the previously confirmed data.
@@ -2460,6 +2469,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         }
       } catch(e){ /* no stored settings yet for this terminal */ }
     }));
+    // Recover catalog rows from the separately stored Settings document. This restores the
+    // configuration display if an older faulty upload wrote an empty catalog.
+    TERM_CODES.forEach(term=>{
+      if(!DATA[term])DATA[term]={rows:[],kpis:[]};
+      DATA[term].kpis=DATA[term].kpis||[];
+      Object.keys(SETTINGS[term]||{}).forEach(key=>{
+        if(DATA[term].kpis.some(k=>normalizedFieldLookup(k.key)===normalizedFieldLookup(key)))return;
+        const s=SETTINGS[term][key]||{},reg=KPI_NAME_REGISTRY.find(x=>normalizedFieldLookup(x.name)===normalizedFieldLookup(key));
+        DATA[term].kpis.push({key,targets_by_year:{},period_cols:{},period_agg:{},isPercent:s.isPercent!==undefined?!!s.isPercent:!!(reg&&reg.isPercent),direction:s.direction||"higher",registeredManually:true,recoveredFromSettings:true});
+      });
+    });
   }
   async function saveSettingsForTerm(term){
     await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); // let a failure propagate — callers must know if this didn't actually save
@@ -4971,7 +4991,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; uploading a Targets Excel again replaces that year's target with the newly uploaded value. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
+          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is the constructed Quality measure: it keeps its target but has no SQDC weight. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; uploading a Targets Excel again replaces that year's target with the newly uploaded value. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
         </div>
         <div class="section-label">Register a new KPI</div>
         <div class="footer-note" style="text-align:left; margin-bottom:10px;">
@@ -5139,6 +5159,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   function settingsKpisForTerm(term){
     const out = baseSettingsKpisForTerm(term);
+    // Settings are stored independently from the upload catalog. If an older bad upload saved
+    // an empty catalog, reconstruct display definitions from the untouched Settings keys.
+    Object.keys(SETTINGS[term]||{}).forEach(key=>{
+      if(out.some(k=>normalizedFieldLookup(k.key)===normalizedFieldLookup(key)))return;
+      const s=SETTINGS[term][key]||{};
+      out.push({key,targets_by_year:{},period_cols:{},period_agg:{},isPercent:!!s.isPercent,direction:s.direction||"higher",registeredManually:true,recoveredFromSettings:true});
+    });
     const targetKeys = Object.keys(IMPORTED_TARGETS[term] || {});
     targetKeys.forEach(rawKey => {
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
