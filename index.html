@@ -83,7 +83,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   }
 
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsx file; XLSX: window.XLSX (SheetJS)
-  function parseWorkbook(workbookArrayBuffer, XLSX, registeredKpis){
+  function parseWorkbook(workbookArrayBuffer, XLSX){
     const wb = XLSX.read(workbookArrayBuffer, {type:"array", cellDates:true});
     const weekSheetName = wb.SheetNames.find(n => /^WEEK_\d{6}$/i.test(n)) || wb.SheetNames[0];
     const m = weekSheetName.match(/(\d{4})(\d{2})/);
@@ -1068,7 +1068,7 @@ window.__FIREBASE_CONFIG__ = {
   // ---------- Main entry point ----------
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsm file
   // XLSX: the SheetJS library object (window.XLSX in browser)
-  function parseWorkbook(workbookArrayBuffer, XLSX){
+  function parseWorkbook(workbookArrayBuffer, XLSX, registeredKpis){
     // Two parses of the same buffer: cellDates:true (for ETB/ETD, and for reading each KPI's
     // formula to classify SUM vs MAX) and a fully raw parse used for every other cell value.
     // This is the fix for the "% or Number becomes Date" corruption bug: if a KPI cell's format
