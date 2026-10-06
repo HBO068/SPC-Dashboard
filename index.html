@@ -1816,6 +1816,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(yearRows);
       });
     }));
+    if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
   }
 
   // ---------- Panama weekly data (separate model — one aggregated row per terminal per week,
@@ -1955,6 +1956,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
       }
     });
+    if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
     return isFirstUpload;
   }
 
@@ -4301,6 +4303,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function effectiveSqdcWeight(term,key,year){const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
   function sqdcTargets(year){return Object.assign({},SQDC_DEFAULT_TARGETS,SQDC_CONFIG.targetsByYear?.[String(year)]||{});}
   function sqdcDateKey(d){return d instanceof Date&&!isNaN(d)?`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`:"";}
+  let SQDC_ROW_INDEX=null;
+  function sqdcInvalidateDataIndex(){SQDC_ROW_INDEX=null;SQDC_ADHERENCE_DAY_INDEX=null;}
+  function sqdcNativeRowDateKey(r){
+    const rowYear=Number(r._year||r["Year"]),monthRaw=String(r["Month By ETB"]??"").trim(),dayValue=r["Day by ETB"],dayRaw=String(dayValue??"").trim();
+    if(!rowYear)return "";
+    const monthNames=["january","february","march","april","may","june","july","august","september","october","november","december"],monthFilter=String(r["Month Filter"]??"").trim(),filterMonth=monthFilter.match(/(20\d{2})[-\/]([01]?\d)/),isoDay=dayRaw.match(/(20\d{2})[-\/]([01]?\d)[-\/]([0-3]?\d)/);
+    const month=filterMonth&&Number(filterMonth[1])===rowYear?Number(filterMonth[2]):/^\d+$/.test(monthRaw)?Number(monthRaw):monthNames.findIndex(x=>monthRaw.toLowerCase().startsWith(x.slice(0,3)))+1;
+    const day=dayValue instanceof Date?dayValue.getUTCDate():isoDay?Number(isoDay[3]):/^\d+(?:\.0+)?$/.test(dayRaw)?Number(dayRaw):Number((dayRaw.match(/(?:^|\D)([0-3]?\d)(?:\D|$)/)||[])[1]);
+    return month>=1&&month<=12&&day>=1&&day<=31?`${rowYear}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`:"";
+  }
+  function sqdcEnsureRowIndex(){
+    if(SQDC_ROW_INDEX)return SQDC_ROW_INDEX;
+    SQDC_ROW_INDEX={};TERM_CODES.forEach(term=>{const byDate=new Map();(DATA[term]?.rows||[]).forEach(r=>{const keys=new Set([sqdcDateKey(r._etb),sqdcNativeRowDateKey(r)].filter(Boolean));keys.forEach(key=>{if(!byDate.has(key))byDate.set(key,[]);byDate.get(key).push(r);});});SQDC_ROW_INDEX[term]=byDate;});return SQDC_ROW_INDEX;
+  }
   function sqdcRowMatchesDate(r,date){
     const [year,month,day]=String(date).split("-").map(Number);
     if(!year||!month||!day)return false;
@@ -4315,7 +4331,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(rowYear===year&&monthFilter&&monthFilter.includes(`${year}-${String(month).padStart(2,"0")}`)&&Number(dayNumber)===day)return true;
     return sqdcDateKey(r._etb)===date;
   }
-  function sqdcRows(terms,date){return terms.flatMap(t=>(DATA[t]?.rows||[]).filter(r=>sqdcRowMatchesDate(r,date)).map(r=>Object.assign({_sqdcTerm:t},r)));}
+  function sqdcRows(terms,date){const index=sqdcEnsureRowIndex();return terms.flatMap(t=>(index[t]?.get(date)||[]).map(r=>Object.assign({_sqdcTerm:t},r)));}
   function sqdcYearBucket(year){year=String(year);SQDC_REGISTRY[year]=SQDC_REGISTRY[year]||{};SQDC_AUDIT[year]=SQDC_AUDIT[year]||[];return SQDC_REGISTRY[year];}
   function sqdcRecord(date){return sqdcYearBucket(date.slice(0,4))[date]||{};}
   function sqdcTerminalEntry(date,term){return sqdcRecord(date).terminals?.[term]||{};}
@@ -4353,7 +4369,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Final SQDC presentation layer. This replaces only SQDC UI functions; Performance and
   // Adherence calculations remain isolated and unchanged.
   let sqdcYear=null;
-  let sqdcCharts={};
+  let sqdcCharts={},sqdcRenderFrame=0;
   const SQDC_MASKS_FINAL={
     S:["g####g","#####g","##....","#####g","g#####","....##","g#####","gg###g"],
     Q:[".####.","######","##..##","##..##","###.##","g####g","..####"],
@@ -4395,7 +4411,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   };
   function sqdcDailySeries(fn){const n=Math.min(Number(sqdcDay),sqdcDaysInMonth(sqdcMonth)),labels=[],values=[];for(let d=1;d<=n;d++){const date=`${sqdcMonth}-${String(d).padStart(2,"0")}`;labels.push(String(d));values.push(fn(date));}return {labels,values};}
   function sqdcManualTotal(date,field,globalField){if(globalField){const v=sqdcGlobalEntry(date)[field];return v===""||v===null||v===undefined?null:Number(v)||0;}const vals=sqdcTerms().map(t=>sqdcTerminalEntry(date,t)[field]);if(vals.some(v=>v===""||v===null||v===undefined))return null;return vals.reduce((a,v)=>a+(Number(v)||0),0);}
-  function sqdcDestroyCharts(){Object.values(sqdcCharts).forEach(c=>{try{c.destroy();}catch(e){}});sqdcCharts={};}
+  function sqdcDestroyCharts(){if(sqdcRenderFrame){cancelAnimationFrame(sqdcRenderFrame);sqdcRenderFrame=0;}Object.values(sqdcCharts).forEach(c=>{try{c.destroy();}catch(e){}});sqdcCharts={};}
+  function scheduleSqdcCharts(){if(sqdcRenderFrame)cancelAnimationFrame(sqdcRenderFrame);sqdcRenderFrame=requestAnimationFrame(()=>{sqdcRenderFrame=0;renderSqdcCharts();});}
   const sqdcParetoLabels={id:"sqdcParetoLabels",afterDatasetsDraw(chart){const ctx=chart.ctx;ctx.save();ctx.font="700 10px IBM Plex Mono, monospace";ctx.textAlign="center";chart.data.datasets.forEach((ds,di)=>{if(ds.hideValueLabels)return;const meta=chart.getDatasetMeta(di);meta.data.forEach((point,i)=>{const v=Number(ds.data[i]);if(!Number.isFinite(v))return;ctx.fillStyle=ds.type==="line"?"#F5C518":chartTickColor();ctx.textBaseline="bottom";const label=ds.valueFormat==="percent"?fmtNum(v*100,1)+"%":ds.type==="line"?Math.round(v)+"%":fmtNum(v,1);ctx.fillText(label,point.x,Math.max(12,point.y-5));});});ctx.restore();}};
   function sqdcLineChart(id,labels,datasets,percent){const canvas=document.getElementById(id);if(!canvas)return;sqdcCharts[id]=new Chart(canvas.getContext("2d"),{type:"line",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:chartTickColor(),boxWidth:18}},tooltip:{callbacks:percent?{label:c=>`${c.dataset.label}: ${Number(c.raw).toFixed(1)}%`}:{} }},scales:{x:{ticks:{color:chartTickColor()},grid:{color:chartGridColor()}},y:{beginAtZero:true,max:percent?100:undefined,ticks:{color:chartTickColor(),callback:v=>percent?v+"%":v},grid:{color:chartGridColor()}}}}});}
   function sqdcParetoChart(id,items,labelFn,valueFn){const canvas=document.getElementById(id);if(!canvas)return;const clean=items.map(x=>({label:labelFn(x),value:Math.max(0,Number(valueFn(x))||0)})).filter(x=>x.value>0),total=clean.reduce((a,x)=>a+x.value,0),cum=[];let running=0;clean.forEach(x=>{running+=x.value;cum.push(total?running/total*100:0);});const percentBars=(id==="sqdcQualityPareto"||id==="sqdcDeliveryPareto")&&sqdcScope!=="global";sqdcCharts[id]=new Chart(canvas.getContext("2d"),{data:{labels:clean.map(x=>x.label),datasets:[{type:"bar",label:"Impact",data:clean.map(x=>x.value),backgroundColor:"rgba(242,72,61,.72)",borderColor:"#F2483D",borderWidth:1,yAxisID:"y",valueFormat:percentBars?"percent":"number"},{type:"line",label:"Cumulative %",data:cum,borderColor:"#F5C518",backgroundColor:"#F5C518",pointRadius:3,tension:.25,yAxisID:"y1",hideValueLabels:true}]},plugins:[sqdcParetoLabels],options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:18}},plugins:{legend:{labels:{color:chartTickColor(),boxWidth:18}}},scales:{x:{ticks:{color:chartTickColor(),maxRotation:35,minRotation:0},grid:{display:false}},y:{beginAtZero:true,ticks:{color:chartTickColor(),callback:v=>percentBars?fmtNum(v*100,0)+"%":v},grid:{color:chartGridColor()}},y1:{beginAtZero:true,max:100,position:"right",ticks:{color:"#F5C518",callback:v=>v+"%"},grid:{drawOnChartArea:false}}}}});}
@@ -4418,7 +4435,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return `<div class="sqdc-letter-board ${global?'':'four'}">${letters}</div><div class="section-label">SQDCP PERFORMANCE REPORT</div><div class="sqdc-report-grid">${safety}${delivery}${quality}${cost}${people}</div>`;
   };
   function renderSqdcCharts(){sqdcDestroyCharts();const date=sqdcSelectedDate(),base=sqdcDailySeries(()=>0),near=sqdcDailySeries(d=>sqdcManualTotal(d,"nearMiss",false)),safety=sqdcDailySeries(d=>sqdcManualTotal(d,"safetyWalk",true));sqdcLineChart("sqdcSafetyChart",base.labels,[{label:"Near Misses",data:near.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.15)",tension:.25,fill:true},{label:"Safety Walks",data:sqdcScope==='global'?safety.values:[],borderColor:"#3ED17E",backgroundColor:"#3ED17E",tension:.25,hidden:sqdcScope!=="global"}],false);const q=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.actual}),qt=sqdcDailySeries(d=>{const x=sqdcQuality(sqdcScope,d);return x.target});sqdcLineChart("sqdcQualityTrend",q.labels,[{label:"Actual Score",data:q.values,borderColor:"#4FA6E8",backgroundColor:"rgba(79,166,232,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:qt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,tension:0,spanGaps:true}],false);const cost=sqdcDailySeries(d=>sqdcManualTotal(d,"deviations",false));sqdcLineChart("sqdcCostChart",cost.labels,[{label:"Deviations",data:cost.values,borderColor:"#F2483D",backgroundColor:"rgba(242,72,61,.14)",tension:.25,fill:true}],false);const del=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.actual==null?null:x.actual*100}),delt=sqdcDailySeries(d=>{const x=sqdcDelivery(sqdcScope,d);return x.target==null?null:x.target*100});sqdcLineChart("sqdcDeliveryTrend",del.labels,[{label:"Delivery adherence",data:del.values,borderColor:"#2FD9BE",backgroundColor:"rgba(47,217,190,.14)",tension:.3,fill:true,spanGaps:true},{label:"Target",data:delt.values,borderColor:"#F5C518",borderDash:[5,4],pointRadius:2,spanGaps:true}],true);if(sqdcScope==="global"){const wi=sqdcDailySeries(d=>sqdcManualTotal(d,"workInstructions",true)),pc=sqdcDailySeries(d=>sqdcManualTotal(d,"processConfirmations",true));sqdcLineChart("sqdcPeopleChart",wi.labels,[{label:"Work Instructions",data:wi.values,borderColor:"#4FA6E8",backgroundColor:"#4FA6E8",tension:.25},{label:"Process Confirmations",data:pc.values,borderColor:"#2FD9BE",backgroundColor:"#2FD9BE",tension:.25}],false);}const qi=sqdcQualityParetoItems(date),di=sqdcDeliveryParetoItems(date),ci=sqdcCostParetoItems(date);sqdcParetoChart("sqdcQualityPareto",qi,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,x.q.target-x.q.actual):x.gap);sqdcParetoChart("sqdcDeliveryPareto",di,x=>sqdcScope==="global"?SQDC_SCOPE_LABELS[x.p]:`${sqdcVesselName(x.r)} · ${x.term}`,x=>sqdcScope==="global"?Math.max(0,1-x.d.actual):x.gap);sqdcParetoChart("sqdcCostPareto",ci,x=>x.term,x=>x.value);}
-  renderSqdcView=function(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";sqdcResolvePeriod();document.getElementById("brandTitle").textContent=sqdcPage==="registry"?"SQDC Data Registry":sqdcPage==="history"?"SQDC History":sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap">${sqdcPeriodToolbarHtml()}${sqdcPage!=="history"?sqdcScopeToolbarHtml():""}${sqdcPage==="dashboard"?sqdcDashboardHtml():sqdcPage==="registry"?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.getElementById("sqdcYear").onchange=e=>{sqdcYear=e.target.value;sqdcMonth=null;sqdcDay=1;render();};document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));if(sqdcPage==="dashboard")requestAnimationFrame(renderSqdcCharts);else sqdcDestroyCharts();};
+  renderSqdcView=function(){["globalReportView","networkView","terminalView","panamaView","adherenceView"].forEach(id=>document.getElementById(id).style.display="none");mainSectionTabsEl.style.display="none";globalSubTabsEl.style.display="none";terminalRow.style.display="none";sqdcResolvePeriod();document.getElementById("brandTitle").textContent=sqdcPage==="registry"?"SQDC Data Registry":sqdcPage==="history"?"SQDC History":sqdcScope==="global"?"Global SQDCP":"SQDC · "+sqdcScopeLabel();document.getElementById("brandSubtitle").textContent="Shared Planning Center — Tangier · Daily Management";document.getElementById("brandFlag").style.display="none";const v=document.getElementById("sqdcView");v.style.display="";v.innerHTML=`<div class="sqdc-wrap">${sqdcPeriodToolbarHtml()}${sqdcPage!=="history"?sqdcScopeToolbarHtml():""}${sqdcPage==="dashboard"?sqdcDashboardHtml():sqdcPage==="registry"?sqdcRegistryHtml():sqdcHistoryHtml()}</div>`;document.querySelectorAll("[data-sqdc-scope]").forEach(b=>b.onclick=()=>{sqdcScope=b.dataset.sqdcScope;render();});document.getElementById("sqdcYear").onchange=e=>{sqdcYear=e.target.value;sqdcMonth=null;sqdcDay=1;render();};document.getElementById("sqdcMonth").onchange=e=>{sqdcMonth=e.target.value;sqdcDay=1;render();};document.getElementById("sqdcDay").onchange=e=>{sqdcDay=Number(e.target.value);render();};const save=document.getElementById("sqdcSaveRegistry");if(save)save.onclick=()=>saveSqdcRegistryFromUi().catch(e=>alert("SQDC save failed: "+e.message));if(sqdcPage==="dashboard")scheduleSqdcCharts();else sqdcDestroyCharts();};
 
   // Monthly Safety and Cost targets plus reference-style monthly/daily KPI views.
   const SQDC_MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -4546,9 +4563,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function sqdcAdherenceRate(term,date){
     const reg=ADHERENCE_REGISTRY.find(r=>r.opsControlled&&r.inScope&&String(r.pod||"").trim()===String(term));if(!reg)return null;return adhTargetFor(reg,date.slice(0,4),"monthly",date.slice(0,7));
   }
+  let SQDC_ADHERENCE_DAY_INDEX=null;
+  function sqdcEnsureAdherenceDayIndex(){
+    if(SQDC_ADHERENCE_DAY_INDEX)return SQDC_ADHERENCE_DAY_INDEX;
+    const values=new Map(),years=new Set();ADHERENCE_ACTUAL.forEach(r=>{const date=String(r.date||"").slice(0,10),terminal=String(r.terminal||"");if(!date||!terminal)return;years.add(String(r.year||date.slice(0,4)));const key=terminal+"|"+date,current=values.get(key)||{calls:0,moves:0};current.calls+=adhNumber(r.calls);current.moves+=adhNumber(r.moves);values.set(key,current);});SQDC_ADHERENCE_DAY_INDEX={values,years};return SQDC_ADHERENCE_DAY_INDEX;
+  }
   function sqdcPreviousYearVolumeTarget(scope,date,metric){
-    const year=Number(date.slice(0,4)),previous=String(year-1)+date.slice(4),hasDaily=ADHERENCE_ACTUAL.some(r=>r.date&&String(r.year)===String(year-1));if(!hasDaily)return null;let total=0,configured=false;
-    sqdcTerms(scope).forEach(term=>{const regs=ADHERENCE_REGISTRY.filter(r=>r.opsControlled&&r.inScope&&String(r.pod||"").trim()===String(term)),rate=sqdcAdherenceRate(term,date);if(rate==null||!regs.length)return;configured=true;regs.forEach(reg=>{const value=ADHERENCE_ACTUAL.filter(r=>r.date===previous&&r.terminal===reg.biName).reduce((a,r)=>a+adhNumber(r[metric]),0);total+=value*rate;});});return configured?total:null;
+    const year=Number(date.slice(0,4)),previous=String(year-1)+date.slice(4),dayIndex=sqdcEnsureAdherenceDayIndex();if(!dayIndex.years.has(String(year-1)))return null;let total=0,configured=false;
+    sqdcTerms(scope).forEach(term=>{const regs=ADHERENCE_REGISTRY.filter(r=>r.opsControlled&&r.inScope&&String(r.pod||"").trim()===String(term)),rate=sqdcAdherenceRate(term,date);if(rate==null||!regs.length)return;configured=true;regs.forEach(reg=>{const value=dayIndex.values.get(String(reg.biName||"")+"|"+previous)?.[metric]||0;total+=value*rate;});});return configured?total:null;
   }
   function sqdcVolumeSeries(metric){
     const monthlyActual=[],monthlyTarget=[],monthlyAccum=[],monthlyTargetAccum=[];let ar=0,tr=0;
@@ -5371,6 +5393,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         catch(e){ console.error("Adherence year load failed",y,e); return []; }
       }));
       ADHERENCE_ACTUAL = docs.flat();
+      if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
       ADHERENCE_IMPORTS = importsValue ? JSON.parse(importsValue) : [];
     } catch(e){ console.error("Adherence storage load failed",e); }
   }
@@ -5464,7 +5487,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
       let known=[]; const savedYears=await adherenceGetValue("years"); if(savedYears) known=JSON.parse(savedYears);
       years.forEach(y=>{if(!known.includes(y))known.push(y);}); await adherenceSetValue("years",JSON.stringify(known.sort()));
-      ADHERENCE_ACTUAL=ADHERENCE_ACTUAL.filter(r=>!years.includes(r.year)).concat(agg.rows); invalidateAdherenceCache();
+      ADHERENCE_ACTUAL=ADHERENCE_ACTUAL.filter(r=>!years.includes(r.year)).concat(agg.rows); invalidateAdherenceCache();if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
       const log={uploadedAt:Date.now(),files:workbooks.map(f=>f.name),years,validVisits:all.length,duplicates:0,rejected:rejected.length};
       ADHERENCE_IMPORTS.unshift(log); ADHERENCE_IMPORTS=ADHERENCE_IMPORTS.slice(0,15);
       try{ await adherenceSetValue("imports",JSON.stringify(ADHERENCE_IMPORTS)); }catch(e){ console.warn("Adherence import log could not be saved",e); }
