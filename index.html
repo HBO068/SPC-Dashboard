@@ -1051,10 +1051,24 @@ window.__FIREBASE_CONFIG__ = {
     return result;
   }
 
+  // ---------- Canonical KPI catalog (company-wide, per Section 5 of the requirements doc) ----------
+  // Discovered directly against each terminal's own Dashboards Data headers — a terminal that
+  // doesn't track a given KPI (e.g. no CI Adherence column) simply doesn't get it. Targets are
+  // never seeded from Excel: they start empty and are set entirely in Settings (or the future
+  // dedicated Targets upload), so uploading dashboard data can never touch Settings or targets.
+  const CANONICAL_KPI_NAMES = [
+    "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
+    "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
+    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Dual Cycling",
+    "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score",
+    "Twin Yard Flow Adherence", "Yard Picking Sequence Adherence", "Pow Per Stack",
+    "Tandem Planning", "Lane Split"
+  ];
+
   // ---------- Main entry point ----------
   // workbookArrayBuffer: ArrayBuffer of the uploaded .xlsm file
   // XLSX: the SheetJS library object (window.XLSX in browser)
-  function parseWorkbook(workbookArrayBuffer, XLSX, registeredKpis){
+  function parseWorkbook(workbookArrayBuffer, XLSX){
     // Two parses of the same buffer: cellDates:true (for ETB/ETD, and for reading each KPI's
     // formula to classify SUM vs MAX) and a fully raw parse used for every other cell value.
     // This is the fix for the "% or Number becomes Date" corruption bug: if a KPI cell's format
@@ -1085,19 +1099,10 @@ window.__FIREBASE_CONFIG__ = {
       throw new Error("This file is missing expected columns: " + missingCore.join(", ") + ". Upload cancelled — no data was changed.");
     }
 
-    // KPI names come only from the dedicated Targets Excel. This parser merely finds the
-    // corresponding value/period columns in Dashboards Data; it never reads a Setup sheet and
-    // never invents a KPI name from dashboard headers.
+    // Build KPI catalog directly from this terminal's own Dashboards Data headers.
     const seenCols = new Set();
     const kpiMap = {};
-    const requestedKpis = [];
-    (Array.isArray(registeredKpis)?registeredKpis:[]).forEach(item=>{
-      const name=norm(typeof item==="string"?item:item&&item.name);
-      if(!name || requestedKpis.some(x=>norm(x.name).toLowerCase()===name.toLowerCase())) return;
-      requestedKpis.push({name,isPercent:!!(item&&item.isPercent),direction:item&&item.direction});
-    });
-    requestedKpis.forEach(requested => {
-      const name=requested.name;
+    CANONICAL_KPI_NAMES.forEach(name => {
       const {col} = findBaseColumn(name, rawHeaders);
       if (!col || seenCols.has(col)) return;
       seenCols.add(col);
@@ -1113,8 +1118,7 @@ window.__FIREBASE_CONFIG__ = {
         periodAgg[period] = classifyFormula(cell ? cell.f : null);
         if (cell && cell.z && String(cell.z).includes('%')) isPercent = true;
       });
-      if(requested.isPercent) isPercent=true;
-      kpiMap[col] = {key: name, base_col:col, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: requested.direction || (DEFAULT_LOWER_BETTER.has(name) ? "lower" : "higher")};
+      kpiMap[col] = {key: name, targets_by_year: {}, period_cols: periodCols, period_agg: periodAgg, isPercent, direction: DEFAULT_LOWER_BETTER.has(name) ? "lower" : "higher"};
     });
 
     // Planning Turnaround Time: use the '%' compliance-rate columns instead of '(h)' hours at
@@ -1156,9 +1160,6 @@ window.__FIREBASE_CONFIG__ = {
     });
     const colIdx = {};
     fieldsNeeded.forEach(f => { if (headers[f]) colIdx[f] = headers[f]; });
-    // The Targets workbook name is the stored KPI key, while the Dashboard header may differ
-    // only in spaces/hyphens. Read the value from the matched real Dashboard column.
-    catalog.forEach(k=>{ if(k.base_col && headers[k.base_col])colIdx[k.key]=headers[k.base_col]; });
 
     const ERROR_VALUE_RE = /^#(N\/A|REF!|VALUE!|DIV\/0!|NULL!|NAME\?|NUM!)$/i;
     const idVisitCol = colIdx["Id visit"];
@@ -1206,8 +1207,7 @@ window.__FIREBASE_CONFIG__ = {
 });
 
 // targets_parser.js — dedicated source-of-truth parser for Terminal Targets.xlsx.
-// It returns the active KPI names and initial target values by terminal/year. It never changes
-// direction, activation, priority, weights or any saved platform override.
+// It never changes direction, activation or priority. It only returns target values by terminal/KPI/year.
 (function(root){
   function norm(v){ return v===null || v===undefined ? "" : String(v).replace(/\s+/g," ").trim(); }
   const KPI_ALIASES = {
@@ -1244,15 +1244,7 @@ window.__FIREBASE_CONFIG__ = {
     let x=raw.replace(/\btarget\b/g,"").replace(/\(\s*%\s*\)/g,"").replace(/%/g,"").replace(/\s+/g," ").trim();
     if (KPI_ALIASES[x]) return KPI_ALIASES[x];
     for (const [alias,key] of Object.entries(KPI_ALIASES)){ if (x===alias || x.startsWith(alias+" ")) return key; }
-    // New KPI rows are valid too. Keep their exact readable Excel name (minus only the word
-    // "Target" and the type marker) so the Targets workbook remains the KPI-name authority.
-    const clean=norm(label).replace(/\btarget\b/ig,"").replace(/\(\s*%\s*\)/g,"").replace(/%/g,"").replace(/\s+/g," ").trim();
-    return clean || null;
-  }
-  function targetIsPercent(label,key){
-    const raw=norm(label).toLowerCase();
-    if(raw.includes("%") || /\(\s*%\s*\)/.test(raw)) return true;
-    return ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Stacks Evacuation","Yard Mirroring","Twin Yard Flow Adherence","Yard Picking Sequence Adherence","Twins Planning","Alternation","Yard Clashes","Dual Cycling","Port Hours Saved %","Vessel Score","Planning Turnaround Time (%)"].includes(key);
+    return null;
   }
   function parseWorkbook(buf, XLSX){
     const wb=XLSX.read(buf,{type:"array",cellDates:false,raw:true});
@@ -1260,7 +1252,7 @@ window.__FIREBASE_CONFIG__ = {
     if(!sheetName) throw new Error("No worksheet was found in the targets file.");
     const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
-    const targets={}, catalog={};
+    const targets={};
     const unrecognized=[];
     let currentTerm=null, years=[];
     for(let i=0;i<rows.length;i++){
@@ -1271,8 +1263,8 @@ window.__FIREBASE_CONFIG__ = {
         years=row.slice(1).map(v=>{ const n=Number(v); return Number.isInteger(n) && n>=1900 && n<=2200 ? String(n) : null; });
         continue;
       }
-      const looksLikeTerminal=/^[A-Z0-9]{3,6}$/i.test(a) && row.slice(1).every(v=>v===null || v==="");
-      if(looksLikeTerminal){ currentTerm=a.toUpperCase(); targets[currentTerm]=targets[currentTerm]||{}; catalog[currentTerm]=catalog[currentTerm]||[]; years=[]; continue; }
+      const looksLikeTerminal=/^[A-Z0-9]{5}$/i.test(a) && row.slice(1).every(v=>v===null || v==="");
+      if(looksLikeTerminal){ currentTerm=a.toUpperCase(); targets[currentTerm]=targets[currentTerm]||{}; years=[]; continue; }
       if(!currentTerm || !years.length) continue;
       const kpiKey=targetLabelToKpi(a);
       if(!kpiKey){ unrecognized.push({row:i+1,label:a,terminal:currentTerm}); continue; }
@@ -1285,14 +1277,11 @@ window.__FIREBASE_CONFIG__ = {
         if(Number.isFinite(n)) byYear[y]=n;
       });
       targets[currentTerm][kpiKey]=byYear; // row is authoritative for this KPI; blanks/* mean no target for that year
-      if(!catalog[currentTerm].some(k=>norm(k.key).toLowerCase()===norm(kpiKey).toLowerCase())){
-        catalog[currentTerm].push({key:kpiKey,isPercent:targetIsPercent(a,kpiKey)});
-      }
     }
     const terminalCount=Object.keys(targets).length;
     const kpiCount=Object.values(targets).reduce((n,m)=>n+Object.keys(m).length,0);
     if(!terminalCount || !kpiCount) throw new Error("No terminal target blocks were recognized. Expected a terminal code row, then a KPIs/year row, then target rows.");
-    return {targets, catalog, terminalCount, kpiCount, unrecognized};
+    return {targets, terminalCount, kpiCount, unrecognized};
   }
   root.TargetsParser={parseWorkbook,targetLabelToKpi};
 })(typeof self!=="undefined"?self:this);
@@ -1378,9 +1367,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const byMonth = {};
     rows.forEach(r => { const mk = monthKeyOfRow(r); (byMonth[mk] = byMonth[mk]||[]).push(r); });
     const yearRef = db.collection("terminals").doc(term).collection("years").doc(String(year));
-    // Replace only months present in this upload. Months absent from the Excel are preserved.
-    // Each included month document is overwritten as one complete monthly snapshot.
+    // Replace the year atomically at the month-document level: either the batch commits, or the old year stays.
+    const existing = await yearRef.collection("months").get();
     const batch = db.batch();
+    existing.forEach(doc => batch.delete(doc.ref));
     Object.keys(byMonth).forEach(mk => {
       const safeId = mk.replace(/[\/]/g, "_");
       batch.set(yearRef.collection("months").doc(safeId), { rows: sanitizeForFirestore(byMonth[mk]) });
@@ -1640,12 +1630,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function sum(rows, f){ return rows.reduce((a,r)=> a + (Number(r[f])||0), 0); }
   function normalizedFieldName(v){ return String(v??"").replace(/\s+/g," ").trim(); }
-  function normalizedFieldLookup(v){ return normalizedFieldName(v).toLocaleLowerCase(); }
   function rowFieldValue(row, field){
     if (!row) return undefined;
     if (Object.prototype.hasOwnProperty.call(row,field)) return row[field];
-    const wanted=normalizedFieldLookup(field);
-    const matched=Object.keys(row).find(k=>normalizedFieldLookup(k)===wanted);
+    const wanted=normalizedFieldName(field);
+    const matched=Object.keys(row).find(k=>normalizedFieldName(k)===wanted);
     return matched===undefined?undefined:row[matched];
   }
   function avgSkipNull(rows, f){
@@ -1814,12 +1803,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
       try {
         const cres = await storageGet("catalog:"+term, true);
-        if (cres && cres.value){
-          const storedCatalog=JSON.parse(cres.value);
-          // Never let an accidental empty upload catalog erase the platform's preserved
-          // KPI definitions. Settings/targets live separately and remain recoverable.
-          if(Array.isArray(storedCatalog)&&storedCatalog.length) DATA[term].kpis=storedCatalog;
-        }
+        if (cres && cres.value) DATA[term].kpis = JSON.parse(cres.value);
       } catch(e){ /* keep bootstrap catalog */ }
 
       const loadedYears = await Promise.all(years.map(async year => {
@@ -1888,8 +1872,43 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }));
   }
 
+  // Persists just a terminal's KPI catalog (used when a KPI is manually registered/removed in
+  // Settings, without touching its vessel-call data or years list).
+  async function persistCatalogForTerm(term){
+    try { await storageSet("catalog:"+term, JSON.stringify(DATA[term].kpis), true); }
+    catch(e){ console.error("Could not persist catalog for", term, e); }
+  }
+
+  // Shared, permanent KPI-name registry. Terminal-specific targets/weights remain in each
+  // terminal's Settings; this registry only standardizes the Excel column name and data type.
+  let KPI_NAME_REGISTRY=[];
+  function mergeKpiRegistryEntry(name,isPercent){
+    const clean=normalizedFieldName(name);if(!clean)return null;
+    let entry=KPI_NAME_REGISTRY.find(x=>normalizedFieldName(x.name)===clean);
+    if(entry){if(isPercent!==undefined)entry.isPercent=!!isPercent;return entry;}
+    entry={name:clean,isPercent:!!isPercent};KPI_NAME_REGISTRY.push(entry);
+    KPI_NAME_REGISTRY.sort((a,b)=>a.name.localeCompare(b.name));return entry;
+  }
+  function seedKpiNameRegistry(){
+    Object.values(DATA).forEach(d=>(d?.kpis||[]).forEach(k=>mergeKpiRegistryEntry(k.key,!!k.isPercent)));
+  }
+  async function loadKpiNameRegistry(){
+    try{const res=await storageGet("kpi_name_registry",true);if(res?.value){const parsed=JSON.parse(res.value);if(Array.isArray(parsed))parsed.forEach(x=>mergeKpiRegistryEntry(x.name,x.isPercent));}}catch(e){console.error("Could not load KPI name registry",e);}
+    seedKpiNameRegistry();
+  }
+  async function persistKpiNameRegistry(){await storageSet("kpi_name_registry",JSON.stringify(KPI_NAME_REGISTRY),true);}
+
   function buildMergedCatalog(term, freshCatalog){
-    return reconcileTargetCatalogForTerm(term,freshCatalog);
+    const existing = (DATA[term] && DATA[term].kpis) ? DATA[term].kpis : [];
+    const oldByKey = Object.fromEntries(existing.map(k=>[normalizedFieldName(k.key),k]));
+    const merged = freshCatalog.map(k => {
+      const old=oldByKey[normalizedFieldName(k.key)];
+      // Preserve the registered standard key while allowing harmless Excel whitespace differences.
+      return old ? Object.assign({}, old, k, {key:old.key,targets_by_year:Object.assign({},old.targets_by_year||{})}) : k;
+    });
+    // Keep KPIs intentionally registered in Settings even if this particular workbook does not have the column yet.
+    existing.filter(k=>k.registeredManually && !merged.some(n=>normalizedFieldName(n.key)===normalizedFieldName(k.key))).forEach(k=>merged.push(k));
+    return merged;
   }
 
   async function persistUploadResult(term, rowsByYear, mergedCatalog){
@@ -1927,11 +1946,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (!TERM_CODES.includes(term)){ TERM_CODES.push(term); TERM_CODES = sortTermCodes(TERM_CODES); }
     Object.keys(rowsByYear).forEach(year => {
       const newRows = normalizeRows(rowsByYear[year]);
-      // Replace only months included in this upload. Other months of the same year remain.
-      const incomingMonths=new Set(rowsByYear[year].map(monthKeyOfRow));
-      DATA[term].rows = DATA[term].rows.filter(r => !(r._year===String(year)&&incomingMonths.has(monthKeyOfRow(r)))).concat(newRows);
+      // Re-uploading the same terminal/year REPLACES that year's rows; it never appends duplicates.
+      DATA[term].rows = DATA[term].rows.filter(r => r._year !== String(year)).concat(newRows);
     });
     DATA[term].kpis = mergedCatalog;
+    if (!SETTINGS[term]) SETTINGS[term] = {};
+    mergedCatalog.forEach((k,i) => {
+      if (!SETTINGS[term][k.key]){
+        SETTINGS[term][k.key] = { activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{} };
+      }
+    });
     if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
     return isFirstUpload;
   }
@@ -2205,26 +2229,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     setUploadStatus("Reading " + file.name + "…", false);
     try {
       const buf = await file.arrayBuffer();
-      // KPI names are supplied only by the dedicated Targets Excel. Dashboard uploads read
-      // Dashboards Data values and column mappings; they never read Setup sheets or alter Settings.
-      const registeredKpis=[];
-      Object.values(TARGET_KPI_CATALOG).flat().forEach(k=>{
-        const name=settingsKeyForTargetKpi(k.key);
-        if(!registeredKpis.some(x=>normalizedFieldLookup(x.name)===normalizedFieldLookup(name)))registeredKpis.push({name,isPercent:!!k.isPercent});
-      });
-      if(!registeredKpis.length)throw new Error("No KPI names are registered. Upload the Targets Excel first; Dashboard Setup sheets are intentionally ignored.");
-      const result = window.SPCParser.parseWorkbook(buf, window.XLSX, registeredKpis);
-      if(!targetCatalogForTerm(result.terminal).length)throw new Error("No KPI names are registered for "+result.terminal+". Upload the Targets Excel first.");
+      const result = window.SPCParser.parseWorkbook(buf, window.XLSX);
       const mergedCatalog = buildMergedCatalog(result.terminal, result.catalog);
       const isFirstUpload = !DATA[result.terminal] || !DATA[result.terminal].kpis || !DATA[result.terminal].kpis.length;
       // Persist first. If Firestore fails, the on-screen dashboard remains on the previously confirmed data.
       await persistUploadResult(result.terminal, result.rowsByYear, mergedCatalog);
       mergeUploadIntoMemory(result.terminal, result.rowsByYear, mergedCatalog);
+      initSettingsDefaults();
       buildTerminalPills();
       currentTerminal = result.terminal;
       currentPeriod = null;
       render();
-      const kpiNote = "dashboard data refreshed; KPI names and Settings untouched";
+      const kpiNote = isFirstUpload ? "KPI setup created" : "data refreshed; manual Settings preserved";
       let msg = `✓ ${result.terminal}: ${result.years.join(", ")} updated (${result.totalRows} calls) — ${kpiNote}`;
       if (result.unverifiedSkipped){
         msg += ` — ${result.unverifiedSkipped} upcoming vessel${result.unverifiedSkipped>1?'s':''} not yet verified excluded`;
@@ -2255,7 +2271,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     try {
       const buf=await file.arrayBuffer();
       const result=window.TargetsParser.parseWorkbook(buf, window.XLSX);
-      await persistImportedTargets(result.targets,result.catalog);
+      await persistImportedTargets(result.targets);
       initSettingsDefaults();
       await loadAllSettingsFromStorage();
       buildTerminalPills();
@@ -2264,7 +2280,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         renderSettingsView();
       }
       render();
-      let msg=`✓ Targets loaded: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI name(s). Existing platform targets, weights, switches, direction and priority were preserved.`;
+      let msg=`✓ Targets updated: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Direction, visibility and priority were not changed.`;
       if(result.unrecognized.length){
         msg += ` ⚠ ${result.unrecognized.length} unrecognized target label(s) skipped.`;
         setUploadStatus(msg,"warn");
@@ -2320,45 +2336,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Imported targets are stored separately from SETTINGS so a Targets Excel upload can never overwrite
   // direction, activation, priority or a deliberate manual target override.
   let IMPORTED_TARGETS = {}; // term -> kpiKey -> {year:value}
-  let TARGET_KPI_CATALOG = {}; // term -> [{key,isPercent}], authoritative active names from Targets Excel
   let SETTINGS = {};
-  function settingsKeyForTargetKpi(key){
-    return key === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : key;
-  }
-  function targetCatalogForTerm(term){
-    const source=TARGET_KPI_CATALOG[term]||[];
-    const out=[];
-    source.forEach(raw=>{
-      const rawKey=typeof raw==="string"?raw:raw&&raw.key;
-      if(!rawKey)return;
-      const key=settingsKeyForTargetKpi(rawKey);
-      const pct=!!(raw&&raw.isPercent) || rawKey==="Planning Turnaround Time (%)";
-      const found=out.find(k=>normalizedFieldLookup(k.key)===normalizedFieldLookup(key));
-      if(found){found.isPercent=found.isPercent||pct;return;}
-      out.push({key,isPercent:pct});
-    });
-    return out;
-  }
-  function reconcileTargetCatalogForTerm(term,discoveredCatalog){
-    if(!DATA[term])DATA[term]={rows:[],kpis:[]};
-    const old=DATA[term].kpis||[],discovered=discoveredCatalog||[];
-    const active=targetCatalogForTerm(term);
-    return active.map((def,i)=>{
-      const lookup=normalizedFieldLookup(def.key);
-      const fresh=discovered.find(k=>normalizedFieldLookup(k.key)===lookup);
-      const previous=old.find(k=>normalizedFieldLookup(k.key)===lookup);
-      const base=fresh||previous||{targets_by_year:{},period_cols:{},period_agg:{},direction:"higher",targetOnly:true};
-      const clean=Object.assign({},base,{key:def.key,isPercent:def.isPercent!==undefined?!!def.isPercent:!!base.isPercent});
-      delete clean.registeredManually;
-      delete clean.recoveredFromSettings;
-      return clean;
-    });
-  }
-  function reconcileTargetCatalogsInMemory(){
-    Object.keys(TARGET_KPI_CATALOG).forEach(term=>{
-      if(DATA[term])DATA[term].kpis=reconcileTargetCatalogForTerm(term,DATA[term].kpis||[]);
-    });
-  }
   function targetFromMap(map, year){
     const ty = map || {};
     if (ty[year] !== undefined && ty[year] !== null && ty[year] !== '') return Number(ty[year]);
@@ -2387,23 +2365,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     known.forEach(ensureTargetTerminalRegistered);
     await Promise.all(known.map(async term => {
       try {
-        const [res,catalogRes]=await Promise.all([
-          storageGet("targets:"+term, true),
-          storageGet("target_catalog:"+term, true)
-        ]);
+        const res=await storageGet("targets:"+term, true);
         if(res && res.value) IMPORTED_TARGETS[term]=JSON.parse(res.value);
-        if(catalogRes && catalogRes.value){
-          const parsed=JSON.parse(catalogRes.value);
-          if(Array.isArray(parsed))TARGET_KPI_CATALOG[term]=parsed;
-        }
-        // One-time compatibility for databases created before target_catalog existed.
-        if(!TARGET_KPI_CATALOG[term] && IMPORTED_TARGETS[term]){
-          TARGET_KPI_CATALOG[term]=Object.keys(IMPORTED_TARGETS[term]).map(key=>({key,isPercent:key.includes("%")||["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Stacks Evacuation","Yard Mirroring","Twin Yard Flow Adherence","Yard Picking Sequence Adherence","Twins Planning","Alternation","Yard Clashes","Dual Cycling","Vessel Score"].includes(key)}));
-        }
       } catch(e){ console.error("Could not load targets for",term,e); }
     }));
   }
-  async function persistImportedTargets(targetsByTerm,catalogByTerm){
+  async function persistImportedTargets(targetsByTerm){
     let known=[];
     const knownRes=await storageGet("target_known_terminals", true);
     if(knownRes && knownRes.value) known=JSON.parse(knownRes.value);
@@ -2414,29 +2381,43 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       SETTINGS[term]=SETTINGS[term]||{};
       let settingsChanged=false;
 
-      // Targets Excel is authoritative for KPI NAMES. Its numeric values seed only missing
-      // target years; re-uploading it never overwrites a saved platform target, weight, switch,
-      // direction or priority.
+      // The uploaded Targets Excel is authoritative for every KPI/year it actually contains.
+      // Re-uploading the file must therefore refresh the displayed target immediately.
+      // Only target overrides for those uploaded KPI/year cells are cleared; direction,
+      // visibility, activation and priority remain completely manual and untouched.
       Object.entries(incoming).forEach(([kpiKey,byYear])=>{
-        const existingKey=Object.keys(IMPORTED_TARGETS[term]).find(k=>normalizedFieldLookup(k)===normalizedFieldLookup(kpiKey))||kpiKey;
-        const saved=IMPORTED_TARGETS[term][existingKey]||{};
-        Object.entries(byYear||{}).forEach(([year,value])=>{
-          if(saved[year]===undefined || saved[year]===null || saved[year]==='')saved[year]=value;
-        });
-        IMPORTED_TARGETS[term][existingKey]=saved;
+        IMPORTED_TARGETS[term][kpiKey]=Object.assign({},byYear);
 
-        const settingsKey=settingsKeyForTargetKpi(kpiKey);
-        if(!SETTINGS[term][settingsKey]){
-          SETTINGS[term][settingsKey]={activeTerminal:true,activeGlobal:true,priority:999,targetOverrides:{},activeTerminalByYear:{},activeGlobalByYear:{}};
-          settingsChanged=true;
+        const settingsKey = kpiKey === "Planning Turnaround Time (%)"
+          ? "Planning Turnaround Time (h)"
+          : kpiKey;
+        SETTINGS[term][settingsKey]=SETTINGS[term][settingsKey] || {
+          activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{},
+          activeTerminalByYear:{}, activeGlobalByYear:{}
+        };
+        const st=SETTINGS[term][settingsKey];
+        const uploadedYears=Object.keys(byYear||{});
+
+        if(kpiKey === "Planning Turnaround Time (h)"){
+          st.vesselTargetOverrides=st.vesselTargetOverrides||{};
+          uploadedYears.forEach(y=>{
+            if(Object.prototype.hasOwnProperty.call(st.vesselTargetOverrides,y)){
+              delete st.vesselTargetOverrides[y];
+              settingsChanged=true;
+            }
+          });
+        } else {
+          st.targetOverrides=st.targetOverrides||{};
+          uploadedYears.forEach(y=>{
+            if(Object.prototype.hasOwnProperty.call(st.targetOverrides,y)){
+              delete st.targetOverrides[y];
+              settingsChanged=true;
+            }
+          });
         }
       });
 
-      TARGET_KPI_CATALOG[term]=(catalogByTerm&&catalogByTerm[term]?catalogByTerm[term]:Object.keys(incoming).map(key=>({key}))).map(k=>({key:k.key,isPercent:!!k.isPercent}));
-      if(DATA[term])DATA[term].kpis=reconcileTargetCatalogForTerm(term,DATA[term].kpis||[]);
       await storageSet("targets:"+term, JSON.stringify(IMPORTED_TARGETS[term]), true);
-      await storageSet("target_catalog:"+term, JSON.stringify(TARGET_KPI_CATALOG[term]), true);
-      if(DATA[term])await storageSet("catalog:"+term, JSON.stringify(DATA[term].kpis), true);
       if(settingsChanged) await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true);
       if(!known.includes(term)) known.push(term);
     }
@@ -2454,7 +2435,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     });
   }
   async function loadAllSettingsFromStorage(){
-    await Promise.all([...new Set([...TERM_CODES,...PANAMA_TERM_CODES])].map(async term=>{
+    for (const term of [...new Set([...TERM_CODES,...PANAMA_TERM_CODES])]){
       try {
         const res = await storageGet("settings:"+term, true);
         if (res && res.value){
@@ -2462,7 +2443,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           SETTINGS[term] = Object.assign({}, SETTINGS[term], stored);
         }
       } catch(e){ /* no stored settings yet for this terminal */ }
-    }));
+    }
   }
   async function saveSettingsForTerm(term){
     await storageSet("settings:"+term, JSON.stringify(SETTINGS[term]), true); // let a failure propagate — callers must know if this didn't actually save
@@ -4166,8 +4147,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="settings-wrap">
         <div class="section-label" style="color:#F2483D;">⚠ Erase Terminal Data</div>
         <div class="footer-note" style="text-align:left; margin:10px 0 16px;">
-          This permanently deletes only the selected year of uploaded operational data for the selected terminal.
-          KPI targets, imported Targets Excel values, Direction, visibility,
+          This permanently deletes only the uploaded operational data for the selected terminal — every year of vessel-call
+          data (Tangier) or every uploaded week (Panama). KPI targets, imported Targets Excel values, Direction, visibility,
           priority and other Settings are kept untouched. Configuration can only be reset separately from Settings.
           This cannot be undone for the operational data being erased.
         </div>
@@ -4175,7 +4156,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <select id="eraseTermSelect" class="priority-input" style="width:220px;">
             ${allTerms.map(t=>`<option value="${t.kind}:${t.code}">${t.code} (${t.kind})</option>`).join("")}
           </select>
-          <select id="eraseYearSelect" class="priority-input" style="width:120px;"></select>
           <button class="btn-secondary" id="eraseConfirmBtn" style="border-color:#F2483D; color:#F2483D;">Permanently Erase</button>
         </div>
         <div id="eraseStatus" style="margin-top:12px; font-family:var(--mono); font-size:12.5px;"></div>
@@ -4194,27 +4174,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <div id="eraseAdherenceStatus" style="margin-top:12px; font-family:var(--mono); font-size:12.5px;"></div>
       </div>
     `;
-    const eraseTermSelect=document.getElementById("eraseTermSelect"),eraseYearSelect=document.getElementById("eraseYearSelect");
-    const refreshEraseYears=()=>{
-      const [kind,code]=eraseTermSelect.value.split(":"),years=new Set();
-      if(kind==="Tangier")((DATA[code]&&DATA[code].rows)||[]).forEach(r=>{if(r._year||r.Year)years.add(String(r._year||r.Year));});
-      else Object.keys(PANAMA_DATA[code]||{}).forEach(k=>{const m=String(k).match(/20\d{2}/);if(m)years.add(m[0]);});
-      const sorted=[...years].sort();eraseYearSelect.innerHTML=sorted.length?sorted.map(y=>`<option>${y}</option>`).join(""):'<option value="">No data</option>';
-    };
-    eraseTermSelect.onchange=refreshEraseYears;refreshEraseYears();
     document.getElementById("eraseConfirmBtn").onclick = async () => {
-      const [kind, code] = eraseTermSelect.value.split(":"),year=eraseYearSelect.value;
-      if(!year){document.getElementById("eraseStatus").textContent="No stored year is available for this terminal.";return;}
-      const typed = prompt(`This will permanently delete ${code} operational data for ${year} only, while keeping every other year, Targets and Settings. Type "${code}-${year}" exactly to confirm:`);
-      if (typed !== `${code}-${year}`){
+      const [kind, code] = document.getElementById("eraseTermSelect").value.split(":");
+      const typed = prompt(`This will permanently delete the uploaded operational data for ${code} (${kind}) while keeping its Targets and Settings. Type the terminal code "${code}" exactly to confirm:`);
+      if (typed !== code){
         document.getElementById("eraseStatus").textContent = typed === null ? "Cancelled." : "Typed text didn't match — nothing was deleted.";
         return;
       }
       document.getElementById("eraseStatus").textContent = "Erasing " + code + "…";
       try {
-        if (kind === "Tangier") await eraseTangierTerminal(code,year);
-        else await erasePanamaTerminal(code,year);
-        document.getElementById("eraseStatus").textContent = "✓ " + code + " " + year + " operational data erased. Other years, Targets and Settings were preserved.";
+        if (kind === "Tangier") await eraseTangierTerminal(code);
+        else await erasePanamaTerminal(code);
+        document.getElementById("eraseStatus").textContent = "✓ " + code + " operational data erased. Targets and Settings were preserved.";
         buildTerminalPills();
         renderEraseView();
       } catch(e){
@@ -4241,11 +4212,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     };
   }
 
-  async function eraseTangierTerminal(term,year){
+  async function eraseTangierTerminal(term){
     // DATA ONLY: targets/catalog/settings are deliberately independent and must survive a data erase.
     const yres = await storageGet("years:"+term, true);
-    const years = (yres && yres.value) ? JSON.parse(yres.value).map(String) : [];
-    try {
+    const years = (yres && yres.value) ? JSON.parse(yres.value) : [];
+    for (const year of years){
+      try {
         const monthsSnap = await db.collection("terminals").doc(term).collection("years").doc(String(year)).collection("months").get();
         const docs = [];
         monthsSnap.forEach(doc => docs.push(doc));
@@ -4255,20 +4227,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           docs.slice(i,i+400).forEach(doc => batch.delete(doc.ref));
           await batch.commit();
         }
-    } catch(e){ console.error("Could not erase operational rows for", term, year, e); throw e; }
-    // Remove only this year from the registry. Never delete catalog/settings/targets.
-    await storageSet("years:"+term,JSON.stringify(years.filter(y=>y!==String(year))),true);
+      } catch(e){ console.error("Could not erase operational rows for", term, year, e); throw e; }
+    }
+    // Clear only the years registry. Do NOT delete catalog, settings, targets or known_terminals.
+    await db.collection("terminals").doc(term).collection("meta").doc("years").delete().catch(()=>{});
 
-    if (DATA[term]) DATA[term].rows = DATA[term].rows.filter(r=>String(r._year)!==String(year));
+    if (DATA[term]) DATA[term].rows = [];
     currentPeriod = null;
   }
 
-  async function erasePanamaTerminal(code,year){
+  async function erasePanamaTerminal(code){
     const weeksSnap = await db.collection("panama").doc(code).collection("weeks").get();
     const batch = db.batch();
-    weeksSnap.forEach(doc => {if(String(doc.id).includes(String(year)))batch.delete(doc.ref);});
+    weeksSnap.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
-    Object.keys(PANAMA_DATA[code]||{}).forEach(k=>{if(String(k).includes(String(year)))delete PANAMA_DATA[code][k];});
+    let known = [];
+    try { const kres = await storageGet("panama_known_terminals", true); if (kres && kres.value) known = JSON.parse(kres.value); } catch(e){}
+    known = known.filter(t => t !== code);
+    await storageSet("panama_known_terminals", JSON.stringify(known), true);
+
+    PANAMA_TERM_CODES = PANAMA_TERM_CODES.filter(t => t !== code);
+    delete PANAMA_DATA[code];
   }
 
   async function eraseAdherenceBiData(){
@@ -4321,7 +4300,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function sqdcScopeLabel(){return SQDC_SCOPE_LABELS[sqdcScope]||sqdcScope;}
   function sqdcTerms(scope=sqdcScope){return scope==="global"?Object.values(SQDC_POOLS).flat():SQDC_POOLS[scope]||[];}
   function effectiveSqdcActive(term,key,year){const s=SETTINGS[term]?.[key]||{};return !!(s.activeSqdcByYear&&s.activeSqdcByYear[year]===true);}
-  function effectiveSqdcWeight(term,key,year){if(normalizedFieldLookup(key)==="vessel score")return 0;const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
+  function effectiveSqdcWeight(term,key,year){const s=SETTINGS[term]?.[key]||{},v=s.sqdcWeightByYear?.[year];return Number.isFinite(Number(v))?Math.max(0,Number(v)):0;}
   function sqdcTargets(year){return Object.assign({},SQDC_DEFAULT_TARGETS,SQDC_CONFIG.targetsByYear?.[String(year)]||{});}
   function sqdcDateKey(d){return d instanceof Date&&!isNaN(d)?`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`:"";}
   let SQDC_ROW_INDEX=null;
@@ -4623,7 +4602,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // Daily/Monthly KPI result columns and visit-count rules as Terminal Dashboards.
   function sqdcUniqueVisitRows(rows){const seen=new Set();return rows.filter(r=>{const id=String(r["Id visit"]??"").trim()||`${r._sqdcTerm}|${sqdcVesselName(r)}|${sqdcDateKey(r._etb)}`;if(seen.has(id))return false;seen.add(id);return true;});}
   sqdcCalls=function(rows){return volumeAgg(rows).__calls;};
-  function sqdcKpiDefinition(term,key){const wanted=normalizedFieldLookup(key);return settingsKpisForTerm(term).find(x=>normalizedFieldLookup(x.key)===wanted)||null;}
+  function sqdcKpiDefinition(term,key){const wanted=normalizedFieldName(key);return settingsKpisForTerm(term).find(x=>normalizedFieldName(x.key)===wanted)||null;}
   function sqdcOfficialKpi(scope,rows,period,key){
     const values=[];sqdcTerms(scope).forEach(term=>{const termRows=rows.filter(r=>r._sqdcTerm===term);if(!termRows.length)return;const k=sqdcKpiDefinition(term,key);if(!k)return;const actual=getValue(k,termRows,period),target=effectiveTarget(k,term,termRows[0]._year);if(actual!==null&&actual!==""&&target!==null&&target!==""&&Number.isFinite(Number(actual))&&Number.isFinite(Number(target)))values.push({term,k,actual:Number(actual),target:Number(target)});});
     if(!values.length)return {actual:null,target:null,values:[]};return {actual:values.reduce((a,x)=>a+x.actual,0)/values.length,target:values.reduce((a,x)=>a+x.target,0)/values.length,values};
@@ -4972,11 +4951,26 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
         <table class="settings-table">
-          <thead><tr><th>KPI</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal (${settingsYear||''})</th><th>Show on Global (${settingsYear||''})</th><th>Show in SQDC (${settingsYear||''})</th><th>SQDC Weight %</th><th>Priority</th></tr></thead>
+          <thead><tr><th>KPI</th><th>Target (${settingsYear||''})</th><th>Direction</th><th>Show on Terminal (${settingsYear||''})</th><th>Show on Global (${settingsYear||''})</th><th>Show in SQDC (${settingsYear||''})</th><th>SQDC Weight %</th><th>Priority</th><th></th></tr></thead>
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          KPI names come only from the dedicated Targets Excel. Its numeric targets are used only to initialize a missing KPI/year; targets already saved in the platform are never overwritten by another upload. Vessel Score is the constructed Quality measure: it keeps its target but has no SQDC weight. Planning Turnaround has two target rows: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Dashboard Excel uploads read only Dashboards Data and never modify KPI names or Settings.
+          Targets are read from the dedicated Targets Excel and can differ year to year. Vessel Score is included like every other KPI. Planning Turnaround has two separate uploaded targets: Planning Turnaround Target (%) for period scorecards and Planning Turnaround Target (h) for the per-vessel KPI. Weekly, monthly, quarterly and yearly KPI results are read from the corresponding pre-calculated Excel period columns (weighted-contribution columns are summed only where the Excel formula requires it). The dashboard does not recalculate those period KPIs from raw vessel values. Editing Target here creates a manual override for only the selected year; uploading a Targets Excel again replaces that year's target with the newly uploaded value. Direction, visibility and priority remain fully manual and are never changed by an Excel upload.
+        </div>
+        <div class="section-label">Register a new KPI</div>
+        <div class="footer-note" style="text-align:left; margin-bottom:10px;">
+          For a KPI that isn't in ${settingsTerm}'s Excel at all: upload the Excel once it has the new column added (the parser will pick it up automatically), or — if you just need to register it now so it can be targeted/activated ahead of the next upload — add its exact column name here. Its value will always come from the uploaded Excel; this just registers it in Settings.
+        </div>
+        <div class="settings-toolbar">
+          <div><label class="adh-note">KPI / Excel column</label><input type="text" id="newKpiName" list="kpiNameRegistryList" class="priority-input" placeholder="Select or type exact KPI name" style="width:290px;"><datalist id="kpiNameRegistryList">${KPI_NAME_REGISTRY.map(x=>`<option value="${adhEsc(x.name)}"></option>`).join("")}</datalist></div>
+          <div><label class="adh-note">Data type</label><select id="newKpiType" class="priority-input" style="width:auto;"><option value="percent">Percentage (%)</option><option value="number">Number</option></select></div>
+          <select id="newKpiDirection" class="priority-input" style="width:auto;">
+            <option value="higher">Higher = good</option>
+            <option value="lower">Lower = good</option>
+          </select>
+          <div><label class="adh-note">Initial SQDC weight %</label><input type="number" id="newKpiWeight" class="priority-input" min="0" max="100" step="0.01" value="0" style="width:105px;"></div>
+          <button class="btn-secondary" id="newKpiAddBtn">Register KPI</button>
+          <span id="newKpiStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
         </div>
       </div>
     `;
@@ -5047,6 +5041,34 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       };
     }
 
+    const newKpiBtn = document.getElementById("newKpiAddBtn");
+    if(PANAMA_TERM_CODES.includes(settingsTerm)){
+      newKpiBtn.disabled=true;
+      document.getElementById("newKpiStatus").textContent="Panama KPI names come from the Panama upload format.";
+    } else {
+      const nameInp=document.getElementById("newKpiName"),typeSel=document.getElementById("newKpiType");
+      nameInp.oninput=()=>{const found=KPI_NAME_REGISTRY.find(x=>normalizedFieldName(x.name)===normalizedFieldName(nameInp.value));if(found)typeSel.value=found.isPercent?"percent":"number";};
+      newKpiBtn.onclick = async () => {
+      const nameInp = document.getElementById("newKpiName");
+      const dirSel = document.getElementById("newKpiDirection");
+      const typeSel = document.getElementById("newKpiType");
+      const weightInp = document.getElementById("newKpiWeight");
+      const statusEl = document.getElementById("newKpiStatus");
+      const name = normalizedFieldName(nameInp.value),isPercent=typeSel.value==="percent",weight=Math.max(0,Math.min(100,Number(weightInp.value)||0));
+      if (!name){ statusEl.textContent = "Enter a KPI/column name first."; return; }
+      if (DATA[settingsTerm].kpis.some(k=>normalizedFieldName(k.key)===name)){ statusEl.textContent = "This KPI already exists for " + settingsTerm + "."; return; }
+      const newKpi = { key:name, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent, direction: dirSel.value, registeredManually:true };
+      DATA[settingsTerm].kpis.push(newKpi);
+      SETTINGS[settingsTerm][name] = { activeTerminal:true, activeGlobal:true, activeSqdc:true, isPercent, priority: DATA[settingsTerm].kpis.length, targetOverrides:{}, activeTerminalByYear:{[settingsYear]:true}, activeGlobalByYear:{[settingsYear]:true}, activeSqdcByYear:{[settingsYear]:true}, sqdcWeightByYear:{[settingsYear]:weight/100}, direction: dirSel.value };
+      mergeKpiRegistryEntry(name,isPercent);
+      try{await Promise.all([saveSettingsForTerm(settingsTerm),persistCatalogForTerm(settingsTerm),persistKpiNameRegistry()]);}
+      catch(e){statusEl.textContent="Not saved: "+(e.message||e);return;}
+      nameInp.value = "";
+      statusEl.textContent = "✓ Registered in Firebase with visibility and SQDC activated for " + settingsYear + ".";
+      renderSettingsTable();
+      };
+    }
+
     renderSettingsTable();
   }
 
@@ -5100,7 +5122,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function settingsKpisForTerm(term){
-    const out = PANAMA_TERM_CODES.includes(term) ? baseSettingsKpisForTerm(term) : reconcileTargetCatalogForTerm(term,(DATA[term]&&DATA[term].kpis)||[]);
+    const out = baseSettingsKpisForTerm(term);
+    const targetKeys = Object.keys(IMPORTED_TARGETS[term] || {});
+    targetKeys.forEach(rawKey => {
+      // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
+      const key = rawKey === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : rawKey;
+      if (out.some(k=>k.key===key)) return;
+      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
+      const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
+      out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
+    });
     out.forEach((k,i)=>{
       SETTINGS[term] = SETTINGS[term] || {};
       if(!SETTINGS[term][k.key]) SETTINGS[term][k.key] = {activeTerminal:true, activeGlobal:true, priority:i+1, targetOverrides:{}, activeTerminalByYear:{}, activeGlobalByYear:{}};
@@ -5122,10 +5153,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const isTangierSqdc=TERM_CODES.includes(settingsTerm);
       const activeSqdcYear=isTangierSqdc&&effectiveSqdcActive(settingsTerm,k.key,settingsYear);
       const sqdcWeight=isTangierSqdc?effectiveSqdcWeight(settingsTerm,k.key,settingsYear)*100:0;
-      const isQualityMeasure=k.key==="Vessel Score";
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}</td>
+        <td class="kpi-key-cell">${kpiPeriodLabel(k.key)}${k.registeredManually ? ' <span class="weight-badge" title="Registered manually, not yet in the uploaded Excel">manual</span>' : ''}</td>
         <td>
           <input type="number" step="0.01" class="priority-input target-input" value="${targetDisplay}" data-key="${k.key}" style="width:72px;">
           <span class="weight-badge">${isPct ? '%' : ''}</span>
@@ -5138,9 +5168,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         </td>
         <td><label class="toggle"><input type="checkbox" ${activeTerminalYear?'checked':''} data-key="${k.key}" class="active-terminal-toggle"><span class="slider"></span></label></td>
         <td><label class="toggle"><input type="checkbox" ${activeGlobalYear?'checked':''} data-key="${k.key}" class="active-global-toggle"><span class="slider"></span></label></td>
-        <td>${isTangierSqdc?(isQualityMeasure?'<span class="weight-badge">Quality measure</span>':`<label class="toggle"><input type="checkbox" ${activeSqdcYear?'checked':''} data-key="${k.key}" class="active-sqdc-toggle"><span class="slider"></span></label>`):'—'}</td>
-        <td>${isTangierSqdc?(isQualityMeasure?'—':`<input type="number" class="priority-input sqdc-weight-input" value="${sqdcWeight.toFixed(2)}" min="0" max="100" step="0.01" data-key="${k.key}" style="width:78px">`):'—'}</td>
+        <td>${isTangierSqdc?`<label class="toggle"><input type="checkbox" ${activeSqdcYear?'checked':''} data-key="${k.key}" class="active-sqdc-toggle"><span class="slider"></span></label>`:'—'}</td>
+        <td>${isTangierSqdc?`<input type="number" class="priority-input sqdc-weight-input" value="${sqdcWeight.toFixed(2)}" min="0" max="100" step="0.01" data-key="${k.key}" style="width:78px">`:'—'}</td>
         <td><input type="number" class="priority-input" value="${s.priority}" min="1" data-key="${k.key}"></td>
+        <td>${k.registeredManually ? `<button class="btn-secondary remove-kpi-btn" data-key="${k.key}" style="border-color:#F2483D; color:#F2483D; padding:4px 8px; font-size:11px;">Remove</button>` : ''}</td>
       `;
       tbody.appendChild(tr);
       if (k.key === "Planning Turnaround Time (h)") {
@@ -5240,6 +5271,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (inp.value === '') delete s.targetOverrides[settingsYear];
         else s.targetOverrides[settingsYear] = isPct ? Number(inp.value)/100 : Number(inp.value);
         persistSettings(settingsTerm, "Saved (" + settingsYear + ")"); render();
+      };
+    });
+    tbody.querySelectorAll(".remove-kpi-btn").forEach(btn => {
+      btn.onclick = () => {
+        const key = btn.dataset.key;
+        if (!confirm(`Remove manually-registered KPI "${key}" from ${settingsTerm}? This only removes it from Settings/the catalog — it does nothing to any Excel column.`)) return;
+        DATA[settingsTerm].kpis = DATA[settingsTerm].kpis.filter(k=>k.key!==key);
+        delete SETTINGS[settingsTerm][key];
+        saveSettingsForTerm(settingsTerm);
+        persistCatalogForTerm(settingsTerm);
+        renderSettingsTable();
       };
     });
   }
@@ -6008,7 +6050,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     // These three datasets are independent, so load them in parallel.
     await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage(), loadSqdcDataFromStorage(), loadScopeLossDataFromStorage()]);
-    reconcileTargetCatalogsInMemory();
+    await loadKpiNameRegistry();
     // Panama terminals share Settings but remain outside the Tangier terminal navigation/data model.
     TERM_CODES = TERM_CODES.filter(t=>!PANAMA_TERM_CODES.includes(t));
     Object.keys(IMPORTED_TARGETS).forEach(ensureTargetTerminalRegistered);
