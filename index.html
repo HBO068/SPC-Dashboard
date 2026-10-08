@@ -2472,7 +2472,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (mode === "vessel" && isPlanningHours && s.vesselTargetOverrides && s.vesselTargetOverrides[year] !== undefined && s.vesselTargetOverrides[year] !== null && s.vesselTargetOverrides[year] !== '') {
       return Number(s.vesselTargetOverrides[year]);
     }
-    if (mode !== "vessel" && s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
+    // Every KPI uses its normal saved target in vessel charts too. Planning Turnaround Time (h)
+    // is the sole exception above because it has a dedicated per-vessel hours target.
+    if (s.targetOverrides && s.targetOverrides[year] !== undefined && s.targetOverrides[year] !== null && s.targetOverrides[year] !== '') {
       return Number(s.targetOverrides[year]);
     }
     // Numeric cells in the Targets Excel and legacy catalog targets are not operational targets.
@@ -3012,7 +3014,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const card = document.createElement("div");
       card.className = "vr-card";
       const rowsHtml = rowsSorted.map(x => {
-        const status = statusFor(k, x.v, target);
+        const status = statusFor(k, x.v, target, currentTerminal, "vessel");
         const color = STATUS_COLOR[status];
         const widthPct = Math.max(2, (Math.abs(x.v)/maxAbs)*100);
         const vesselName = x.r["Vessel Name"] || vesselShortId(x.r);
