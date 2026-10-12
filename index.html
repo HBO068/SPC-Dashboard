@@ -1780,6 +1780,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Number(v).toLocaleString(undefined, {maximumFractionDigits: decimals===undefined?0:decimals});
   }
   function effectiveIsPercent(kpi, term){
+    // Vessel-level Planning Turnaround is measured in hours even though the period-level
+    // Planning Turnaround score is a percentage. A forced vessel display must never inherit
+    // the period percentage setting from the shared KPI Settings record.
+    if (kpi && kpi._forceNumber === true) return false;
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     if (s.isPercent !== undefined && s.isPercent !== null) return s.isPercent;
     return !!kpi.isPercent;
@@ -1821,7 +1825,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return fmtNum(v,2);
   }
   function vesselDisplayKpi(kpi){
-    if (kpi && kpi.key === "Planning Turnaround Time (h)") return Object.assign({}, kpi, {isPercent:false});
+    if (kpi && kpi.key === "Planning Turnaround Time (h)") return Object.assign({}, kpi, {isPercent:false, _forceNumber:true});
     return kpi;
   }
   function statusFor(kpi, value, target, termOverride, mode){
