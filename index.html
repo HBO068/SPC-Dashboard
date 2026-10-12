@@ -983,8 +983,15 @@ window.__FIREBASE_CONFIG__ = {
     return 1 - dist/maxLen; // character-level ratio, close to difflib's SequenceMatcher for short labels
   }
 
+  const KPI_MATCH_ALIASES = {
+    "twinsplanning":"twinplanning",
+    "vesseltwinplanning":"twinplanning",
+    "powperstack":"powoperationaloverlap",
+    "powoperationaloverlap":"powoperationaloverlap"
+  };
   function kpiMatchKey(v){
-    return norm(v).toLowerCase().replace(/\btarget\b/g,"").replace(/\btwins\b/g,"twin").replace(/\bstacks\b/g,"stack").replace(/[^a-z0-9]+/g,"");
+    const key=norm(v).toLowerCase().replace(/\btarget\b/g,"").replace(/\btwins\b/g,"twin").replace(/\bstacks\b/g,"stack").replace(/[^a-z0-9]+/g,"");
+    return KPI_MATCH_ALIASES[key] || key;
   }
   function findBaseColumn(baseLabel, rawHeaders){
     const wanted = kpiMatchKey(baseLabel);
@@ -1062,9 +1069,9 @@ window.__FIREBASE_CONFIG__ = {
   const CANONICAL_KPI_NAMES = [
     "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
     "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
-    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twins Planning", "Dual Cycling",
+    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twin Planning", "Dual Cycling",
     "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score",
-    "Twin Yard Flow Adherence", "Yard Picking Sequence Adherence", "Pow Per Stack",
+    "Twin Yard Flow Adherence", "Yard Picking Sequence Adherence", "P.O.W Operational Overlap",
     "Tandem Planning", "Lane Split"
   ];
 
@@ -1230,19 +1237,25 @@ window.__FIREBASE_CONFIG__ = {
     "yard clashes":"Yard Clashes",
     "rtg moves before gantry":"RTG Moves Before Gantry",
     "loading points":"Loading Points",
-    "twins planning":"Twins Planning",
-    "twin planning":"Twins Planning",
+    "twins planning":"Twin Planning",
+    "twin planning":"Twin Planning",
+    "vessel twin planning":"Twin Planning",
     "port hours":"Port Hours Saved %",
     "port hours saved %":"Port Hours Saved %",
     "planning turnaround":"Planning Turnaround Time (h)",
     "planning turnaround time (h)":"Planning Turnaround Time (h)",
     "dual cycling":"Dual Cycling",
+    "dual cycling (%)":"Dual Cycling",
     "vessel score":"Vessel Score",
     "rows evacuation":"Rows Evacuation",
     "stacks evacuation":"Stacks Evacuation",
     "average traveling distance":"Average Traveling Distance",
     "yard mirroring":"Yard Mirroring",
-    "alternation":"Alternation"
+    "alternation":"Alternation",
+    "twin yard flow adherence":"Twin Yard Flow Adherence",
+    "p.o.w operational overlap":"P.O.W Operational Overlap",
+    "pow operational overlap":"P.O.W Operational Overlap",
+    "pow per stack":"P.O.W Operational Overlap"
   };
   function targetLabelToKpi(label){
     const clean=norm(label);
@@ -1460,7 +1473,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       "Re-handles":"Rehandle","Yard Clashes":"Yard Clash","RTG Moves Before Gantry":"RTG MBG",
       "Loading Points":"LP","Twin Planning":"Twin.P","Twins Planning":"Twin.P","Port Hours Saved %":"P.Hrs",
       "Alternation":"Altern.","Dual Cycling":"Dual Cyc.","Yard Picking Sequence Adherence":"Y.Pick.Seq",
-      "Twin Yard Flow Adherence":"TYF Adh.","Pow Per Stack":"POW/Stk","Tandem Planning":"Tandem",
+      "Twin Yard Flow Adherence":"TYF Adh.","Pow Per Stack":"POW","P.O.W Operational Overlap":"POW","Tandem Planning":"Tandem",
       "Rows Evacuation":"Rows Evac","Stacks Evacuation":"Stacks Evac","Yard Mirroring":"Yard Mirr.",
       "Average Traveling Distance":"ATD","Lane Split":"Lane Split","Vessel Score":"Score"
     };
@@ -1635,15 +1648,56 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function sum(rows, f){ return rows.reduce((a,r)=> a + (Number(r[f])||0), 0); }
   function normalizedFieldName(v){ return String(v??"").replace(/\s+/g," ").trim(); }
-  function kpiIdentityKey(v){
+  const KPI_ID_ALIASES = {
+    "twinsplanning":"twinplanning",
+    "vesseltwinplanning":"twinplanning",
+    "powperstack":"powoperationaloverlap",
+    "powoperationaloverlap":"powoperationaloverlap"
+  };
+  const KPI_CANONICAL_LABELS = {
+    "ciadherence":"CI Adherence",
+    "stowagequality":"Stowage Quality",
+    "rehandles":"Re-handles",
+    "yardclashes":"Yard Clashes",
+    "rtgmovesbeforegantry":"RTG Moves Before Gantry",
+    "loadingpoints":"Loading Points",
+    "twinplanning":"Twin Planning",
+    "porthourssaved":"Port Hours Saved %",
+    "planningturnaroundtime":"Planning Turnaround Time (%)",
+    "planningturnaroundtimeh":"Planning Turnaround Time (h)",
+    "dualcycling":"Dual Cycling",
+    "vesselscore":"Vessel Score",
+    "rowsevacuation":"Rows Evacuation",
+    "stackevacuation":"Stacks Evacuation",
+    "averagetravelingdistance":"Average Traveling Distance",
+    "yardmirroring":"Yard Mirroring",
+    "alternation":"Alternation",
+    "twinyardflowadherence":"Twin Yard Flow Adherence",
+    "yardpickingsequenceadherence":"Yard Picking Sequence Adherence",
+    "powoperationaloverlap":"P.O.W Operational Overlap",
+    "tandemplanning":"Tandem Planning",
+    "lanesplit":"Lane Split"
+  };
+  function rawKpiIdentityKey(v){
     return normalizedFieldName(v).toLowerCase().replace(/\btarget\b/g,"").replace(/\btwins\b/g,"twin").replace(/\bstacks\b/g,"stack").replace(/[^a-z0-9]+/g,"");
+  }
+  function kpiIdentityKey(v){
+    const key=rawKpiIdentityKey(v);
+    return KPI_ID_ALIASES[key] || key;
+  }
+  function canonicalKpiName(v){
+    const clean=normalizedFieldName(v);
+    const key=kpiIdentityKey(clean);
+    return KPI_CANONICAL_LABELS[key] || clean;
   }
   function rowFieldValue(row, field){
     if (!row) return undefined;
     if (Object.prototype.hasOwnProperty.call(row,field)) return row[field];
     const wanted=normalizedFieldName(field);
     const matched=Object.keys(row).find(k=>normalizedFieldName(k)===wanted);
-    return matched===undefined?undefined:row[matched];
+    if(matched!==undefined)return row[matched];
+    const aliasMatches=Object.keys(row).filter(k=>kpiIdentityKey(k)===kpiIdentityKey(field));
+    return aliasMatches.length===1?row[aliasMatches[0]]:undefined;
   }
   function avgSkipNull(rows, f){
     const vals = rows.map(r=>rowFieldValue(r,f)).filter(v => v!==null && v!==undefined && v!=='' && !isNaN(v)).map(Number);
@@ -1893,9 +1947,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   // terminal's Settings; this registry only standardizes the Excel column name and data type.
   let KPI_NAME_REGISTRY=[];
   function mergeKpiRegistryEntry(name,isPercent){
-    const clean=normalizedFieldName(name);if(!clean)return null;
+    const clean=canonicalKpiName(name);if(!clean)return null;
     let entry=KPI_NAME_REGISTRY.find(x=>kpiIdentityKey(x.name)===kpiIdentityKey(clean));
-    if(entry)return entry;
+    if(entry){entry.name=canonicalKpiName(entry.name);if(isPercent===true)entry.isPercent=true;return entry;}
     entry={name:clean,isPercent:!!isPercent};KPI_NAME_REGISTRY.push(entry);
     KPI_NAME_REGISTRY.sort((a,b)=>a.name.localeCompare(b.name));return entry;
   }
@@ -1912,25 +1966,63 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const names=[];
     Object.values(DATA).forEach(d=>(d?.kpis||[]).forEach(k=>{if(k?.key)names.push(k.key);}));
     KPI_NAME_REGISTRY.forEach(x=>{if(x?.name)names.push(x.name);});
-    return [...new Map(names.map(name=>[kpiIdentityKey(name),name])).values()];
+    return [...new Map(names.map(name=>[kpiIdentityKey(name),canonicalKpiName(name)])).values()];
+  }
+
+  function catalogEntryScore(k){
+    if(!k)return 0;
+    let score=0;
+    if(k.base_col)score+=20;
+    score+=Object.values(k.period_cols||{}).filter(Boolean).length*3;
+    score+=Object.values(k.period_agg||{}).filter(Boolean).length;
+    if(k.registeredFromTargets)score-=2;
+    return score;
+  }
+  function mergeCatalogRecords(base,incoming){
+    const out=Object.assign({},base||{});
+    Object.entries(incoming||{}).forEach(([key,value])=>{
+      if(["targets_by_year","period_cols","period_agg"].includes(key)){
+        out[key]=Object.assign({},out[key]||{},value||{});
+      } else if(value!==undefined&&value!==null&&value!==""){
+        out[key]=value;
+      }
+    });
+    return out;
+  }
+  function canonicalizeCatalogEntries(entries){
+    const groups=new Map();
+    (entries||[]).forEach(entry=>{
+      if(!entry||!entry.key)return;
+      const canonical=canonicalKpiName(entry.key);
+      const id=kpiIdentityKey(canonical);
+      if(!groups.has(id))groups.set(id,[]);
+      groups.get(id).push(Object.assign({},entry,{key:canonical}));
+    });
+    return [...groups.values()].map(group=>{
+      group.sort((a,b)=>catalogEntryScore(a)-catalogEntryScore(b));
+      let merged={};
+      group.forEach(entry=>{merged=mergeCatalogRecords(merged,entry);});
+      merged.key=canonicalKpiName(group[group.length-1].key);
+      return merged;
+    });
   }
 
   function buildMergedCatalog(term, freshCatalog){
-    const existing = (DATA[term] && DATA[term].kpis) ? DATA[term].kpis : [];
+    const existing = canonicalizeCatalogEntries((DATA[term] && DATA[term].kpis) ? DATA[term].kpis : []);
     const merged = existing.map(k=>Object.assign({},k));
-    (freshCatalog||[]).forEach(k => {
+    canonicalizeCatalogEntries(freshCatalog||[]).forEach(k => {
       const wanted=kpiIdentityKey(k.key);
       let matches=merged.map((old,index)=>({old,index,key:kpiIdentityKey(old.key)})).filter(x=>x.key===wanted);
       if(!matches.length)matches=merged.map((old,index)=>({old,index,key:kpiIdentityKey(old.key)})).filter(x=>wanted.length>=5&&x.key.length>=5&&(x.key.includes(wanted)||wanted.includes(x.key)));
       if(matches.length===1){
         const {old,index}=matches[0];
-        merged[index]=Object.assign({},old,k,{key:old.key,targets_by_year:Object.assign({},old.targets_by_year||{})});
+        merged[index]=Object.assign({},old,k,{key:canonicalKpiName(k.key),targets_by_year:Object.assign({},old.targets_by_year||{})});
       } else if(matches.length===0){
-        merged.push(k);
+        merged.push(Object.assign({},k,{key:canonicalKpiName(k.key)}));
       }
     });
     // Existing KPI names are always additive and remain until their year toggle is switched off.
-    return merged;
+    return canonicalizeCatalogEntries(merged);
   }
 
   async function persistUploadResult(term, rowsByYear, mergedCatalog){
@@ -2291,7 +2383,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     try {
       const buf=await file.arrayBuffer();
       const result=window.TargetsParser.parseWorkbook(buf, window.XLSX);
-      await persistImportedTargets(result.kpis,result.yearsByTerm);
+      const migrationResult=await persistImportedTargets(result.kpis,result.yearsByTerm);
       initSettingsDefaults();
       await loadAllSettingsFromStorage();
       buildTerminalPills();
@@ -2301,6 +2393,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       }
       render();
       let msg=`✓ KPI names and years updated: ${result.terminalCount} terminal(s), ${result.kpiCount} KPI row(s). Saved targets, type, direction, toggles, priority and weights were preserved.`;
+      const migratedCount=(migrationResult&&migrationResult.migratedAliases||[]).length;
+      if(migratedCount)msg+=` ${migratedCount} legacy KPI name${migratedCount===1?" was":"s were"} migrated without resetting its settings.`;
       if(result.unrecognized.length){
         msg += ` ⚠ ${result.unrecognized.length} unrecognized target label(s) skipped.`;
         setUploadStatus(msg,"warn");
@@ -2392,12 +2486,105 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       } catch(e){ console.error("Could not load targets for",term,e); }
     }));
   }
+  function targetSettingsKey(kpiName){
+    const canonical=canonicalKpiName(kpiName);
+    return canonical==="Planning Turnaround Time (%)"?"Planning Turnaround Time (h)":canonical;
+  }
+  function isPlainSettingsObject(value){
+    return !!value&&typeof value==="object"&&!Array.isArray(value);
+  }
+  function settingsConfigScore(config){
+    if(!config)return 0;
+    let score=0;
+    Object.entries(config).forEach(([key,value])=>{
+      if(isPlainSettingsObject(value))score+=Object.keys(value).length*10;
+      else if(value!==undefined&&value!==null&&value!==""){
+        if(["direction","vesselDirection","isPercent"].includes(key))score+=4;
+        else if(key==="priority"&&Number(value)!==999)score+=3;
+        else if(value===false)score+=2;
+        else score+=1;
+      }
+    });
+    return score;
+  }
+  function mergeSettingsRecords(base,incoming){
+    const out=Object.assign({},base||{});
+    Object.entries(incoming||{}).forEach(([key,value])=>{
+      if(isPlainSettingsObject(value))out[key]=Object.assign({},out[key]||{},value);
+      else if(value!==undefined&&value!==null)out[key]=value;
+    });
+    return out;
+  }
+  function migrateTerminalKpiAliases(term,incomingNames){
+    const incomingSettingsNames=[...new Set((incomingNames||[]).map(targetSettingsKey))];
+    const canonicalById=new Map(incomingSettingsNames.map(name=>[kpiIdentityKey(name),name]));
+    const targetIds=new Set(canonicalById.keys());
+    const migrations=[];
+
+    const oldSettings=SETTINGS[term]||{};
+    const settingsGroups=new Map();
+    const untouchedSettings={};
+    Object.entries(oldSettings).forEach(([key,value])=>{
+      const id=kpiIdentityKey(key);
+      if(!targetIds.has(id)){untouchedSettings[key]=value;return;}
+      if(!settingsGroups.has(id))settingsGroups.set(id,[]);
+      settingsGroups.get(id).push({key,value});
+    });
+    const migratedSettings=Object.assign({},untouchedSettings);
+    settingsGroups.forEach((group,id)=>{
+      const canonical=canonicalById.get(id);
+      group.sort((a,b)=>{
+        const scoreDiff=settingsConfigScore(a.value)-settingsConfigScore(b.value);
+        if(scoreDiff)return scoreDiff;
+        return (a.key===canonical?1:0)-(b.key===canonical?1:0);
+      });
+      let merged={};
+      group.forEach(item=>{merged=mergeSettingsRecords(merged,item.value);});
+      migratedSettings[canonical]=merged;
+      group.forEach(item=>{if(item.key!==canonical)migrations.push({terminal:term,from:item.key,to:canonical});});
+    });
+    SETTINGS[term]=migratedSettings;
+
+    if(DATA[term]&&Array.isArray(DATA[term].kpis)){
+      const untouchedCatalog=[];
+      const catalogGroups=new Map();
+      DATA[term].kpis.forEach(entry=>{
+        if(!entry||!entry.key)return;
+        const id=kpiIdentityKey(entry.key);
+        if(!targetIds.has(id)){untouchedCatalog.push(entry);return;}
+        if(!catalogGroups.has(id))catalogGroups.set(id,[]);
+        catalogGroups.get(id).push(entry);
+      });
+      const migratedCatalog=[...untouchedCatalog];
+      catalogGroups.forEach((group,id)=>{
+        group.sort((a,b)=>catalogEntryScore(a)-catalogEntryScore(b));
+        let merged={};
+        group.forEach(entry=>{merged=mergeCatalogRecords(merged,entry);});
+        merged.key=canonicalById.get(id);
+        migratedCatalog.push(merged);
+      });
+      DATA[term].kpis=migratedCatalog;
+    }
+
+    if(IMPORTED_TARGETS[term]&&isPlainSettingsObject(IMPORTED_TARGETS[term])){
+      const migratedTargets={};
+      Object.entries(IMPORTED_TARGETS[term]).forEach(([key,byYear])=>{
+        const id=kpiIdentityKey(key);
+        const canonical=targetIds.has(id)?canonicalById.get(id):key;
+        migratedTargets[canonical]=Object.assign({},migratedTargets[canonical]||{},byYear||{});
+      });
+      IMPORTED_TARGETS[term]=migratedTargets;
+    }
+    return migrations;
+  }
   async function persistImportedTargets(kpisByTerm,yearsByTerm){
     let known=[];
+    const migratedAliases=[];
     const knownRes=await storageGet("target_known_terminals", true);
     if(knownRes && knownRes.value) known=JSON.parse(knownRes.value);
     for(const [term,incomingNames] of Object.entries(kpisByTerm)){
-      incomingNames.forEach(kpiKey=>mergeKpiRegistryEntry(kpiKey==="Planning Turnaround Time (%)"?"Planning Turnaround Time (h)":kpiKey,kpiKey.includes("%")));
+      const standardizedIncoming=[...new Map(incomingNames.map(name=>[kpiIdentityKey(canonicalKpiName(name)),canonicalKpiName(name)])).values()];
+      standardizedIncoming.forEach(kpiKey=>mergeKpiRegistryEntry(targetSettingsKey(kpiKey),kpiKey.includes("%")));
       const importedYears=(yearsByTerm&&yearsByTerm[term])||[];
       SETTINGS_YEARS[term]=[...new Set([...(SETTINGS_YEARS[term]||[]),...importedYears.map(String)])].sort();
       if(!known.includes(term)) known.push(term);
@@ -2409,9 +2596,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       SETTINGS[term]=SETTINGS[term]||{};
       if(!DATA[term])DATA[term]={rows:[],kpis:[]};
       DATA[term].kpis=DATA[term].kpis||[];
+      migratedAliases.push(...migrateTerminalKpiAliases(term,standardizedIncoming));
 
-      incomingNames.forEach(kpiKey=>{
-        const settingsKey=kpiKey==="Planning Turnaround Time (%)"?"Planning Turnaround Time (h)":kpiKey;
+      standardizedIncoming.forEach(kpiKey=>{
+        const settingsKey=targetSettingsKey(kpiKey);
         const wanted=kpiIdentityKey(settingsKey);
         const exact=DATA[term].kpis.find(k=>kpiIdentityKey(k.key)===wanted);
         const catalogKey=exact?exact.key:settingsKey;
@@ -2429,6 +2617,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
       await Promise.all([
         persistCatalogForTerm(term),
+        storageSet("targets:"+term,JSON.stringify(IMPORTED_TARGETS[term]||{}),true),
         storageSet("settings_years:"+term,JSON.stringify(SETTINGS_YEARS[term]),true),
         saveSettingsForTerm(term)
       ]);
@@ -2437,6 +2626,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       storageSet("target_known_terminals", JSON.stringify(known.sort()), true),
       persistKpiNameRegistry()
     ]);
+    return {migratedAliases};
   }
 
   function initSettingsDefaults(){
@@ -4968,7 +5158,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <tbody id="settingsTbody"></tbody>
         </table>
         <div class="footer-note" style="text-align:left; margin-top:14px;">
-          The Targets Excel registers KPI names and available years only. Type, target, direction, visibility, priority and SQDC weights are entered here and saved in Firebase; another Excel upload never overwrites them. KPI names are additive, so a name remains available until its year toggle is switched off. Planning Turnaround (%) is the Delivery period score and Planning Turnaround (h) supports vessel analysis; neither uses an SQDC weight. Vessel Score is the general Quality score and also has no SQDC weight.
+          The Targets Excel registers official KPI names and available years only. Type, target, direction, visibility, priority and SQDC weights are entered here and saved in Firebase; another Excel upload never overwrites them. Known legacy aliases are migrated to the official name while keeping their saved settings. KPI names are additive, so a name remains available until its year toggle is switched off. Planning Turnaround (%) is the Delivery period score and Planning Turnaround (h) supports vessel analysis; neither uses an SQDC weight. Vessel Score is the general Quality score and also has no SQDC weight.
         </div>
       </div>
     `;
@@ -5096,8 +5286,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const targetKeys = Object.keys(IMPORTED_TARGETS[term] || {});
     targetKeys.forEach(rawKey => {
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
-      const key = rawKey === "Planning Turnaround Time (%)" ? "Planning Turnaround Time (h)" : rawKey;
-      if (out.some(k=>k.key===key)) return;
+      const key = targetSettingsKey(rawKey);
+      if (out.some(k=>kpiIdentityKey(k.key)===kpiIdentityKey(key))) return;
       const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
       const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
       out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
