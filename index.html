@@ -985,7 +985,6 @@ window.__FIREBASE_CONFIG__ = {
 
   const KPI_MATCH_ALIASES = {
     "twinsplanning":"twinplanning",
-    "vesseltwinplanning":"twinplanning",
     "powperstack":"powoperationaloverlap",
     "powoperationaloverlap":"powoperationaloverlap"
   };
@@ -1007,6 +1006,7 @@ window.__FIREBASE_CONFIG__ = {
     // deliberately left unmapped instead of guessing and displaying the wrong KPI.
     const contains=candidates.filter(h=>{
       const key=kpiMatchKey(h);
+      if ((wanted==="twinplanning"&&key==="vesseltwinplanning") || (wanted==="vesseltwinplanning"&&key==="twinplanning")) return false;
       return wanted.length>=5 && key.length>=5 && (key.includes(wanted)||wanted.includes(key));
     });
     return contains.length===1 ? {col:contains[0],score:.9,match:"contains"} : {col:null,score:0,ambiguous:contains.length>1};
@@ -1033,7 +1033,10 @@ window.__FIREBASE_CONFIG__ = {
       if (!candidates.length){ result[prefix.toLowerCase()] = null; return; }
       const exact = candidates.filter(c => c.matchKey === baseNorm);
       if (exact.length===1){ result[prefix.toLowerCase()] = exact[0].h; return; }
-      const contains=candidates.filter(c=>baseNorm.length>=5&&c.matchKey.length>=5&&(c.matchKey.includes(baseNorm)||baseNorm.includes(c.matchKey)));
+      const contains=candidates.filter(c=>{
+        if ((baseNorm==="twinplanning"&&c.matchKey==="vesseltwinplanning") || (baseNorm==="vesseltwinplanning"&&c.matchKey==="twinplanning")) return false;
+        return baseNorm.length>=5&&c.matchKey.length>=5&&(c.matchKey.includes(baseNorm)||baseNorm.includes(c.matchKey));
+      });
       result[prefix.toLowerCase()] = contains.length===1 ? contains[0].h : null;
     });
     return result;
@@ -1069,7 +1072,7 @@ window.__FIREBASE_CONFIG__ = {
   const CANONICAL_KPI_NAMES = [
     "CI Adherence", "Port Hours Saved %", "Stowage Quality", "Re-handles",
     "Rows Evacuation", "Stacks Evacuation", "Alternation", "Yard Clashes",
-    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twin Planning", "Dual Cycling",
+    "Yard Mirroring", "Loading Points", "RTG Moves Before Gantry", "Twin Planning", "Vessel Twin Planning", "Dual Cycling",
     "Planning Turnaround Time (h)", "Average Traveling Distance", "Vessel Score",
     "Twin Yard Flow Adherence", "Yard Picking Sequence Adherence", "P.O.W Operational Overlap",
     "Tandem Planning", "Lane Split"
@@ -1239,7 +1242,8 @@ window.__FIREBASE_CONFIG__ = {
     "loading points":"Loading Points",
     "twins planning":"Twin Planning",
     "twin planning":"Twin Planning",
-    "vessel twin planning":"Twin Planning",
+    "vessel twin planning":"Vessel Twin Planning",
+    "vessel twins planning":"Vessel Twin Planning",
     "port hours":"Port Hours Saved %",
     "port hours saved %":"Port Hours Saved %",
     "planning turnaround":"Planning Turnaround Time (h)",
@@ -1471,7 +1475,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const map = {
       "CI Adherence":"CI Adh.","Planning Turnaround Time (h)":"PLN.T","Stowage Quality":"Stowage",
       "Re-handles":"Rehandle","Yard Clashes":"Yard Clash","RTG Moves Before Gantry":"RTG MBG",
-      "Loading Points":"LP","Twin Planning":"Twin.P","Twins Planning":"Twin.P","Port Hours Saved %":"P.Hrs",
+      "Loading Points":"LP","Twin Planning":"Twin.P","Twins Planning":"Twin.P","Vessel Twin Planning":"Vessel Twin.P","Port Hours Saved %":"P.Hrs",
       "Alternation":"Altern.","Dual Cycling":"Dual Cyc.","Yard Picking Sequence Adherence":"Y.Pick.Seq",
       "Twin Yard Flow Adherence":"TYF Adh.","Pow Per Stack":"POW","P.O.W Operational Overlap":"POW","Tandem Planning":"Tandem",
       "Rows Evacuation":"Rows Evac","Stacks Evacuation":"Stacks Evac","Yard Mirroring":"Yard Mirr.",
@@ -1650,7 +1654,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function normalizedFieldName(v){ return String(v??"").replace(/\s+/g," ").trim(); }
   const KPI_ID_ALIASES = {
     "twinsplanning":"twinplanning",
-    "vesseltwinplanning":"twinplanning",
     "powperstack":"powoperationaloverlap",
     "powoperationaloverlap":"powoperationaloverlap"
   };
@@ -1662,6 +1665,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     "rtgmovesbeforegantry":"RTG Moves Before Gantry",
     "loadingpoints":"Loading Points",
     "twinplanning":"Twin Planning",
+    "vesseltwinplanning":"Vessel Twin Planning",
     "porthourssaved":"Port Hours Saved %",
     "planningturnaroundtime":"Planning Turnaround Time (%)",
     "planningturnaroundtimeh":"Planning Turnaround Time (h)",
@@ -2013,7 +2017,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     canonicalizeCatalogEntries(freshCatalog||[]).forEach(k => {
       const wanted=kpiIdentityKey(k.key);
       let matches=merged.map((old,index)=>({old,index,key:kpiIdentityKey(old.key)})).filter(x=>x.key===wanted);
-      if(!matches.length)matches=merged.map((old,index)=>({old,index,key:kpiIdentityKey(old.key)})).filter(x=>wanted.length>=5&&x.key.length>=5&&(x.key.includes(wanted)||wanted.includes(x.key)));
+      if(!matches.length)matches=merged.map((old,index)=>({old,index,key:kpiIdentityKey(old.key)})).filter(x=>{
+        if ((wanted==="twinplanning"&&x.key==="vesseltwinplanning") || (wanted==="vesseltwinplanning"&&x.key==="twinplanning")) return false;
+        return wanted.length>=5&&x.key.length>=5&&(x.key.includes(wanted)||wanted.includes(x.key));
+      });
       if(matches.length===1){
         const {old,index}=matches[0];
         merged[index]=Object.assign({},old,k,{key:canonicalKpiName(k.key),targets_by_year:Object.assign({},old.targets_by_year||{})});
@@ -5288,7 +5295,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
       const key = targetSettingsKey(rawKey);
       if (out.some(k=>kpiIdentityKey(k.key)===kpiIdentityKey(key))) return;
-      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
+      const pct = rawKey.includes("%") || rawKey === "Planning Turnaround Time (%)" || ["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Twins Planning","Vessel Twin Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling"].includes(rawKey);
       const lower = ["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance"].includes(key);
       out.push({key, targets_by_year:{}, period_cols:{}, period_agg:{}, isPercent:pct, direction:lower?"lower":"higher", targetOnly:true});
     });
