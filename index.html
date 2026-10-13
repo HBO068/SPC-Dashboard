@@ -702,6 +702,107 @@ body[data-command-mode="global"] #networkView,body[data-command-mode="global"] #
 .weekly-filter-count{margin-left:auto;align-self:center;color:var(--text-faint);font-size:11px;font-weight:700;white-space:nowrap}
 @media(max-width:720px){.weekly-vessel-filter-field,.weekly-vessel-select{min-width:100%;width:100%}.weekly-filter-count{margin-left:0;width:100%}}
 </style>
+<style id="spc-complete-light-and-print-fix-v1">
+/* Complete light theme: override the dark Command Center presentation without
+   changing any dashboard structure, calculations, or navigation. */
+html[data-theme="light"] body{
+  background:radial-gradient(circle at 72% 0%,rgba(40,114,184,.08),transparent 34%),radial-gradient(circle at 18% 42%,rgba(27,158,99,.05),transparent 32%),#f3f6f8!important;
+  color:#16242e!important;
+}
+html[data-theme="light"] body::after{opacity:.24;background-image:linear-gradient(rgba(40,114,184,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(40,114,184,.055) 1px,transparent 1px)}
+/* The hero always uses a dark port photograph, so its identity text must stay
+   light even when the rest of the application is in Light Mode. */
+html[data-theme="light"] .topbar #brandTitle,
+html[data-theme="light"] .topbar .brand-text .t1{
+  color:#f4fbff!important;
+  text-shadow:0 2px 8px rgba(0,0,0,.92),0 0 2px rgba(0,0,0,.95)!important;
+}
+html[data-theme="light"] .topbar #brandTitle .accent{color:#28ddff!important}
+html[data-theme="light"] .topbar #brandSubtitle,
+html[data-theme="light"] .topbar .brand-text .t2{
+  color:#d8edf5!important;
+  text-shadow:0 1px 5px rgba(0,0,0,.9)!important;
+}
+html[data-theme="light"] .topbar #brandSubtitle .accent{color:#effbff!important}
+html[data-theme="light"] .sidebar{background:linear-gradient(180deg,#fff 0%,#eef3f6 100%)!important;border-right-color:#d4e0e6!important;box-shadow:14px 0 34px rgba(28,54,68,.09)!important}
+html[data-theme="light"] .sidebar::before{color:#17313f!important}
+html[data-theme="light"] .sidebar::after,html[data-theme="light"] .sidebar-section-title{color:#607c8a!important}
+html[data-theme="light"] .sidebar-section{border-top-color:#d9e4e9!important}
+html[data-theme="light"] .sidebar-btn{color:#4f6976!important}
+html[data-theme="light"] .sidebar-btn:hover{background:#e5f2f6!important;border-color:#b7d8e2!important;color:#17313f!important}
+html[data-theme="light"] .sidebar-btn.active{background:linear-gradient(90deg,rgba(0,169,214,.15),rgba(0,169,214,.04))!important;color:#087f9e!important;border-left-color:#079ec5!important;box-shadow:inset 0 0 0 1px rgba(0,139,176,.18)!important}
+html[data-theme="light"] .sidebar-status{color:#698490!important}
+html[data-theme="light"] .print-menu{background:#fff!important;border-color:#cbd9e0!important;box-shadow:0 12px 28px rgba(22,48,62,.16)!important}
+html[data-theme="light"] .print-menu button{color:#17313f!important}
+html[data-theme="light"] .print-menu button:hover{background:#edf5f7!important;color:#087f9e!important}
+
+html[data-theme="light"] #mainSectionTabs,html[data-theme="light"] .terminal-row,html[data-theme="light"] .period-row{background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(239,245,248,.96))!important;border-color:#d3e0e6!important}
+html[data-theme="light"] .tabs{background:#e9f0f4!important;border-color:#cfdee5!important}
+html[data-theme="light"] .tab,html[data-theme="light"] .term-pill{color:#4a6572!important}
+html[data-theme="light"] .tab:not(.active):hover,html[data-theme="light"] .term-pill:not(.active):hover{background:#e0f2f6!important;border-color:#77c6d8!important;color:#0b6076!important}
+html[data-theme="light"] .tab.active,html[data-theme="light"] .term-pill.active{background:linear-gradient(180deg,#20c9e8,#0aa5c8)!important;color:#06232d!important;border-color:#079ec5!important}
+html[data-theme="light"] .period-picker select,html[data-theme="light"] .picker-select,html[data-theme="light"] .nav-btn,
+html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea{background:#fff!important;border-color:#c8d8e0!important;color:#18313e!important}
+html[data-theme="light"] input::placeholder,html[data-theme="light"] textarea::placeholder{color:#78909c!important}
+html[data-theme="light"] option{background:#fff;color:#18313e}
+html[data-theme="light"] .section-label{color:#52717f!important}
+
+html[data-theme="light"] .ncard,html[data-theme="light"] .term-card,html[data-theme="light"] .gr-kpi-card,html[data-theme="light"] .gr-scope-card,html[data-theme="light"] .gr-analysis-card,html[data-theme="light"] .gr-pareto-card,
+html[data-theme="light"] .adh-card,html[data-theme="light"] .adh-panel,html[data-theme="light"] .score-card,html[data-theme="light"] .vcard,html[data-theme="light"] .gauge-card,html[data-theme="light"] .trend-card,
+html[data-theme="light"] .chart-card,html[data-theme="light"] .table-card,html[data-theme="light"] .vscore-card,html[data-theme="light"] .sqdc-letter-card,html[data-theme="light"] .sqdc-panel,
+html[data-theme="light"] .sqdc-chart-card,html[data-theme="light"] .sqdc-column-detail,html[data-theme="light"] .workload-card,html[data-theme="light"] .workload-summary-card,
+html[data-theme="light"] .scope-loss-card,html[data-theme="light"] .scope-loss-registry,html[data-theme="light"] .adh-terminal-chart-card{
+  background:linear-gradient(180deg,#fff,#f7fafb)!important;border-color:#cfdee5!important;color:#16242e!important;box-shadow:0 8px 24px rgba(31,63,79,.08),inset 0 1px 0 #fff!important;
+}
+html[data-theme="light"] body[data-command-mode="terminal"] .ncard,html[data-theme="light"] body[data-command-mode="terminal"] .score-card,html[data-theme="light"] body[data-command-mode="terminal"] .vcard,
+html[data-theme="light"] body[data-command-mode="terminal"] .chart-card,html[data-theme="light"] body[data-command-mode="terminal"] .gauge-card,html[data-theme="light"] body[data-command-mode="terminal"] .trend-card{background:linear-gradient(180deg,#fff,#f7fafb)!important}
+html[data-theme="light"] .term-card::before{background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.80)),linear-gradient(90deg,rgba(255,255,255,.14),rgba(255,255,255,.88) 58%),var(--hero-terminal)!important;border-bottom-color:#d2e0e6!important;opacity:.72}
+html[data-theme="light"] .term-card::after{box-shadow:inset 0 1px 0 #fff}
+html[data-theme="light"] .term-card .code,html[data-theme="light"] .term-card .score-main .score,html[data-theme="light"] .term-card .term-stats b,
+html[data-theme="light"] .vscore-card .vname{color:#142d39!important;text-shadow:none!important}
+html[data-theme="light"] .term-card .subname,html[data-theme="light"] .term-card .score-main .target,html[data-theme="light"] .term-card .term-stats span,
+html[data-theme="light"] .vscore-card .vvisit{color:#5d7885!important}
+html[data-theme="light"] .term-card .score-badge,html[data-theme="light"] .term-card .meta-chip{background:rgba(255,255,255,.90)!important}
+html[data-theme="light"] .term-card .term-stats div{border-bottom-color:#dce6eb!important}
+html[data-theme="light"] .term-card .progress{background:#e5edf1!important}
+
+html[data-theme="light"] .adh-toolbar,html[data-theme="light"] .gr-toolbar,html[data-theme="light"] .weekly-vessel-filter-bar{background:rgba(255,255,255,.90)!important;border-color:#cfdee5!important}
+html[data-theme="light"] .adh-terminal-chart-grid>div,html[data-theme="light"] .workload-mini,html[data-theme="light"] .workload-summary-metric,
+html[data-theme="light"] .workload-overall-summary-period,html[data-theme="light"] .sqdc-metric,html[data-theme="light"] .scope-loss-month-row,
+html[data-theme="light"] .gr-terminal-card .gr-volume div{background:#eef4f7!important;border-color:#d8e4e9!important;color:#16242e!important}
+html[data-theme="light"] .sqdc-report-section{background:rgba(255,255,255,.52)!important;border-color:#d8e4e9!important;color:#16242e!important}
+html[data-theme="light"] .scope-loss-metric,html[data-theme="light"] .scope-loss-summary-card{background:linear-gradient(135deg,#fff,#eef4f7)!important;border-color:#cfdee5!important}
+html[data-theme="light"] .scope-loss-metric span,html[data-theme="light"] .scope-loss-summary-card span{color:#536f7c!important}
+html[data-theme="light"] .scope-loss-metric b,html[data-theme="light"] .scope-loss-summary-card b{color:#16242e!important}
+html[data-theme="light"] .scope-loss-summary-card.good{background:linear-gradient(135deg,rgba(27,158,99,.13),#fff)!important}
+html[data-theme="light"] .scope-loss-summary-card.watch{background:linear-gradient(135deg,rgba(184,121,10,.13),#fff)!important}
+html[data-theme="light"] .scope-loss-summary-card.bad{background:linear-gradient(135deg,rgba(204,53,41,.13),#fff)!important}
+html[data-theme="light"] .sqdc-delivery-breakdown{background:#fff!important;border-color:#cfdee5!important}
+html[data-theme="light"] .sqdc-delivery-breakdown th,html[data-theme="light"] .sqdc-delivery-breakdown td{border-bottom-color:#dce6eb!important;color:#16242e}
+html[data-theme="light"] .sqdc-delivery-breakdown th{color:#57707d!important}
+html[data-theme="light"] table,html[data-theme="light"] .adh-table,html[data-theme="light"] .settings-table{background:#fff!important;color:#16242e!important}
+html[data-theme="light"] th{color:#526e7b!important}
+html[data-theme="light"] td{color:#16242e}
+
+/* Printing/export: every active report keeps the selected theme, remains fully
+   visible, and avoids white-on-white or dark-on-dark text. */
+@media print{
+  html[data-theme="light"] body,html[data-theme="light"] .main-area,html[data-theme="light"] .wrap{background:#f3f6f8!important;color:#16242e!important}
+  html[data-theme="dark"] body,html[data-theme="dark"] .main-area,html[data-theme="dark"] .wrap{background:#08161f!important;color:#e9f2f5!important}
+  .topbar::before,.topbar::after{animation:none!important}
+  .ncard,.term-card,.gr-kpi-card,.gr-scope-card,.gr-analysis-card,.gr-pareto-card,.adh-card,.adh-panel,.score-card,.vcard,.gauge-card,.trend-card,.chart-card,.table-card,.vscore-card,
+  .sqdc-letter-card,.sqdc-panel,.sqdc-chart-card,.sqdc-column-detail,.sqdc-report-section,.workload-card,.workload-summary-card,.scope-loss-card,.scope-loss-registry,.adh-terminal-chart-card{
+    background:var(--panel)!important;border-color:var(--border)!important;color:var(--text)!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;
+  }
+  .scope-loss-metric,.scope-loss-summary-card,.workload-mini,.workload-summary-metric,.workload-overall-summary-period,.sqdc-metric,.adh-terminal-chart-grid>div{background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--border-soft)!important}
+  .scope-loss-metric b,.scope-loss-summary-card b,.vscore-card .vname,.term-card .code,.term-card .score-main .score,.term-card .term-stats b{color:var(--text)!important}
+  .scope-loss-metric span,.scope-loss-summary-card span,.vscore-card .vvisit,.term-card .subname,.term-card .score-main .target,.term-card .term-stats span{color:var(--text-muted)!important}
+  .sqdc-delivery-breakdown{overflow:visible!important;background:var(--panel)!important;border-color:var(--border)!important}
+  .sqdc-delivery-breakdown table{min-width:0!important;width:100%!important;font-size:7pt!important}
+  .sqdc-delivery-breakdown th,.sqdc-delivery-breakdown td{padding:4px 5px!important;color:var(--text)!important;border-color:var(--border-soft)!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+</style>
 </head>
 <body>
 <div id="loginScreen" style="position:fixed; inset:0; z-index:1000; background:#08161F; display:flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif;">
@@ -1380,6 +1481,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 (function(){
   const BUNDLE = window.__BUNDLE__ || {terminals:{}};
   const ASSETS = window.__ASSETS__ || {flags:{}, logo:null};
+  const SHIP_ICON = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%235fd6ff'/%3E%3Cstop offset='1' stop-color='%2393e7ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22h43l7 4H14z' fill='rgba(95,214,255,.12)'/%3E%3Cpath d='M18 18h8v-4h8v4h10'/%3E%3Cpath d='M22 14V9m7 5V9m8 9V8'/%3E%3Cpath d='M8 26h46'/%3E%3C/g%3E%3C/svg%3E";
   const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || null;
 
   // ---------- Firebase init ----------
@@ -4108,8 +4210,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           "Vessel Score: " + (hasScoreVal ? fmtNum(score,1) : "–") + " / target " + (hasTargetVal ? fmtNum(target,1) : "–") + " (" + statusLabel + ")"
         ].join("\n");
         card.innerHTML = `
-          <div class="vname" title="${vesselName.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}">${visitId.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
-          <div class="vvisit">${visitDate}${r["Service"] ? " · " + String(r["Service"]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""}</div>
+          <img class="ship-ico" src="${SHIP_ICON}" alt="vessel">
+          <div class="vname" title="${vesselName.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}">${(vesselName || visitId).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+          <div class="vvisit">${visitDate}${r["Service"] ? " · " + String(r["Service"]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""}${visitId ? " · " + visitId.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""}</div>
           <div class="vscore-mini"><canvas id="${gaugeId}"></canvas><div class="vscore-mini-value" style="color:${color}">${fmtNum(score,1)}</div></div>
         `;
         vsGrid.appendChild(card);
@@ -4134,7 +4237,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const status = statusFor(scoreKpi, score, scoreKpi?effectiveTarget(scoreKpi, currentTerminal, r._year, "vessel"):null);
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${r["Vessel Name"]}</td><td>${r["Service"]||""}</td><td>${r["Line op"]||""}</td>
+          <td><div style="display:flex;align-items:center;gap:8px;"><img src="${SHIP_ICON}" alt="vessel" style="width:30px;height:18px;object-fit:contain;opacity:.96;"><span>${r["Vessel Name"]}</span></div></td><td>${r["Service"]||""}</td><td>${r["Line op"]||""}</td>
           <td>${r._etb.toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})}</td>
           <td>${r._etd ? r._etd.toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'UTC'}) : '–'}</td>
           <td>${fmtNum(r["Load Planned"])}</td><td>${fmtNum(r["Discharge Planned"])}</td><td>${fmtNum(r["Total TEU Planned"])}</td>
