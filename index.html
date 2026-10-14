@@ -305,6 +305,20 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   const VOLUME=new Set(["Restows (20' Moves)","Restows (40'/45' Moves)","Load Planned (20' Moves)","Load Planned (40'/45' Moves)","Discharge Planned (20' Moves)","Discharge Planned (40'/45' Moves)","Total Moves Planned","Total TEU Planned"]);
   const PERCENT=new Set(["CI Adherence","Stowage Quality","Rehandle","Twin Planning","Alternation","Clash","Dual Cycling","Tandem","POW per stack"]);
   const LOWER=new Set(["Planning Turnaround Time(h)","Rehandle","Clash","QC Unnecessary Gantry","RTG Moves","ATD"]);
+  const KPI_NAME_ALIASES={
+    "score":"Vessel Score","overallscore":"Vessel Score","vesselscore":"Vessel Score",
+    "rehandle":"Re-handles","rehandles":"Re-handles",
+    "yardtwin":"Twin Planning","yardtwinplanning":"Twin Planning","twinplanning":"Twin Planning","twinsplanning":"Twin Planning",
+    "vesseltwinplanning":"Vessel Twin Planning","vesseltwinsplanning":"Vessel Twin Planning",
+    "clash":"Yard Clashes","yardclashes":"Yard Clashes",
+    "rtgmoves":"RTG Moves Before Gantry","rtgmovesbeforegantry":"RTG Moves Before Gantry",
+    "atd":"Average Traveling Distance","averagetravelingdistance":"Average Traveling Distance",
+    "tandem":"Tandem Planning","tandemplanning":"Tandem Planning",
+    "powperstack":"P.O.W Operational Overlap","powoperationaloverlap":"P.O.W Operational Overlap",
+    "planningturnaroundtimeh":"Planning Turnaround Time (h)"
+  };
+  const kpiId=v=>String(v??"").toLowerCase().replace(/\btwins\b/g,"twin").replace(/[^a-z0-9]+/g,"");
+  const canonicalKpi=v=>KPI_NAME_ALIASES[kpiId(v)]||String(v??"").replace(/\s+/g," ").trim();
   function number(v){
     if(v===null||v===undefined||v===""||String(v).trim().toUpperCase()==="N/A")return null;
     if(typeof v==="number")return Number.isFinite(v)?v:null;
@@ -329,30 +343,36 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     if(!raw.length)throw new Error('The "Vessel Visits" sheet contains no vessel rows.');
     const headers=Object.keys(raw[0]);
     ["Terminal","Id visit","Vessel Name","ETB","ETD","Total Moves Planned","Score"].forEach(h=>{if(!headers.includes(h))throw new Error('The "Vessel Visits" sheet is missing required column: '+h);});
-    const kpiNames=headers.filter(h=>!META.has(h)&&!VOLUME.has(h)&&h!=="Score"&&!/(restows|load planned|discharge planned|total moves planned|total teu planned)/i.test(h));
+    const kpiNames=[...new Set(headers.filter(h=>!META.has(h)&&!VOLUME.has(h)&&h!=="Score"&&!/^(ci given|ci planned)$/i.test(String(h).trim())&&!/(restows|load planned|discharge planned|total moves planned|total teu planned)/i.test(h)).map(canonicalKpi))];
     const byTerminal={},weekly={};
     raw.forEach(src=>{
       const term=String(src.Terminal||"").trim().toUpperCase();const etb=date(src.ETB),etd=date(src.ETD);
       if(!term||!etb)return;
       const iw=isoWeek(etb),year=String(etb.getUTCFullYear()),month=pad(etb.getUTCMonth()+1),week=pad(iw.week);
-      const row={};headers.forEach(h=>{row[h]=(META.has(h)||h==="Vessel Name"||h==="Service"||h==="Line Op")?src[h]:number(src[h]);});
+      const row={};headers.forEach(h=>{
+        const value=(META.has(h)||h==="Vessel Name"||h==="Service"||h==="Line Op")?src[h]:number(src[h]);
+        row[h]=value;
+        const canonical=canonicalKpi(h);
+        if(canonical!==h&&(row[canonical]===undefined||row[canonical]===null||row[canonical]===""))row[canonical]=value;
+      });
       row["Line op"]=src["Line Op"]||"";row["ETB"]=etb.toISOString();row["ETD"]=etd?etd.toISOString():null;row["Year"]=year;
       row["Load Planned"]=number(src["Total Load Planned(With\nRestows)"])??number(src["Total Load Planned"])??0;
       row["Discharge Planned"]=number(src["Total Discharge Planned(With\nRestows)"])??number(src["Total Discharge Planned"])??0;
       row["Restows (20' Moves)"]=number(src["Restows (20'\nMoves)"])??number(src["Restows (20' Moves)"])??0;
       row["Restows (40'/45' Moves)"]=number(src["Restows 40'/45'\nMoves"])??number(src["Restows (40'/45' Moves)"])??0;
       row["Quarter"]="Q"+(Math.floor(etb.getUTCMonth()/3)+1);row["Month By ETB"]=month;row["Month Filter"]=year+"-"+month;
-      row["Week By ETB"]=week;row["Week Filter"]=String(iw.year)+"-W"+week;row["Day by ETB"]=pad(etb.getUTCDate());row["Vessel Score"]=number(src.Score);
+      row["Week By ETB"]=week;row["Week Filter"]=String(iw.year)+"-"+week;row["Day by ETB"]=pad(etb.getUTCDate());row["Vessel Score"]=number(src.Score);
       (byTerminal[term]=byTerminal[term]||{});(byTerminal[term][year]=byTerminal[term][year]||[]).push(row);
       const wk=row["Week Filter"],key=term+"|"+wk;(weekly[key]=weekly[key]||{term,weekKey:wk,rows:[]}).rows.push(row);
     });
     if(!Object.keys(byTerminal).length)throw new Error('No valid Panama vessel visits with Terminal and ETB were found.');
-    const catalog=[{key:"Vessel Score",targets_by_year:{},period_cols:{},period_agg:{},isPercent:false,direction:"higher",panamaKpi:true}]
-      .concat(kpiNames.map(key=>({key,targets_by_year:{},period_cols:{},period_agg:{daily:"avg",weekly:"avg",monthly:"avg",quarterly:"avg",yearly:"avg"},isPercent:PERCENT.has(key),direction:LOWER.has(key)?"lower":"higher",panamaKpi:true})));
+    // Settings KPI names are owned exclusively by the Targets workbook. Vessel Visits supplies
+    // operational values only and must never register raw Excel columns as Settings KPIs.
+    const catalog=[];
     const weeklyResults=Object.values(weekly).map(g=>{
       const kpis={};kpiNames.forEach(k=>{const a=g.rows.map(r=>r[k]).filter(Number.isFinite);kpis[k]=a.length?a.reduce((x,y)=>x+y,0)/a.length:null;});
       const scores=g.rows.map(r=>r["Vessel Score"]).filter(Number.isFinite);kpis["Overall Score"]=scores.length?scores.reduce((x,y)=>x+y,0)/scores.length:null;
-      kpis.Calls=new Set(g.rows.map(r=>String(r["Id visit"]||"")).filter(Boolean)).size;kpis.Moves=g.rows.reduce((a,r)=>a+(Number(r["Total Moves Planned"])||0),0);
+      kpis.Calls=g.rows.length;kpis.Moves=g.rows.reduce((a,r)=>a+(Number(r["Total Moves Planned"])||0),0);
       const dates=g.rows.map(r=>new Date(r.ETB)).sort((a,b)=>a-b);return {weekKey:g.weekKey,startDate:dates[0].toISOString().slice(0,10),endDate:dates[dates.length-1].toISOString().slice(0,10),term:g.term,kpis};
     });
     return {sheetName,byTerminal,catalog,weeklyResults,totalRows:raw.length};
@@ -1463,12 +1483,17 @@ window.__FIREBASE_CONFIG__ = {
     "ci adherence":"CI Adherence",
     "stowage quality":"Stowage Quality",
     "rehandles":"Re-handles",
+    "rehandle":"Re-handles",
     "re-handles":"Re-handles",
     "yard clashes":"Yard Clashes",
+    "clash":"Yard Clashes",
     "rtg moves before gantry":"RTG Moves Before Gantry",
+    "rtg moves":"RTG Moves Before Gantry",
     "loading points":"Loading Points",
     "twins planning":"Twin Planning",
     "twin planning":"Twin Planning",
+    "yard twin":"Twin Planning",
+    "yard twin planning":"Twin Planning",
     "vessel twin planning":"Vessel Twin Planning",
     "vessel twins planning":"Vessel Twin Planning",
     "port hours":"Port Hours Saved %",
@@ -1481,6 +1506,7 @@ window.__FIREBASE_CONFIG__ = {
     "rows evacuation":"Rows Evacuation",
     "stacks evacuation":"Stacks Evacuation",
     "average traveling distance":"Average Traveling Distance",
+    "atd":"Average Traveling Distance",
     "yard mirroring":"Yard Mirroring",
     "alternation":"Alternation",
     "twin yard flow adherence":"Twin Yard Flow Adherence",
@@ -1522,7 +1548,7 @@ window.__FIREBASE_CONFIG__ = {
         continue;
       }
       const looksLikeTerminal=/^[A-Z0-9]{3,6}$/i.test(a) && row.slice(1).every(v=>v===null || v==="");
-      if(looksLikeTerminal){ currentTerm=a.toUpperCase(); kpis[currentTerm]=kpis[currentTerm]||[]; years=[]; continue; }
+      if(looksLikeTerminal){ currentTerm=(a.toUpperCase()==="SUAPE"?"SUA":a.toUpperCase()); kpis[currentTerm]=kpis[currentTerm]||[]; years=[]; continue; }
       if(!currentTerm || !years.length) continue;
       const kpiKey=targetLabelToKpi(a);
       if(!kpiKey){ unrecognized.push({row:i+1,label:a,terminal:currentTerm}); continue; }
@@ -1546,6 +1572,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 (function(){
   const BUNDLE = window.__BUNDLE__ || {terminals:{}};
   const ASSETS = window.__ASSETS__ || {flags:{}, logo:null};
+  // Suape is a Brazilian terminal and intentionally uses the same flag asset as PECEM.
+  if(ASSETS.flags&&ASSETS.flags.PEC)ASSETS.flags.SUA=ASSETS.flags.PEC;
   const SHIP_ICON = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%235fd6ff'/%3E%3Cstop offset='1' stop-color='%2393e7ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22h43l7 4H14z' fill='rgba(95,214,255,.12)'/%3E%3Cpath d='M18 18h8v-4h8v4h10'/%3E%3Cpath d='M22 14V9m7 5V9m8 9V8'/%3E%3Cpath d='M8 26h46'/%3E%3C/g%3E%3C/svg%3E";
   const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || null;
 
@@ -1883,6 +1911,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function normalizedFieldName(v){ return String(v??"").replace(/\s+/g," ").trim(); }
   const KPI_ID_ALIASES = {
     "twinsplanning":"twinplanning",
+    "yardtwin":"twinplanning",
+    "yardtwinplanning":"twinplanning",
+    "score":"vesselscore",
+    "overallscore":"vesselscore",
+    "rehandle":"rehandles",
+    "clash":"yardclashes",
+    "rtgmoves":"rtgmovesbeforegantry",
+    "qcunnecessarygantries":"qcunnecessarygantry",
+    "atd":"averagetravelingdistance",
+    "tandem":"tandemplanning",
     "powperstack":"powoperationaloverlap",
     "powoperationaloverlap":"powoperationaloverlap"
   };
@@ -1892,6 +1930,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     "rehandles":"Re-handles",
     "yardclashes":"Yard Clashes",
     "rtgmovesbeforegantry":"RTG Moves Before Gantry",
+    "qcunnecessarygantry":"QC Unnecessary Gantry",
     "loadingpoints":"Loading Points",
     "twinplanning":"Twin Planning",
     "vesseltwinplanning":"Vessel Twin Planning",
@@ -2126,12 +2165,51 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const PANAMA_DATA = {}; // termCode -> { weekKey -> {startDate,endDate,kpis} }
   let PANAMA_TERM_CODES = [];
 
+  function normalizedPanamaWeekKey(value){
+    return String(value||"").replace(/^(\d{4})-W(\d{2})$/,"$1-$2");
+  }
+  function panamaIsoWeek(d){
+    const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+    x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));
+    const y=new Date(Date.UTC(x.getUTCFullYear(),0,1));
+    return {year:x.getUTCFullYear(),week:Math.ceil((((x-y)/86400000)+1)/7)};
+  }
+  function canonicalizePanamaRows(rawRows){
+    return normalizeRows(rawRows||[]).map(row=>{
+      const out=Object.assign({},row);
+      Object.keys(row).forEach(key=>{
+        if(key.startsWith("_"))return;
+        const canonical=canonicalKpiName(key);
+        const value=row[key];
+        if(canonical!==key&&(out[canonical]===undefined||out[canonical]===null||out[canonical]===""))out[canonical]=value;
+      });
+      if(out._etb){
+        const iw=panamaIsoWeek(out._etb),month=String(out._etb.getUTCMonth()+1).padStart(2,"0"),week=String(iw.week).padStart(2,"0");
+        out.Year=String(out._etb.getUTCFullYear());out._year=out.Year;
+        out.Quarter="Q"+(Math.floor(out._etb.getUTCMonth()/3)+1);out._quarter=out.Quarter;
+        out["Month By ETB"]=month;out["Month Filter"]=out.Year+"-"+month;
+        out["Week By ETB"]=week;out["Week Filter"]=String(iw.year)+"-"+week;
+        out["Day by ETB"]=String(out._etb.getUTCDate()).padStart(2,"0");
+      }
+      return out;
+    });
+  }
+  function canonicalizePanamaWeeklyKpis(kpis){
+    const out={};
+    Object.entries(kpis||{}).forEach(([key,value])=>{
+      const canonical=key==="Overall Score"||key==="Calls"||key==="Moves"?key:canonicalKpiName(key);
+      if(out[canonical]===undefined||out[canonical]===null)out[canonical]=value;
+    });
+    return out;
+  }
+
   function mergePanamaWeekIntoMemory(result){
     Object.keys(result.terminals).forEach(code => {
       if (!PANAMA_DATA[code]) PANAMA_DATA[code] = {};
       if (!PANAMA_TERM_CODES.includes(code)) PANAMA_TERM_CODES.push(code);
-      PANAMA_DATA[code][result.weekKey] = {
-        startDate: result.startDate, endDate: result.endDate, kpis: result.terminals[code]
+      const normalizedWeek=normalizedPanamaWeekKey(result.weekKey);
+      PANAMA_DATA[code][normalizedWeek] = {
+        startDate: result.startDate, endDate: result.endDate, kpis: canonicalizePanamaWeeklyKpis(result.terminals[code])
       };
     });
   }
@@ -2167,7 +2245,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const snap = await db.collection("panama").doc(code).collection("weeks").get();
         if (!snap.empty){
           if (!PANAMA_DATA[code]) PANAMA_DATA[code] = {};
-          snap.forEach(doc => { PANAMA_DATA[code][doc.id] = doc.data(); });
+          snap.forEach(doc => { const value=doc.data();PANAMA_DATA[code][normalizedPanamaWeekKey(doc.id)]={startDate:value.startDate,endDate:value.endDate,kpis:canonicalizePanamaWeeklyKpis(value.kpis)}; });
         }
       } catch(e){ console.error("loadPanamaDataFromStorage failed for", code, e); }
       // New Panama model: load the individual vessel visits as well. Old saved weekly summaries
@@ -2178,8 +2256,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if(yres&&yres.value)years=JSON.parse(yres.value);
         if(cres&&cres.value)catalog=JSON.parse(cres.value);
         const loaded=await Promise.all(years.map(async y=>[y,await firestoreGetYearRows(code,y)]));
-        const rows=[];loaded.forEach(([,r])=>{if(r)rows.push(...normalizeRows(r));});
-        if(rows.length||catalog.length)DATA[code]={rows,kpis:catalog.length?catalog:panamaKpiCatalog()};
+        const rows=[];loaded.forEach(([,r])=>{if(r)rows.push(...canonicalizePanamaRows(r));});
+        if(rows.length||catalog.length)DATA[code]={rows,kpis:canonicalizeCatalogEntries(catalog)};
       } catch(e){ console.error("loadPanama vessel visits failed for",code,e); }
     }));
   }
@@ -2200,9 +2278,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         result.byTerminal[code][year].forEach(r=>merged.set(panamaVisitKey(r),r));
         await firestoreSetYearRows(code,year,[...merged.values()]);
       }
-      const existing=(DATA[code]&&DATA[code].kpis)||[];
-      const catalog=buildMergedCatalog(code,result.catalog.length?result.catalog:existing);
-      await storageSet("catalog:"+code,JSON.stringify(catalog),true);
+      // Do not touch catalog/settings here: Panama Settings names come only from Targets Excel.
       await storageSet("years:"+code,JSON.stringify([...new Set([...years,...newYears])].sort()),true);
     }
     await storageSet("panama_known_terminals",JSON.stringify(known.sort()),true);
@@ -2216,9 +2292,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(!PANAMA_TERM_CODES.includes(code))PANAMA_TERM_CODES.push(code);
       const existing=(DATA[code]&&DATA[code].rows)||[],freshYears=Object.keys(result.byTerminal[code]);
       const fresh=result.byTerminal[code],rowMap=new Map(existing.map(r=>[panamaVisitKey(r),r]));
-      freshYears.forEach(y=>normalizeRows(fresh[y]).forEach(r=>rowMap.set(panamaVisitKey(r),r)));
-      const mergedRows=[...rowMap.values()];
-      DATA[code]={rows:mergedRows,kpis:buildMergedCatalog(code,result.catalog)};
+      freshYears.forEach(y=>canonicalizePanamaRows(fresh[y]).forEach(r=>rowMap.set(panamaVisitKey(r),r)));
+      const mergedRows=canonicalizePanamaRows([...rowMap.values()]);
+      const existingCatalog=(DATA[code]&&DATA[code].kpis)||[];
+      DATA[code]={rows:mergedRows,kpis:canonicalizeCatalogEntries(existingCatalog)};
     });
     PANAMA_TERM_CODES.sort();
   }
@@ -2495,6 +2572,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       || (CURRENT_THEME === "light" ? "#F3F6F8" : "#08161F");
 
     const saved = [];
+    const ignoredCanvases = [];
     const saveStyle = (el) => {
       if (!el) return;
       saved.push([el, el.getAttribute("style")]);
@@ -2557,6 +2635,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // Let the live layout settle. No cloning, no width changes, no rerendering.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
+      // html2canvas calls createPattern for every canvas it encounters. A hidden/lazy chart can
+      // legitimately have a zero-sized backing canvas, which makes createPattern throw and used
+      // to abort the entire print in either theme. Ignore only those non-renderable canvases;
+      // all visible report charts remain in the export.
+      wrap.querySelectorAll("canvas").forEach(canvas=>{
+        const rect=canvas.getBoundingClientRect();
+        if(canvas.width<=0||canvas.height<=0||rect.width<=0||rect.height<=0){
+          ignoredCanvases.push([canvas,canvas.getAttribute("data-html2canvas-ignore")]);
+          canvas.setAttribute("data-html2canvas-ignore","true");
+        }
+      });
+
       // Capture the .wrap element directly — html2canvas measures and positions it itself,
       // which is far more reliable than hand-computing a crop rectangle from a union of child
       // elements' getBoundingClientRect() (that approach caused both the scroll bug and the
@@ -2575,11 +2665,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         logging: false,
         scrollX: 0,
         scrollY: 0,
+        ignoreElements: el => el instanceof HTMLCanvasElement && (el.width<=0||el.height<=0),
         windowWidth: document.documentElement.clientWidth,
         windowHeight: Math.max(document.documentElement.clientHeight, document.body.scrollHeight)
       });
     } finally {
       restoreStyles();
+      ignoredCanvases.forEach(([canvas,oldValue])=>{
+        if(oldValue===null)canvas.removeAttribute("data-html2canvas-ignore");
+        else canvas.setAttribute("data-html2canvas-ignore",oldValue);
+      });
       if(brandTitle) brandTitle.textContent = savedBrandTitle;
       if(brandSubtitle) brandSubtitle.textContent = savedBrandSubtitle;
       window.scrollTo(savedScrollX, savedScrollY);
@@ -2899,7 +2994,19 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       SETTINGS[term]=SETTINGS[term]||{};
       if(!DATA[term])DATA[term]={rows:[],kpis:[]};
       DATA[term].kpis=DATA[term].kpis||[];
+      // Older Panama uploads could incorrectly register every Vessel Visits column as a KPI.
+      // Remember those source-only identities so this Targets import can remove them safely,
+      // while retaining all genuine target-registered KPIs from previous years.
+      const incomingIds=new Set(standardizedIncoming.map(name=>kpiIdentityKey(targetSettingsKey(name))));
+      const sourceOnlyIds=new Set(DATA[term].kpis.filter(k=>k&&k.panamaKpi&&!k.registeredFromTargets).map(k=>kpiIdentityKey(k.key)));
       migratedAliases.push(...migrateTerminalKpiAliases(term,standardizedIncoming));
+      if(PANAMA_TERM_CODES.includes(term)&&sourceOnlyIds.size){
+        DATA[term].kpis=DATA[term].kpis.filter(k=>!sourceOnlyIds.has(kpiIdentityKey(k.key))||incomingIds.has(kpiIdentityKey(k.key))||k.registeredFromTargets);
+        Object.keys(SETTINGS[term]).forEach(key=>{
+          const id=kpiIdentityKey(key);
+          if(sourceOnlyIds.has(id)&&!incomingIds.has(id))delete SETTINGS[term][key];
+        });
+      }
 
       standardizedIncoming.forEach(kpiKey=>{
         const settingsKey=targetSettingsKey(kpiKey);
@@ -2908,8 +3015,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const catalogKey=exact?exact.key:settingsKey;
         if(!exact){
           DATA[term].kpis.push({key:settingsKey,base_col:null,targets_by_year:{},period_cols:{},period_agg:{},isPercent:kpiKey.includes("%"),direction:"higher",registeredFromTargets:true});
-        } else if(kpiKey==="Planning Turnaround Time (%)"){
-          exact.isPercent=true;
+        } else {
+          exact.registeredFromTargets=true;
+          delete exact.panamaKpi;
+          if(kpiKey==="Planning Turnaround Time (%)")exact.isPercent=true;
         }
         SETTINGS[term][catalogKey]=SETTINGS[term][catalogKey] || {
           activeTerminal:true, activeGlobal:true, priority:999, targetOverrides:{},
@@ -3557,7 +3666,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const keys = new Set();
     PANAMA_TERM_CODES.forEach(t => Object.keys(PANAMA_DATA[t]||{}).forEach(wk => keys.add(wk)));
     return [...keys].filter(wk=>canAccessYear(String(wk).slice(0,4))).sort((a,b) => {
-      const [ya,wa] = a.split("-W").map(Number), [yb,wb] = b.split("-W").map(Number);
+      const [ya,wa] = normalizedPanamaWeekKey(a).split("-").map(Number), [yb,wb] = normalizedPanamaWeekKey(b).split("-").map(Number);
       return ya!==yb ? ya-yb : wa-wb;
     });
   }
@@ -3611,19 +3720,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (v === null || v === undefined || isNaN(v)) return "–";
     if (name === "Overall Score") return fmtNum(v,2);
     if (name === "Calls" || name === "Moves") return fmtNum(v,0);
-    if (["Rehandle","Twin Planning","Alternation","Clash","Dual Cycling","Tandem","CI Adherence","POW per stack"].includes(name)) return (v*100).toFixed(1)+"%";
+    if (["Re-handles","Twin Planning","Alternation","Yard Clashes","Dual Cycling","Tandem Planning","CI Adherence","P.O.W Operational Overlap"].includes(name)) return (v*100).toFixed(1)+"%";
     if (name === "Plan Lag-Time"){ const h=Math.floor(v), m=Math.round((v-h)*60); return h+"h "+m+"m"; }
     return fmtNum(v,1);
   }
-  const PANAMA_KPI_ORDER = ["Overall Score","Calls","Moves","Rehandle","Twin Planning","Alternation","Clash",
-    "Dual Cycling","Plan Lag-Time","Tandem","Loading Points","QC Unnecessary Gantry","RTG Moves",
-    "POW per stack","Yard Twin","CI Adherence","CMPH","GMPH","ATD"];
+  const PANAMA_KPI_ORDER = ["Overall Score","Calls","Moves","Re-handles","Twin Planning","Alternation","Yard Clashes",
+    "Dual Cycling","Plan Lag-Time","Tandem Planning","Loading Points","QC Unnecessary Gantry","RTG Moves Before Gantry",
+    "P.O.W Operational Overlap","CI Adherence","CMPH","GMPH","Average Traveling Distance"];
 
   function panamaKpiCatalog(term){
     if(term&&DATA[term]&&DATA[term].kpis&&DATA[term].kpis.length)return DATA[term].kpis;
-    const pct=new Set(["Rehandle","Twin Planning","Alternation","Clash","Dual Cycling","Tandem","CI Adherence","POW per stack"]);
-    const lower=new Set(["Rehandle","Clash","Plan Lag-Time","QC Unnecessary Gantry","RTG Moves","ATD"]);
-    return PANAMA_KPI_ORDER.map(key=>({key,targets_by_year:{},period_cols:{},period_agg:{},isPercent:pct.has(key),direction:lower.has(key)?"lower":"higher",panamaKpi:true}));
+    return [];
   }
   function baseSettingsKpisForTerm(term){
     if(PANAMA_TERM_CODES.includes(term)) return panamaKpiCatalog(term);
@@ -3690,7 +3797,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     activeTerms.forEach(t => {
       const score = panamaAvg(t, curGroup.weekKeys, "Overall Score");
       const el = document.createElement("div");
-      el.className = "term-card";
+      el.className = "term-card clickable";
       const kpiChips = PANAMA_KPI_ORDER.filter(k=>k!=="Overall Score"&&k!=="Calls"&&k!=="Moves").map(k => {
         const v = panamaAvg(t, curGroup.weekKeys, k);
         return v===null ? "" : `<span class="chip">${k}: ${panamaFmt(k,v)}</span>`;
@@ -3700,6 +3807,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <div class="head"><span class="code">${flagHtml}${t}</span><span class="score-badge" style="background:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}22;color:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}">${score!==null?fmtNum(score,2):"–"}</span></div>
         <div class="chips">${kpiChips}</div>
       `;
+      el.onclick=()=>{currentSection="panama";currentTerminal=t;currentPeriod=null;buildMainNav();buildTerminalPills();render();};
       termsGrid.appendChild(el);
     });
   }
@@ -6099,7 +6207,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(detailRows.length){
         const filtered=detailRows.filter(r=>{const etd=r._etd||toDate(r["ETD"]);if(!etd)return false;return adhPeriodMatch(adherencePeriodFields(etd),type,period);});
         if(metric==="moves")return filtered.reduce((a,r)=>a+adhNumber(r["Total Moves Planned"]),0);
-        return new Set(filtered.map(r=>String(r["Id visit"]||"").trim()).filter(Boolean)).size;
+        return filtered.length;
       }
       return Object.entries(PANAMA_DATA[pod]||{}).reduce((total,[wk,v])=>{
         const d=toDate(v.startDate), f=d?adherencePeriodFields(d):null, row=f?{year:f.year,month:f.month,quarter:f.quarter,week:f.week}:null;
@@ -6110,7 +6218,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const etd=r._etd||toDate(r["ETD"]); if(!etd)return false; const f=adherencePeriodFields(etd); return adhPeriodMatch(f,type,period);
     });
     if(metric==="moves") return filtered.reduce((a,r)=>a+adhNumber(r["Total Moves Planned"]),0);
-    return new Set(filtered.map(r=>String(r["Id visit"]||"").trim()).filter(Boolean)).size;
+    return filtered.length;
   }
   function adhRowsFor(scope,metric,type,period){
     if(!period)return [];
