@@ -1930,7 +1930,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     "rehandles":"Re-handles",
     "yardclashes":"Yard Clashes",
     "rtgmovesbeforegantry":"RTG Moves Before Gantry",
-    "qcunnecessarygantry":"QC Unnecessary Gantry",
+    "qcunnecessarygantry":"QC Unnecessary Gantries",
     "loadingpoints":"Loading Points",
     "twinplanning":"Twin Planning",
     "vesseltwinplanning":"Vessel Twin Planning",
@@ -2888,6 +2888,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const canonical=canonicalKpiName(kpiName);
     return canonical==="Planning Turnaround Time (%)"?"Planning Turnaround Time (h)":canonical;
   }
+  function targetKpiIsPercent(kpiName){
+    const key=canonicalKpiName(kpiName);
+    return key.includes("%")||["CI Adherence","Stowage Quality","Re-handles","Rows Evacuation","Yard Mirroring","Twin Planning","Vessel Twin Planning","Alternation","Stack Evacuation","Yard Clashes","Dual Cycling","Tandem Planning","P.O.W Operational Overlap"].includes(key);
+  }
+  function targetKpiDefaultDirection(kpiName){
+    const key=targetSettingsKey(kpiName);
+    const lowerIds=new Set(["Planning Turnaround Time (h)","Re-handles","Yard Clashes","Average Traveling Distance","QC Unnecessary Gantries","RTG Moves Before Gantry"].map(kpiIdentityKey));
+    return lowerIds.has(kpiIdentityKey(key))?"lower":"higher";
+  }
   function isPlainSettingsObject(value){
     return !!value&&typeof value==="object"&&!Array.isArray(value);
   }
@@ -2982,7 +2991,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(knownRes && knownRes.value) known=JSON.parse(knownRes.value);
     for(const [term,incomingNames] of Object.entries(kpisByTerm)){
       const standardizedIncoming=[...new Map(incomingNames.map(name=>[kpiIdentityKey(canonicalKpiName(name)),canonicalKpiName(name)])).values()];
-      standardizedIncoming.forEach(kpiKey=>mergeKpiRegistryEntry(targetSettingsKey(kpiKey),kpiKey.includes("%")));
+      standardizedIncoming.forEach(kpiKey=>mergeKpiRegistryEntry(targetSettingsKey(kpiKey),targetKpiIsPercent(kpiKey)));
       const importedYears=(yearsByTerm&&yearsByTerm[term])||[];
       SETTINGS_YEARS[term]=[...new Set([...(SETTINGS_YEARS[term]||[]),...importedYears.map(String)])].sort();
       if(!known.includes(term)) known.push(term);
@@ -3002,10 +3011,6 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       migratedAliases.push(...migrateTerminalKpiAliases(term,standardizedIncoming));
       if(PANAMA_TERM_CODES.includes(term)&&sourceOnlyIds.size){
         DATA[term].kpis=DATA[term].kpis.filter(k=>!sourceOnlyIds.has(kpiIdentityKey(k.key))||incomingIds.has(kpiIdentityKey(k.key))||k.registeredFromTargets);
-        Object.keys(SETTINGS[term]).forEach(key=>{
-          const id=kpiIdentityKey(key);
-          if(sourceOnlyIds.has(id)&&!incomingIds.has(id))delete SETTINGS[term][key];
-        });
       }
 
       standardizedIncoming.forEach(kpiKey=>{
@@ -3014,7 +3019,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const exact=DATA[term].kpis.find(k=>kpiIdentityKey(k.key)===wanted);
         const catalogKey=exact?exact.key:settingsKey;
         if(!exact){
-          DATA[term].kpis.push({key:settingsKey,base_col:null,targets_by_year:{},period_cols:{},period_agg:{},isPercent:kpiKey.includes("%"),direction:"higher",registeredFromTargets:true});
+          DATA[term].kpis.push({key:settingsKey,base_col:null,targets_by_year:{},period_cols:{},period_agg:{},isPercent:targetKpiIsPercent(kpiKey),direction:targetKpiDefaultDirection(kpiKey),registeredFromTargets:true});
         } else {
           exact.registeredFromTargets=true;
           delete exact.panamaKpi;
@@ -3026,6 +3031,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         };
         if(kpiKey==="Planning Turnaround Time (%)"&&SETTINGS[term][catalogKey].isPercent===undefined)SETTINGS[term][catalogKey].isPercent=true;
       });
+
+      if(PANAMA_TERM_CODES.includes(term)){
+        // For Panama, the currently uploaded Targets workbook is the authoritative visible KPI
+        // list. Keep saved configurations in SETTINGS for safety, but expose/persist only the
+        // KPI names present in this terminal's block of this Targets workbook.
+        const authorized=[...new Map(standardizedIncoming.map(name=>{
+          const key=targetSettingsKey(name);return [kpiIdentityKey(key),key];
+        })).values()];
+        const current=canonicalizeCatalogEntries(DATA[term].kpis);
+        DATA[term].kpis=authorized.map(key=>{
+          const existing=current.find(k=>kpiIdentityKey(k.key)===kpiIdentityKey(key));
+          return Object.assign({key,base_col:null,targets_by_year:{},period_cols:{},period_agg:{},isPercent:targetKpiIsPercent(key),direction:targetKpiDefaultDirection(key)},existing||{},{key,registeredFromTargets:true});
+        });
+      }
 
       await Promise.all([
         persistCatalogForTerm(term),
@@ -5775,7 +5794,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
   function settingsKpisForTerm(term){
     const out = baseSettingsKpisForTerm(term);
-    const targetKeys = Object.keys(IMPORTED_TARGETS[term] || {});
+    // Panama's visible list is exactly its current Targets Excel catalog; legacy imported-target
+    // keys must not reintroduce retired/raw Vessel Visits columns into Settings.
+    const targetKeys = PANAMA_TERM_CODES.includes(term)?[]:Object.keys(IMPORTED_TARGETS[term] || {});
     targetKeys.forEach(rawKey => {
       // The period (%) and vessel-hours target rows both belong to the operational PTT (h) KPI.
       const key = targetSettingsKey(rawKey);
