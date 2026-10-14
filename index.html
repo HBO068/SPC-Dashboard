@@ -303,12 +303,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 (function(root){
   const META=new Set(["Year","Month","Week","Terminal","Id visit","Vessel Name","Service","Line Op","ETB","ETD","Full","Empties"]);
   const VOLUME=new Set(["Restows (20' Moves)","Restows (40'/45' Moves)","Load Planned (20' Moves)","Load Planned (40'/45' Moves)","Discharge Planned (20' Moves)","Discharge Planned (40'/45' Moves)","Total Moves Planned","Total TEU Planned"]);
-  const PERCENT=new Set(["CI Adherence","Stowage Quality","Rehandle","Twin Planning","Alternation","Clash","Dual Cycling","Tandem","POW per stack"]);
+  const PERCENT=new Set(["CI Adherence","Stowage Quality","Rehandle","Twin Planning","Vessel Twin Planning","Alternation","Clash","Dual Cycling","Tandem","POW per stack"]);
   const LOWER=new Set(["Planning Turnaround Time(h)","Rehandle","Clash","QC Unnecessary Gantry","RTG Moves","ATD"]);
   const KPI_NAME_ALIASES={
     "score":"Vessel Score","overallscore":"Vessel Score","vesselscore":"Vessel Score",
     "rehandle":"Re-handles","rehandles":"Re-handles",
-    "yardtwin":"Twin Planning","yardtwinplanning":"Twin Planning","twinplanning":"Twin Planning","twinsplanning":"Twin Planning",
+    // Panama's source column "Twin Planning" is the vessel KPI. Keep it distinct from the
+    // Tangier yard-level Twin Planning KPI, including for newly uploaded vessel visits.
+    "yardtwin":"Vessel Twin Planning","yardtwinplanning":"Vessel Twin Planning","twinplanning":"Vessel Twin Planning","twinsplanning":"Vessel Twin Planning",
     "vesseltwinplanning":"Vessel Twin Planning","vesseltwinsplanning":"Vessel Twin Planning",
     "clash":"Yard Clashes","yardclashes":"Yard Clashes",
     "rtgmoves":"RTG Moves Before Gantry","rtgmovesbeforegantry":"RTG Moves Before Gantry",
@@ -350,12 +352,15 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       if(!term||!etb)return;
       const iw=isoWeek(etb),year=String(etb.getUTCFullYear()),month=pad(etb.getUTCMonth()+1),week=pad(iw.week);
       const row={};headers.forEach(h=>{
-        const value=(META.has(h)||h==="Vessel Name"||h==="Service"||h==="Line Op")?src[h]:number(src[h]);
-        row[h]=value;
         const canonical=canonicalKpi(h);
+        let value=(META.has(h)||h==="Vessel Name"||h==="Service"||h==="Line Op")?src[h]:number(src[h]);
+        // Panama records Planning Turnaround in minutes. The platform and all targets use hours.
+        if(canonical==="Planning Turnaround Time (h)"&&Number.isFinite(value))value=value/60;
+        if(canonical!=="Vessel Twin Planning"||kpiId(h)!=="twinplanning")row[h]=value;
         if(canonical!==h&&(row[canonical]===undefined||row[canonical]===null||row[canonical]===""))row[canonical]=value;
       });
       row["Line op"]=src["Line Op"]||"";row["ETB"]=etb.toISOString();row["ETD"]=etd?etd.toISOString():null;row["Year"]=year;
+      row._panamaPttUnit="hours";
       row["Load Planned"]=number(src["Total Load Planned(With\nRestows)"])??number(src["Total Load Planned"])??0;
       row["Discharge Planned"]=number(src["Total Discharge Planned(With\nRestows)"])??number(src["Total Discharge Planned"])??0;
       row["Restows (20' Moves)"]=number(src["Restows (20'\nMoves)"])??number(src["Restows (20' Moves)"])??0;
@@ -452,7 +457,9 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     .app-shell{ display:block; }
     body{ background:#fff !important; }
     .wrap{ max-width:100%; padding:10px; }
-    * { color:#111 !important; }
+    /* Text colors are resolved by the selected theme below. A universal black override made
+       Dark Mode exports unreadable and is intentionally not used. */
+    html[data-theme="light"] body{ color:#111 !important; }
     .score-card, .vcard, .ncard, .term-card, .chart-card, .vr-card, .gauge-card, .trend-card, .table-card, .timeline-card { border:1px solid #ccc !important; background:#fff !important; }
     .bar-fill, .status-dot, .chip, .pill { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
@@ -526,8 +533,16 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   .gr-terminal-heading{display:flex;align-items:end;justify-content:space-between;margin:22px 0 11px;border-bottom:1px solid var(--border);padding-bottom:8px}.gr-terminal-heading h2{font:700 13px var(--display);margin:0}.gr-terminal-heading span{font-size:10px;color:var(--text-muted)}
   .gr-terminal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gr-terminal-card{cursor:default}.gr-terminal-card.clickable{cursor:pointer}.gr-terminal-card .gr-volume{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.gr-terminal-card .gr-volume div{background:var(--panel-2);border-radius:8px;padding:8px}.gr-terminal-card .gr-volume span{display:block;font-size:9px;color:var(--text-muted)}.gr-terminal-card .gr-volume b{font:700 12px var(--mono)}
   .gr-terminal-card .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.gr-terminal-card .chip{white-space:normal;line-height:1.25}
+  .gr-terminal-card{min-height:360px!important}.gr-terminal-card .term-shell{padding-bottom:12px}.gr-terminal-card .term-topline{min-height:50px}
+  .gr-exec-volume{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 10px}.gr-exec-volume>div{padding:9px 10px;border:1px solid var(--border-soft);border-radius:8px;background:rgba(13,42,57,.72)}
+  .gr-exec-volume span{display:block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}.gr-exec-volume b{display:block;margin-top:4px;font:700 15px var(--mono);color:var(--text)}
+  .gr-adh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.gr-adh-row{padding:9px 10px;border:1px solid var(--border-soft);border-radius:8px;background:rgba(10,31,44,.70)}
+  .gr-adh-line,.gr-adh-detail{display:flex;align-items:center;justify-content:space-between;gap:8px}.gr-adh-line span{font-size:9px;color:var(--text-muted);text-transform:uppercase}.gr-adh-line b{font:700 13px var(--mono)}.gr-adh-detail{margin-top:4px;font:500 8px var(--mono);color:var(--text-faint)}
+  .gr-adh-track{height:4px;margin-top:7px;background:var(--border-soft);border-radius:99px;overflow:hidden}.gr-adh-track i{display:block;height:100%;border-radius:inherit}
+  .gr-kpi-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:10px}.gr-kpi-row{display:grid;grid-template-columns:5px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:7px;padding:7px 8px;border:1px solid var(--border-soft);border-radius:7px;background:rgba(13,39,53,.58);min-width:0}.gr-kpi-row>i{grid-row:1/span 2;align-self:stretch;border-radius:5px}.gr-kpi-row>span{font-size:9px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gr-kpi-row>b{font:700 10px var(--mono);text-align:right}.gr-kpi-row>small{grid-column:2/span 2;font:500 8px var(--mono);color:var(--text-faint);margin-top:2px}.gr-empty-kpi{grid-column:1/-1;padding:12px;text-align:center;color:var(--text-faint);font-size:10px}
+  html[data-theme="light"] .gr-exec-volume>div,html[data-theme="light"] .gr-adh-row,html[data-theme="light"] .gr-kpi-row{background:#eef4f7!important;border-color:#d8e4e9!important}
   @media(max-width:1200px){.gr-kpi-grid{grid-template-columns:repeat(3,1fr)}.gr-scope-metrics{grid-template-columns:repeat(3,1fr)}.gr-terminal-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:850px){.gr-kpi-grid,.gr-analysis-grid,.gr-pareto-grid,.gr-scope-grid,.gr-terminal-grid{grid-template-columns:1fr}.gr-scope-metrics{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:850px){.gr-kpi-grid,.gr-analysis-grid,.gr-pareto-grid,.gr-scope-grid,.gr-terminal-grid{grid-template-columns:1fr}.gr-scope-metrics,.gr-adh-grid,.gr-kpi-list{grid-template-columns:repeat(2,1fr)}}
   .chip{ font-size:10px; font-family:var(--mono); padding:3px 7px; border-radius:6px; background:var(--panel-2); color:var(--text-muted); border:1px solid var(--border-soft);}
   .chip.good{ color:var(--teal); border-color:rgba(47,217,190,0.3);} .chip.watch{ color:var(--amber); border-color:rgba(245,169,63,0.3);} .chip.bad{ color:var(--coral); border-color:rgba(242,96,75,0.3);}
 
@@ -880,6 +895,9 @@ html[data-theme="light"] td{color:#16242e}
     background:var(--panel)!important;border-color:var(--border)!important;color:var(--text)!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;
   }
   .scope-loss-metric,.scope-loss-summary-card,.workload-mini,.workload-summary-metric,.workload-overall-summary-period,.sqdc-metric,.adh-terminal-chart-grid>div{background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--border-soft)!important}
+  .gr-exec-volume>div,.gr-adh-row,.gr-kpi-row{background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--border-soft)!important}
+  .gr-terminal-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.gr-terminal-card{min-height:0!important;break-inside:avoid!important;page-break-inside:avoid!important}.gr-terminal-card::before{animation:none!important}.gr-kpi-list{gap:4px!important}.gr-kpi-row{padding:5px 6px!important}
+  .gr-pareto-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.gr-pareto-box{height:220px!important}
   .scope-loss-metric b,.scope-loss-summary-card b,.vscore-card .vname,.term-card .code,.term-card .score-main .score,.term-card .term-stats b{color:var(--text)!important}
   .scope-loss-metric span,.scope-loss-summary-card span,.vscore-card .vvisit,.term-card .subname,.term-card .score-main .target,.term-card .term-stats span{color:var(--text-muted)!important}
   .sqdc-delivery-breakdown{overflow:visible!important;background:var(--panel)!important;border-color:var(--border)!important}
@@ -2048,6 +2066,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Number(v).toLocaleString(undefined, {maximumFractionDigits: decimals===undefined?0:decimals});
   }
   function effectiveIsPercent(kpi, term){
+    if(!kpi)return false;
     // Vessel-level Planning Turnaround is measured in hours even though the period-level
     // Planning Turnaround score is a percentage. A forced vessel display must never inherit
     // the period percentage setting from the shared KPI Settings record.
@@ -2057,11 +2076,13 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return !!kpi.isPercent;
   }
   function effectiveDirection(kpi, term){
+    if(!kpi)return "higher";
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     if (s.direction === "higher" || s.direction === "lower") return s.direction;
     return kpi.direction || "higher";
   }
   function effectiveVesselDirection(kpi, term){
+    if(!kpi)return "higher";
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     if (s.vesselDirection === "higher" || s.vesselDirection === "lower") return s.vesselDirection;
     return effectiveDirection(kpi, term);
@@ -2179,10 +2200,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const out=Object.assign({},row);
       Object.keys(row).forEach(key=>{
         if(key.startsWith("_"))return;
-        const canonical=canonicalKpiName(key);
-        const value=row[key];
+        // Read-time migration for already stored Panama data: its legacy Twin Planning field
+        // is the vessel KPI. No database deletion or re-upload is required.
+        const canonical=kpiIdentityKey(key)==="twinplanning"?"Vessel Twin Planning":canonicalKpiName(key);
+        let value=row[key];
+        if(canonical==="Planning Turnaround Time (h)"&&row._panamaPttUnit!=="hours"&&Number.isFinite(Number(value)))value=Number(value)/60;
+        if(canonical===key)out[key]=value;
         if(canonical!==key&&(out[canonical]===undefined||out[canonical]===null||out[canonical]===""))out[canonical]=value;
+        if(canonical==="Vessel Twin Planning"&&key!==canonical)delete out[key];
       });
+      out._panamaPttUnit="hours";
       if(out._etb){
         const iw=panamaIsoWeek(out._etb),month=String(out._etb.getUTCMonth()+1).padStart(2,"0"),week=String(iw.week).padStart(2,"0");
         out.Year=String(out._etb.getUTCFullYear());out._year=out.Year;
@@ -2197,7 +2224,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function canonicalizePanamaWeeklyKpis(kpis){
     const out={};
     Object.entries(kpis||{}).forEach(([key,value])=>{
-      const canonical=key==="Overall Score"||key==="Calls"||key==="Moves"?key:canonicalKpiName(key);
+      const canonical=key==="Overall Score"||key==="Vessel Score"||key==="Calls"||key==="Moves"
+        ? (key==="Overall Score"?"Vessel Score":key)
+        : (kpiIdentityKey(key)==="twinplanning"?"Vessel Twin Planning":canonicalKpiName(key));
       if(out[canonical]===undefined||out[canonical]===null)out[canonical]=value;
     });
     return out;
@@ -2545,6 +2574,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   async function captureCurrentReport(){
     if (!window.html2canvas) throw new Error("Image export library did not load.");
+    prepareCurrentReportForPrint();
 
     // Lazy terminal charts must exist before PDF/image capture, including charts below the viewport.
     if (currentTerminal === "ADHERENCE"){
@@ -2677,6 +2707,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       });
       if(brandTitle) brandTitle.textContent = savedBrandTitle;
       if(brandSubtitle) brandSubtitle.textContent = savedBrandSubtitle;
+      document.body.classList.remove("printing-report");
       window.scrollTo(savedScrollX, savedScrollY);
     }
   }
@@ -2686,11 +2717,22 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const canvas = await captureCurrentReport();
       if(!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export library did not load.");
       const {jsPDF}=window.jspdf;
-      // Restore the established export contract: one continuous custom-sized page whose
-      // width is fixed and whose height follows the complete open report.
-      const pageWidth=1200,pageHeight=Math.max(1,canvas.height*pageWidth/canvas.width);
-      const pdf=new jsPDF({orientation:pageWidth>=pageHeight?"landscape":"portrait",unit:"pt",format:[pageWidth,pageHeight],compress:true});
-      pdf.addImage(canvas.toDataURL("image/jpeg",.94),"JPEG",0,0,pageWidth,pageHeight,undefined,"FAST");
+      // Export every report on standard A4 landscape pages. Extremely tall custom PDF pages
+      // were clipped by browsers/PDF readers; slicing keeps the complete report printable in
+      // both themes without changing the live dashboard layout.
+      const pageWidth=841.89,pageHeight=595.28;
+      const pdf=new jsPDF({orientation:"landscape",unit:"pt",format:"a4",compress:true});
+      const sliceHeight=Math.max(1,Math.floor(canvas.width*pageHeight/pageWidth));
+      let page=0;
+      for(let y=0;y<canvas.height;y+=sliceHeight){
+        const h=Math.min(sliceHeight,canvas.height-y),slice=document.createElement("canvas");
+        slice.width=canvas.width;slice.height=h;
+        const ctx=slice.getContext("2d");ctx.fillStyle=(CURRENT_THEME==="light"?"#F3F6F8":"#08161F");ctx.fillRect(0,0,slice.width,slice.height);ctx.drawImage(canvas,0,y,canvas.width,h,0,0,canvas.width,h);
+        if(page++)pdf.addPage("a4","landscape");
+        if(CURRENT_THEME==="light")pdf.setFillColor(243,246,248);else pdf.setFillColor(8,22,31);
+        pdf.rect(0,0,pageWidth,pageHeight,"F");
+        pdf.addImage(slice.toDataURL("image/jpeg",.94),"JPEG",0,0,pageWidth,h*pageWidth/canvas.width,undefined,"FAST");
+      }
       pdf.save(exportBaseName()+".pdf");
     } catch(e){ alert("Could not export PDF: " + e.message); }
   };
@@ -2784,7 +2826,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       await loadAllSettingsFromStorage();
       buildTerminalPills();
       if(showingSettings) {
-        if(!settingsTerm || !TERM_CODES.includes(settingsTerm)) settingsTerm = Object.keys(result.kpis)[0] || settingsTerm;
+        if(!settingsTerm || (!TERM_CODES.includes(settingsTerm)&&!PANAMA_TERM_CODES.includes(settingsTerm))) settingsTerm = Object.keys(result.kpis)[0] || settingsTerm;
         renderSettingsView();
       }
       render();
@@ -2984,6 +3026,25 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     return migrations;
   }
+  function migratePanamaTwinPlanning(term){
+    if(!PANAMA_TERM_CODES.includes(term))return false;
+    let changed=false;
+    SETTINGS[term]=SETTINGS[term]||{};
+    const legacy=SETTINGS[term]["Twin Planning"],official=SETTINGS[term]["Vessel Twin Planning"];
+    if(legacy){
+      // Preserve every manually entered value. If the official record already exists, it wins
+      // only where it has an explicit value; legacy values fill any missing configuration.
+      SETTINGS[term]["Vessel Twin Planning"]=mergeSettingsRecords(legacy,official||{});
+      delete SETTINGS[term]["Twin Planning"];changed=true;
+    }
+    if(DATA[term]&&Array.isArray(DATA[term].kpis)){
+      const migrated=DATA[term].kpis.map(k=>k&&kpiIdentityKey(k.key)==="twinplanning"?Object.assign({},k,{key:"Vessel Twin Planning"}):k);
+      const canonical=canonicalizeCatalogEntries(migrated);
+      if(canonical.length!==DATA[term].kpis.length||migrated.some((k,i)=>k&&DATA[term].kpis[i]&&k.key!==DATA[term].kpis[i].key))changed=true;
+      DATA[term].kpis=canonical;
+    }
+    return changed;
+  }
   async function persistImportedTargets(kpisByTerm,yearsByTerm){
     let known=[];
     const migratedAliases=[];
@@ -3008,6 +3069,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       // while retaining all genuine target-registered KPIs from previous years.
       const incomingIds=new Set(standardizedIncoming.map(name=>kpiIdentityKey(targetSettingsKey(name))));
       const sourceOnlyIds=new Set(DATA[term].kpis.filter(k=>k&&k.panamaKpi&&!k.registeredFromTargets).map(k=>kpiIdentityKey(k.key)));
+      migratePanamaTwinPlanning(term);
       migratedAliases.push(...migrateTerminalKpiAliases(term,standardizedIncoming));
       if(PANAMA_TERM_CODES.includes(term)&&sourceOnlyIds.size){
         DATA[term].kpis=DATA[term].kpis.filter(k=>!sourceOnlyIds.has(kpiIdentityKey(k.key))||incomingIds.has(kpiIdentityKey(k.key))||k.registeredFromTargets);
@@ -3032,19 +3094,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if(kpiKey==="Planning Turnaround Time (%)"&&SETTINGS[term][catalogKey].isPercent===undefined)SETTINGS[term][catalogKey].isPercent=true;
       });
 
-      if(PANAMA_TERM_CODES.includes(term)){
-        // For Panama, the currently uploaded Targets workbook is the authoritative visible KPI
-        // list. Keep saved configurations in SETTINGS for safety, but expose/persist only the
-        // KPI names present in this terminal's block of this Targets workbook.
-        const authorized=[...new Map(standardizedIncoming.map(name=>{
-          const key=targetSettingsKey(name);return [kpiIdentityKey(key),key];
-        })).values()];
-        const current=canonicalizeCatalogEntries(DATA[term].kpis);
-        DATA[term].kpis=authorized.map(key=>{
-          const existing=current.find(k=>kpiIdentityKey(k.key)===kpiIdentityKey(key));
-          return Object.assign({key,base_col:null,targets_by_year:{},period_cols:{},period_agg:{},isPercent:targetKpiIsPercent(key),direction:targetKpiDefaultDirection(key)},existing||{},{key,registeredFromTargets:true});
-        });
-      }
+      // KPI names are additive. A later Targets workbook may cover a different year, so a KPI
+      // omitted from that file must keep its catalog entry and all manually saved configuration.
+      // Visibility is controlled only by the terminal/global year toggles in Settings.
+      DATA[term].kpis=canonicalizeCatalogEntries(DATA[term].kpis);
 
       await Promise.all([
         persistCatalogForTerm(term),
@@ -3077,6 +3130,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         if (res && res.value){
           const stored = JSON.parse(res.value);
           SETTINGS[term] = Object.assign({}, SETTINGS[term], stored);
+          migratePanamaTwinPlanning(term);
         }
       } catch(e){ /* no stored settings yet for this terminal */ }
     }));
@@ -3086,6 +3140,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
   function effectiveTarget(kpi, term, year, mode){
     mode = mode || "period";
+    if(!kpi||!kpi.key)return null;
     const isPlanningHours = kpi && kpi.key === "Planning Turnaround Time (h)";
     const s = (SETTINGS[term] && SETTINGS[term][kpi.key]) || {};
     // The normal Settings target override is the PERIOD target. For Planning Turnaround Time (h),
@@ -3116,7 +3171,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     // year: optional — when given, a per-year override (set in Settings) takes precedence over
     // the KPI's flat default for that terminal.
     scope = scope || "terminal";
-    return DATA[term].kpis.filter(k=>k.key!=="Vessel Score").filter(k=>{
+    return (((DATA[term]&&DATA[term].kpis)||[])).filter(k=>k&&k.key&&k.key!=="Vessel Score").filter(k=>{
       return effectiveActive(term, k.key, scope, year);
     }).sort((a,b)=>{
       const pa = (SETTINGS[term][a.key]||{}).priority || 999;
@@ -3728,22 +3783,50 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return Object.keys(byY).sort().map(yk => ({ key: yk, label: yk, weekKeys: byY[yk] }));
   }
   function panamaAvg(term, weekKeys, kpiName){
+    const canonical=kpiIdentityKey(kpiName)==="twinplanning"?"Vessel Twin Planning":canonicalKpiName(kpiName);
+    // Period Planning Turnaround is a compliance rate: vessel visits meeting the configured
+    // hour target divided by all vessel visits in the selected period. The uploaded minutes
+    // have already been converted to hours at ingestion/read time.
+    if(canonical==="Planning Turnaround Time (h)"){
+      const wanted=new Set((weekKeys||[]).map(normalizedPanamaWeekKey));
+      const unique=new Map();
+      ((DATA[term]&&DATA[term].rows)||[]).forEach(r=>{
+        if(!wanted.has(normalizedPanamaWeekKey(r["Week Filter"])))return;
+        unique.set(panamaVisitKey(r),r);
+      });
+      const rows=[...unique.values()];
+      if(!rows.length)return null;
+      let targetFound=false,onTarget=0;
+      rows.forEach(r=>{
+        const k=panamaKpiCatalog(term).find(x=>x&&x.key==="Planning Turnaround Time (h)");
+        const target=k?effectiveTarget(k,term,String(r._year||r.Year||"").slice(0,4),"vessel"):null;
+        if(Number.isFinite(Number(target))){
+          targetFound=true;
+          const actual=Number(rowFieldValue(r,"Planning Turnaround Time (h)"));
+          if(Number.isFinite(actual)&&actual<=Number(target))onTarget++;
+        }
+      });
+      return targetFound?onTarget/rows.length:null;
+    }
+    const lookup=canonical==="Vessel Score"?["Vessel Score","Overall Score"]:[canonical,kpiName];
     const vals = weekKeys.map(wk => {
       const w = PANAMA_DATA[term] && PANAMA_DATA[term][wk];
-      return w && w.kpis ? w.kpis[kpiName] : null;
+      if(!w||!w.kpis)return null;
+      const key=lookup.find(name=>w.kpis[name]!==undefined&&w.kpis[name]!==null);
+      return key?w.kpis[key]:null;
     }).filter(v => v !== null && v !== undefined && !isNaN(v));
     if (!vals.length) return null;
     return vals.reduce((a,b)=>a+b,0) / vals.length;
   }
   function panamaFmt(name, v){
     if (v === null || v === undefined || isNaN(v)) return "–";
-    if (name === "Overall Score") return fmtNum(v,2);
+    if (name === "Overall Score" || name === "Vessel Score") return fmtNum(v,2);
     if (name === "Calls" || name === "Moves") return fmtNum(v,0);
-    if (["Re-handles","Twin Planning","Alternation","Yard Clashes","Dual Cycling","Tandem Planning","CI Adherence","P.O.W Operational Overlap"].includes(name)) return (v*100).toFixed(1)+"%";
+    if (["Planning Turnaround Time (h)","Re-handles","Twin Planning","Vessel Twin Planning","Alternation","Yard Clashes","Dual Cycling","Tandem Planning","CI Adherence","P.O.W Operational Overlap","Port Hours Saved %"].includes(name)) return (v*100).toFixed(1)+"%";
     if (name === "Plan Lag-Time"){ const h=Math.floor(v), m=Math.round((v-h)*60); return h+"h "+m+"m"; }
     return fmtNum(v,1);
   }
-  const PANAMA_KPI_ORDER = ["Overall Score","Calls","Moves","Re-handles","Twin Planning","Alternation","Yard Clashes",
+  const PANAMA_KPI_ORDER = ["Vessel Score","Calls","Moves","Planning Turnaround Time (h)","Port Hours Saved %","Re-handles","Vessel Twin Planning","Alternation","Yard Clashes",
     "Dual Cycling","Plan Lag-Time","Tandem Planning","Loading Points","QC Unnecessary Gantry","RTG Moves Before Gantry",
     "P.O.W Operational Overlap","CI Adherence","CMPH","GMPH","Average Traveling Distance"];
 
@@ -3786,7 +3869,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="section-label">NETWORK ROLLUP · ${curGroup.key}</div>
       <div class="volume-grid" id="panamaRollup"></div>
       <div class="section-label">TERMINALS</div>
-      <div class="term-grid" id="panamaTerminals"></div>
+      <div class="gr-terminal-grid" id="panamaTerminals"></div>
     `;
     const sel = document.getElementById("panamaPeriodSelect");
     groups.forEach(g => { const o = document.createElement("option"); o.value=g.key; o.textContent=g.label; sel.appendChild(o); });
@@ -3796,7 +3879,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const activeTerms = PANAMA_TERM_CODES.filter(t => curGroup.weekKeys.some(wk => PANAMA_DATA[t] && PANAMA_DATA[t][wk]));
     const totalCalls = activeTerms.reduce((a,t)=>a+(panamaAvg(t,curGroup.weekKeys,"Calls")||0),0);
     const totalMoves = activeTerms.reduce((a,t)=>a+(panamaAvg(t,curGroup.weekKeys,"Moves")||0),0);
-    const scores = activeTerms.map(t=>panamaAvg(t,curGroup.weekKeys,"Overall Score")).filter(v=>v!==null);
+    const scores = activeTerms.map(t=>panamaAvg(t,curGroup.weekKeys,"Vessel Score")).filter(v=>v!==null);
     const avgScore = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
 
     const rollup = document.getElementById("panamaRollup");
@@ -3814,17 +3897,21 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
     const termsGrid = document.getElementById("panamaTerminals");
     activeTerms.forEach(t => {
-      const score = panamaAvg(t, curGroup.weekKeys, "Overall Score");
+      const score = panamaAvg(t, curGroup.weekKeys, "Vessel Score");
       const el = document.createElement("div");
-      el.className = "term-card clickable";
-      const kpiChips = PANAMA_KPI_ORDER.filter(k=>k!=="Overall Score"&&k!=="Calls"&&k!=="Moves").map(k => {
-        const v = panamaAvg(t, curGroup.weekKeys, k);
-        return v===null ? "" : `<span class="chip">${k}: ${panamaFmt(k,v)}</span>`;
-      }).filter(Boolean).join("");
-      const flagHtml = ASSETS.flags[t] ? `<img src="${ASSETS.flags[t]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : '';
+      el.className = "term-card gr-terminal-card clickable";
+      const year=String(curGroup.key||"").slice(0,4),scoreKpi=panamaKpiCatalog(t).find(k=>k&&k.key==="Vessel Score"),scoreTarget=scoreKpi?effectiveTarget(scoreKpi,t,year):null,scoreStatus=Number.isFinite(score)&&Number.isFinite(scoreTarget)?statusFor(scoreKpi,score,scoreTarget,t):null,scoreColor=STATUS_COLOR[scoreStatus]||"var(--text-faint)";
+      const callsAdh=adhTerminalSummary(t,"calls",currentType,curGroup.key),movesAdh=adhTerminalSummary(t,"moves",currentType,curGroup.key);
+      const kpiRows = settingsKpisForTerm(t).filter(k=>k&&k.key!=="Vessel Score"&&effectiveActive(t,k.key,"global",year)).sort((a,b)=>(SETTINGS[t]?.[a.key]?.priority||999)-(SETTINGS[t]?.[b.key]?.priority||999)).map(k => {
+        const v = panamaAvg(t, curGroup.weekKeys, k.key);
+        const target=effectiveTarget(k,t,year),st=statusFor(k,v,target,t),color=STATUS_COLOR[st];
+        return `<div class="gr-kpi-row"><i style="background:${color}"></i><span>${adhEsc(kpiPeriodLabel(k.key))}</span><b style="color:${color}">${panamaFmt(k.key,v)}</b><small>Target ${panamaFmt(k.key,target)}</small></div>`;
+      }).join("");
+      const adhBlock=(label,s)=>{const st=s.actual==null||s.target==null?null:(s.actual>=s.target?"good":s.actual>=s.target*.85?"watch":"bad"),c=st?STATUS_COLOR[st]:"var(--text-faint)",w=Number.isFinite(s.actual)?Math.min(100,Math.max(0,s.actual*100)):0;return `<div class="gr-adh-row"><div class="gr-adh-line"><span>${label}</span><b style="color:${c}">${adhPct(s.actual)}</b></div><div class="gr-adh-detail"><span>${fmtNum(s.planned,0)} planned / ${fmtNum(s.total,0)} total</span><span>Target ${adhPct(s.target)}</span></div><div class="gr-adh-track"><i style="width:${w}%;background:${c}"></i></div></div>`;};
+      const flagHtml = ASSETS.flags[t] ? `<img class="flag" src="${ASSETS.flags[t]}">` : '';
       el.innerHTML = `
-        <div class="head"><span class="code">${flagHtml}${t}</span><span class="score-badge" style="background:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}22;color:${STATUS_COLOR[score!==null&&score>=4?'good':score!==null&&score>=3?'watch':'bad']}">${score!==null?fmtNum(score,2):"–"}</span></div>
-        <div class="chips">${kpiChips}</div>
+        <div class="term-shell"><div class="term-topline"><div class="term-ident"><div class="code">${flagHtml}${adhEsc(adhDisplayNameForPod(t))}</div><div class="subname">SPC Panama · ${adhEsc(curGroup.label)}</div></div><span class="score-badge" style="color:${scoreColor}">${panamaFmt("Vessel Score",score)} / ${panamaFmt("Vessel Score",scoreTarget)}</span></div>
+        <div class="gr-exec-volume"><div><span>Vessel Calls</span><b>${fmtNum(panamaAvg(t,curGroup.weekKeys,"Calls"),0)}</b></div><div><span>Moves</span><b>${fmtNum(panamaAvg(t,curGroup.weekKeys,"Moves"),0)}</b></div></div><div class="gr-adh-grid">${adhBlock("Calls Adherence",callsAdh)}${adhBlock("Moves Adherence",movesAdh)}</div><div class="gr-kpi-list">${kpiRows||'<div class="gr-empty-kpi">No active Global KPI result for this period</div>'}</div></div><div class="status-band ${scoreStatus||'na'}">${scoreStatus==='good'?'ON TARGET':scoreStatus==='watch'?'ATTENTION':scoreStatus==='bad'?'OFF TARGET':'NO SCORE DATA'}</div>
       `;
       el.onclick=()=>{currentSection="panama";currentTerminal=t;currentPeriod=null;buildMainNav();buildTerminalPills();render();};
       termsGrid.appendChild(el);
@@ -3870,8 +3957,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       summaries.push({kind:"standard",scope:"tangier",term,moves:vols["Total Moves Planned"]||0,calls:vols["__calls"]||0,score,scoreTarget,scoreKpi,kpis,periodRows,hasData:periodRows.length>0});
     });
     PANAMA_TERM_CODES.forEach(term=>{
-      ensurePanamaSettings(term);const hasData=!!panamaGroup&&panamaGroup.weekKeys.some(wk=>PANAMA_DATA[term]&&PANAMA_DATA[term][wk]),scoreKpi=panamaKpiCatalog().find(k=>k.key==="Overall Score");
-      summaries.push({kind:"panama",scope:"panama",term,moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Overall Score"):null,scoreTarget:effectiveTarget(scoreKpi,term,year),scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[],hasData});
+      ensurePanamaSettings(term);const hasData=!!panamaGroup&&panamaGroup.weekKeys.some(wk=>PANAMA_DATA[term]&&PANAMA_DATA[term][wk]),scoreKpi=panamaKpiCatalog(term).find(k=>k&&k.key==="Vessel Score")||null;
+      summaries.push({kind:"panama",scope:"panama",term,moves:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Moves")||0):0,calls:hasData?(panamaAvg(term,panamaGroup.weekKeys,"Calls")||0):0,score:hasData?panamaAvg(term,panamaGroup.weekKeys,"Vessel Score"):null,scoreTarget:scoreKpi?effectiveTarget(scoreKpi,term,year):null,scoreKpi,weekKeys:hasData?panamaGroup.weekKeys:[],hasData});
     });
     const grouped={global:summaries,tangier:summaries.filter(x=>x.scope==="tangier"),panama:summaries.filter(x=>x.scope==="panama")};
     const avg=a=>{const v=a.filter(Number.isFinite);return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
@@ -3904,18 +3991,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     function globalGapDrivers(metric){return adhAuthorizedRows(adhRowsFor("global",metric,currentType,globalReportPeriod)).filter(r=>r.target!=null&&r.expected!=null&&r.expected>r.planned).map(r=>({label:r.reg.displayName||r.reg.biName,gap:r.expected-r.planned})).sort((a,b)=>b.gap-a.gap).slice(0,12);}
     function renderPareto(metric){const id=metric==="calls"?"grCallsPareto":"grMovesPareto",box=document.getElementById(id+"Box"),canvas=document.getElementById(id),drivers=globalGapDrivers(metric);if(!drivers.length){box.innerHTML='<div class="empty-note">No terminal is causing a target gap for this period.</div>';return;}const total=drivers.reduce((a,x)=>a+x.gap,0),cum=[];let running=0;drivers.forEach(x=>{running+=x.gap;cum.push(total?running/total:0);});globalReportCharts[id]=new Chart(canvas.getContext("2d"),{data:{labels:drivers.map(x=>x.label),datasets:[{type:"bar",label:"Gap contribution",data:drivers.map(x=>x.gap),backgroundColor:"rgba(242,72,61,.72)",borderColor:"#F2483D",borderWidth:1,yAxisID:"y"},{type:"line",label:"Cumulative %",data:cum,borderColor:"#F5C518",backgroundColor:"#F5C518",pointRadius:3,tension:.25,yAxisID:"y1"}]},plugins:[globalParetoLabels],options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:18}},plugins:{legend:{labels:{color:chartTickColor()}},tooltip:{callbacks:{label:c=>c.datasetIndex===0?`${c.dataset.label}: ${fmtNum(c.raw,0)}`:`${c.dataset.label}: ${(c.raw*100).toFixed(0)}%`}}},scales:{x:{ticks:{color:chartTickColor(),maxRotation:32,minRotation:0},grid:{display:false}},y:{beginAtZero:true,ticks:{color:chartTickColor()},grid:{color:chartGridColor()}},y1:{beginAtZero:true,max:1,position:"right",ticks:{color:"#F5C518",callback:v=>(v*100)+"%"},grid:{drawOnChartArea:false}}}}});}
 
-    function standardCard(s){
-      const status=statusFor(s.scoreKpi,s.score,s.scoreTarget,s.term),color=STATUS_COLOR[status],callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
+    function adherenceBlock(label,summary){
+      const st=targetStatus(summary.actual,summary.target),color=st?STATUS_COLOR[st]:"var(--text-faint)",width=Number.isFinite(summary.actual)?Math.max(0,Math.min(100,summary.actual*100)):0;
+      return `<div class="gr-adh-row"><div class="gr-adh-line"><span>${label}</span><b style="color:${color}">${adhPct(summary.actual)}</b></div><div class="gr-adh-detail"><span>${fmtNum(summary.planned,0)} planned / ${fmtNum(summary.total,0)} total</span><span>Target ${adhPct(summary.target)}</span></div><div class="gr-adh-track"><i style="width:${width}%;background:${color}"></i></div></div>`;
+    }
+    function executiveTerminalCard(s,isPanama){
+      const scoreStatus=targetStatus(s.score,s.scoreTarget),scoreColor=scoreStatus?STATUS_COLOR[scoreStatus]:"var(--text-faint)",callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
       const showScore=effectiveActive(s.term,"Vessel Score","global",year);
-      const chips=activeSortedKpis(s.term,"global",year).filter(k=>k.key!=="Vessel Score").map(k=>{const v=getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}" title="Target ${fmtVal(k,t,s.term)}">${adhEsc(k.key)}: ${fmtVal(k,v,s.term)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card gr-terminal-card clickable";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):'–'} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):'–'}</span>`:""}</div><div class="gr-volume"><div><span>Moves</span><b>${fmtNum(s.moves)}</b></div><div><span>Calls</span><b>${fmtNum(s.calls)}</b></div><div><span>Calls Adherence</span><b>${adhPct(callsAdh.actual)}</b></div><div><span>Moves Adherence</span><b>${adhPct(movesAdh.actual)}</b></div></div><div class="chips">${chips||'<span class="chip">No active Global KPI results</span>'}</div>`;card.onclick=()=>{currentSection=s.scope==="panama"?"panama":"tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
+      const kpis=(isPanama?settingsKpisForTerm(s.term):activeSortedKpis(s.term,"global",year))
+        .filter(k=>k&&k.key!=="Vessel Score"&&effectiveActive(s.term,k.key,"global",year))
+        .sort((a,b)=>(SETTINGS[s.term]?.[a.key]?.priority||999)-(SETTINGS[s.term]?.[b.key]?.priority||999));
+      const rows=kpis.map(k=>{const v=isPanama?(s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null):getValue(k,s.periodRows,currentType),t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term),color=STATUS_COLOR[st]||"var(--text-faint)",display=isPanama?panamaFmt(k.key,v):fmtVal(k,v,s.term),target=isPanama?panamaFmt(k.key,t):fmtVal(k,t,s.term);return `<div class="gr-kpi-row"><i style="background:${color}"></i><span title="${adhEsc(k.key)}">${adhEsc(kpiPeriodLabel(k.key))}</span><b style="color:${color}">${display}</b><small>Target ${target}</small></div>`;}).join("");
+      const flag=ASSETS.flags[s.term]?`<img class="flag" src="${ASSETS.flags[s.term]}">`:"";
+      const card=document.createElement("div");card.className="term-card gr-terminal-card clickable";
+      card.innerHTML=`<div class="term-shell"><div class="term-topline"><div class="term-ident"><div class="code">${flag}${adhEsc(adhDisplayNameForPod(s.term))}</div><div class="subname">${isPanama?'SPC Panama':'SPC Tangier'} · ${adhEsc(globalReportPeriod||'')}</div></div>${showScore?`<span class="score-badge" style="color:${scoreColor}">${Number.isFinite(s.score)?fmtNum(s.score,1):'–'} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):'–'}</span>`:""}</div><div class="gr-exec-volume"><div><span>Vessel Calls</span><b>${fmtNum(s.calls)}</b></div><div><span>Moves</span><b>${fmtNum(s.moves)}</b></div></div><div class="gr-adh-grid">${adherenceBlock("Calls Adherence",callsAdh)}${adherenceBlock("Moves Adherence",movesAdh)}</div><div class="gr-kpi-list">${rows||'<div class="gr-empty-kpi">No active Global KPI result for this period</div>'}</div></div><div class="status-band ${scoreStatus||'na'}">${scoreStatus==='good'?'ON TARGET':scoreStatus==='watch'?'ATTENTION':scoreStatus==='bad'?'OFF TARGET':'NO SCORE DATA'}</div>`;
+      card.onclick=()=>{currentSection=isPanama?"panama":"tangier";currentTerminal=s.term;currentPeriod=null;buildMainNav();buildTerminalPills();render();};return card;
     }
-    function panamaCard(s){
-      const status=targetStatus(s.score,s.scoreTarget),color=STATUS_COLOR[status]||"var(--text-faint)",callsAdh=adhTerminalSummary(s.term,"calls",currentType,globalReportPeriod),movesAdh=adhTerminalSummary(s.term,"moves",currentType,globalReportPeriod);
-      const showScore=effectiveActive(s.term,"Overall Score","global",year);
-      const chips=settingsKpisForTerm(s.term).filter(k=>!["Overall Score","Calls","Moves"].includes(k.key)&&effectiveActive(s.term,k.key,"global",year)).sort((a,b)=>(SETTINGS[s.term][a.key]?.priority||999)-(SETTINGS[s.term][b.key]?.priority||999)).map(k=>{const v=s.weekKeys.length?panamaAvg(s.term,s.weekKeys,k.key):null,t=effectiveTarget(k,s.term,year),st=statusFor(k,v,t,s.term);return`<span class="chip ${st}" title="Target ${panamaFmt(k.key,t)}">${adhEsc(k.key)}: ${panamaFmt(k.key,v)}</span>`;}).join("");
-      const card=document.createElement("div");card.className="term-card gr-terminal-card";card.innerHTML=`<div class="head"><span class="code">${ASSETS.flags[s.term]?`<img src="${ASSETS.flags[s.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">`:''}${adhEsc(adhDisplayNameForPod(s.term))}</span>${showScore?`<span class="score-badge" style="background:${color}22;color:${color}">${Number.isFinite(s.score)?fmtNum(s.score,1):'–'} / ${Number.isFinite(s.scoreTarget)?fmtNum(s.scoreTarget,1):'–'}</span>`:""}</div><div class="gr-volume"><div><span>Moves</span><b>${fmtNum(s.moves)}</b></div><div><span>Calls</span><b>${fmtNum(s.calls)}</b></div><div><span>Calls Adherence</span><b>${adhPct(callsAdh.actual)}</b></div><div><span>Moves Adherence</span><b>${adhPct(movesAdh.actual)}</b></div></div><div class="chips">${chips||'<span class="chip">No active Global KPI results</span>'}</div>`;return card;
-    }
+    function standardCard(s){return executiveTerminalCard(s,false);}
+    function panamaCard(s){return executiveTerminalCard(s,true);}
     ["tangier","panama"].forEach(scope=>{const grid=document.getElementById(scope==="tangier"?"grTangierGrid":"grPanamaGrid");grouped[scope].slice().sort((a,b)=>Number(b.hasData)-Number(a.hasData)||(Number.isFinite(b.score)?b.score:-Infinity)-(Number.isFinite(a.score)?a.score:-Infinity)||a.term.localeCompare(b.term)).forEach(s=>grid.appendChild(s.kind==="standard"?standardCard(s):panamaCard(s)));});
     requestAnimationFrame(()=>{renderPareto("calls");renderPareto("moves");});
   }
@@ -4143,7 +4236,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <div class="section-label">Network Rollup · ${periodLabel}</div>
       <div class="network-grid" id="netCards"></div>
       <div class="section-label">Terminals</div>
-      <div class="term-grid" id="termGrid"></div>
+      <div class="gr-terminal-grid" id="termGrid"></div>
     `;
 
     const netCards = document.getElementById("netCards");
@@ -4165,22 +4258,24 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     termSummaries
       .sort((a,b) => (b.scoreVal||0) - (a.scoreVal||0))
       .forEach(ts => {
-        const status = statusFor(ts.scoreKpi, ts.scoreVal, ts.scoreTgt, ts.term);
-        const color = STATUS_COLOR[status];
-        const topKpis = activeSortedKpis(ts.term, "global", ts.periodRows.length ? ts.periodRows[0]._year : undefined).slice(0,4);
-        const chips = topKpis.map(k => {
+        const status = Number.isFinite(ts.scoreVal)&&Number.isFinite(ts.scoreTgt)?statusFor(ts.scoreKpi, ts.scoreVal, ts.scoreTgt, ts.term):null;
+        const color = STATUS_COLOR[status]||"var(--text-faint)";
+        const rowYear=ts.periodRows.length?ts.periodRows[0]._year:String(currentPeriod||"").slice(0,4);
+        const termCallsAdh=adhTerminalSummary(ts.term,"calls",currentType,currentPeriod),termMovesAdh=adhTerminalSummary(ts.term,"moves",currentType,currentPeriod);
+        const kpiRows = activeSortedKpis(ts.term, "global", rowYear).map(k => {
           const v = getValue(k, ts.periodRows, currentType);
-          const tgt = ts.periodRows.length ? effectiveTarget(k, ts.term, ts.periodRows[0]._year) : latestTarget(k);
+          const tgt = effectiveTarget(k,ts.term,rowYear);
           const st = statusFor(k, v, tgt, ts.term);
-          return `<span class="chip ${st}">${shortLabel(k.key)} ${fmtVal(k,v,ts.term)}</span>`;
+          return `<div class="gr-kpi-row"><i style="background:${STATUS_COLOR[st]}"></i><span>${adhEsc(kpiPeriodLabel(k.key))}</span><b style="color:${STATUS_COLOR[st]}">${fmtVal(k,v,ts.term)}</b><small>Target ${fmtVal(k,tgt,ts.term)}</small></div>`;
         }).join("");
+        const adhBlock=(label,s)=>{const st=s.actual==null||s.target==null?null:(s.actual>=s.target?"good":s.actual>=s.target*.85?"watch":"bad"),c=st?STATUS_COLOR[st]:"var(--text-faint)",w=Number.isFinite(s.actual)?Math.min(100,Math.max(0,s.actual*100)):0;return `<div class="gr-adh-row"><div class="gr-adh-line"><span>${label}</span><b style="color:${c}">${adhPct(s.actual)}</b></div><div class="gr-adh-detail"><span>${fmtNum(s.planned,0)} planned / ${fmtNum(s.total,0)} total</span><span>Target ${adhPct(s.target)}</span></div><div class="gr-adh-track"><i style="width:${w}%;background:${c}"></i></div></div>`;};
         const card = document.createElement("div");
-        card.className = "term-card";
+        card.className = "term-card gr-terminal-card clickable";
         card.innerHTML = `
-          <div class="head"><span class="code">${ASSETS.flags[ts.term] ? `<img src="${ASSETS.flags[ts.term]}" style="width:18px;height:12px;object-fit:cover;border-radius:2px;margin-right:6px;vertical-align:middle;">` : ''}${ts.term}</span><span class="score-badge" style="background:${color}22;color:${color}">${fmtNum(ts.scoreVal,1)} / ${fmtNum(ts.scoreTgt,1)}</span></div>
-          <div class="stat-row"><span>Moves</span><span class="v">${fmtNum(ts.vols["Total Moves Planned"])}</span></div>
-          <div class="stat-row"><span>Calls</span><span class="v">${fmtNum(ts.vols["__calls"])}</span></div>
-          <div class="chips">${chips}</div>
+          <div class="term-shell"><div class="term-topline"><div class="term-ident"><div class="code">${ASSETS.flags[ts.term] ? `<img class="flag" src="${ASSETS.flags[ts.term]}">` : ''}${adhEsc(adhDisplayNameForPod(ts.term))}</div><div class="subname">SPC Tangier · ${adhEsc(periodLabel)}</div></div><span class="score-badge" style="color:${color}">${fmtNum(ts.scoreVal,1)} / ${fmtNum(ts.scoreTgt,1)}</span></div>
+          <div class="gr-exec-volume"><div><span>Vessel Calls</span><b>${fmtNum(ts.vols["__calls"])}</b></div><div><span>Moves</span><b>${fmtNum(ts.vols["Total Moves Planned"])}</b></div></div>
+          <div class="gr-adh-grid">${adhBlock("Calls Adherence",termCallsAdh)}${adhBlock("Moves Adherence",termMovesAdh)}</div><div class="gr-kpi-list">${kpiRows||'<div class="gr-empty-kpi">No active Global KPI result for this period</div>'}</div></div>
+          <div class="status-band ${status||'na'}">${status==='good'?'ON TARGET':status==='watch'?'ATTENTION':status==='bad'?'OFF TARGET':'NO SCORE DATA'}</div>
         `;
         card.onclick = () => { currentSection="tangier"; currentTerminal = ts.term; currentPeriod=null; buildMainNav(); buildTerminalPills(); render(); };
         termGrid.appendChild(card);
