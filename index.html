@@ -1592,16 +1592,28 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   const ASSETS = window.__ASSETS__ || {flags:{}, logo:null};
   // Suape is a Brazilian terminal and intentionally uses the same flag asset as PECEM.
   if(ASSETS.flags&&ASSETS.flags.PEC)ASSETS.flags.SUA=ASSETS.flags.PEC;
+  // PGO is part of the same flag scope as LZC.
+  if(ASSETS.flags&&ASSETS.flags.LZC){ASSETS.flags.PGO=ASSETS.flags.LZC;ASSETS.flags.PGO0=ASSETS.flags.LZC;}
   const SHIP_ICON = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%235fd6ff'/%3E%3Cstop offset='1' stop-color='%2393e7ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22h43l7 4H14z' fill='rgba(95,214,255,.12)'/%3E%3Cpath d='M18 18h8v-4h8v4h10'/%3E%3Cpath d='M22 14V9m7 5V9m8 9V8'/%3E%3Cpath d='M8 26h46'/%3E%3C/g%3E%3C/svg%3E";
   const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || null;
 
   // ---------- Firebase init ----------
   let fbApp = null, auth = null, db = null, FIREBASE_AVAILABLE = false;
+  let FIRESTORE_CACHE_READY = Promise.resolve();
   try {
     if (FIREBASE_CONFIG && window.firebase){
       fbApp = firebase.initializeApp(FIREBASE_CONFIG);
       auth = firebase.auth();
       db = firebase.firestore();
+      // Keep previously read dashboard data on the device. This reduces repeat-login latency
+      // without changing, deleting or rewriting any Firestore document.
+      if(typeof db.enablePersistence==="function"){
+        FIRESTORE_CACHE_READY=db.enablePersistence({synchronizeTabs:true}).catch(e=>{
+          // Another open tab or a browser privacy restriction can refuse persistence.
+          // The platform remains fully operational with normal Firestore reads.
+          if(e&&e.code!=="failed-precondition"&&e.code!=="unimplemented")console.warn("Firestore cache unavailable:",e);
+        });
+      }
       FIREBASE_AVAILABLE = true;
     }
   } catch(e){ console.error("Firebase init failed:", e); }
@@ -2155,14 +2167,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     await Promise.all(TERM_CODES.map(async term => {
       let years = [];
       try {
-        const yres = await storageGet("years:"+term, true);
+        // These metadata documents are independent; reading them together removes one full
+        // network round trip per terminal during login.
+        const [yres,cres] = await Promise.all([
+          storageGet("years:"+term, true),
+          storageGet("catalog:"+term, true)
+        ]);
         if (yres && yres.value) years = JSON.parse(yres.value);
-      } catch(e){ return; }
-
-      try {
-        const cres = await storageGet("catalog:"+term, true);
         if (cres && cres.value) DATA[term].kpis = JSON.parse(cres.value);
-      } catch(e){ /* keep bootstrap catalog */ }
+      } catch(e){ return; }
       // A data erase clears years only. Always load the preserved KPI catalog so Settings remain
       // available even while the terminal temporarily has no operational rows.
       if (!years.length) return;
@@ -4354,6 +4367,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const scoreKpi = kpis.find(k=>k.key==="Vessel Score");
     const otherKpis = activeSortedKpis(currentTerminal, "terminal", curRows[0]._year);
     const curYear = curRows[0]._year;
+    // The weekly vessel selector is a vessel-detail filter only. Keep the official weekly
+    // Score calculated from every call in the selected week, exactly like the weekly KPIs.
+    const scoreRows = currentType === "weekly" ? allPeriodRows : curRows;
     const PERIOD_NOUN = { daily:"day", weekly:"week", monthly:"month", quarterly:"quarter", yearly:"year" };
 
     // ---- Trend construction, per period type ----
@@ -4396,7 +4412,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if (idx > 0 && scoreKpi) {
         const prevGroup = allGroups[idx-1];
         const prevVal = getValue(scoreKpi, prevGroup.rows, currentType);
-        const curValForCompare = getValue(scoreKpi, curRows, currentType);
+        const curValForCompare = getValue(scoreKpi, scoreRows, currentType);
         if (prevVal !== null && curValForCompare !== null) {
           const delta = curValForCompare - prevVal;
           const arrow = delta > 0 ? "▲" : (delta < 0 ? "▼" : "•");
@@ -4481,7 +4497,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
     if (currentType === "weekly") populateWeeklyVesselFilters(allPeriodRows);
 
-    makeGauge(scoreKpi ? getValue(scoreKpi, curRows, currentType) : null, scoreKpi ? effectiveTarget(scoreKpi, currentTerminal, curYear) : null, scoreKpi);
+    makeGauge(scoreKpi ? getValue(scoreKpi, scoreRows, currentType) : null, scoreKpi ? effectiveTarget(scoreKpi, currentTerminal, curYear) : null, scoreKpi);
     if (subPeriod) makeScoreTrend(subGroups, scoreKpi, subPeriod);
 
     const volGrid = document.getElementById("volumeGrid");
@@ -4735,6 +4751,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return ["management","supervisor"].includes(user.role)&&user.scopeDataLoss===true;
   }
   function canEditScopeLoss(user=CURRENT_USER){return !!user&&["admin","data_analyst"].includes(user.role);}
+  function canAccessSettings(user=CURRENT_USER){
+    if(!user)return false;
+    if(user.role==="admin")return true;
+    // Preserve the access of existing Management records created before this privilege existed.
+    // Once edited in Roles, the explicit checkbox value controls access.
+    if(user.role==="management")return user.settingsAccess!==false;
+    if(user.role==="supervisor")return user.settingsAccess===true;
+    // Terminal, Planner, Regional Access and Data Analyst roles never receive Settings access.
+    return false;
+  }
+  function canEditKpiSettings(user=CURRENT_USER){return !!user&&["admin","management"].includes(user.role)&&canAccessSettings(user);}
   function configuredRegions(){
     const fixed=(typeof ADHERENCE_REGION_OPTIONS!=="undefined"?ADHERENCE_REGION_OPTIONS:[]),used=(typeof ADHERENCE_REGISTRY!=="undefined"?ADHERENCE_REGISTRY:[]).map(r=>String(r.region||"").trim()).filter(Boolean);
     return [...new Set(fixed.concat(used).filter(r=>r.toLowerCase()!=="oceania"))].sort((a,b)=>a.localeCompare(b));
@@ -4794,6 +4821,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <h3>Scope &amp; Data Loss — Read-only and Print/Export</h3>
           <label><input type="checkbox" id="roleScopeDataLoss"> Allow access to the Tangier Scope &amp; Data Loss dashboard</label>
         </div>
+        <div id="settingsRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
+          <h3>Settings Access</h3>
+          <label><input type="checkbox" id="roleSettingsAccess"> Allow this user to open the Settings area</label>
+          <p class="adh-note" style="margin-top:7px;">Management can modify configuration. Supervisor access is read-only. Terminal and Data Analyst roles always have no Settings access.</p>
+        </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
           <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
           <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
@@ -4816,13 +4848,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     `;
     const typeSel = document.getElementById("newRoleType");
     const termSel = document.getElementById("newRoleTerminal");
-    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions"),workloadOptions=document.getElementById("workloadRoleOptions"),scopeLossOptions=document.getElementById("scopeLossRoleOptions");
+    const supervisorOptions=document.getElementById("supervisorRoleOptions"),regionalOptions=document.getElementById("regionalRoleOptions"),workloadOptions=document.getElementById("workloadRoleOptions"),scopeLossOptions=document.getElementById("scopeLossRoleOptions"),settingsOptions=document.getElementById("settingsRoleOptions");
     const updateRoleFields=()=>{
       termSel.style.display = typeSel.value === "terminal" ? "" : "none";
       supervisorOptions.style.display=typeSel.value==="supervisor"?"":"none";
       regionalOptions.style.display=typeSel.value==="regional_access"?"":"none";
       workloadOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
       scopeLossOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
+      settingsOptions.style.display=["supervisor","management"].includes(typeSel.value)?"":"none";
     };
     typeSel.onchange = updateRoleFields; updateRoleFields();
     document.getElementById("addRoleBtn").onclick = async () => {
@@ -4835,10 +4868,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(role==="supervisor"){
         doc.terminalDashboards={tangier:document.getElementById("supTerminalTangier").checked,panama:document.getElementById("supTerminalPanama").checked};
         doc.adherenceDashboards={tangier:document.getElementById("supAdherenceTangier").checked,panama:document.getElementById("supAdherencePanama").checked};
-        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama&&!document.getElementById("roleWorkloadAnalysis").checked&&!document.getElementById("roleScopeDataLoss").checked){alert("Select at least one dashboard scope.");return;}
+        if(!doc.terminalDashboards.tangier&&!doc.terminalDashboards.panama&&!doc.adherenceDashboards.tangier&&!doc.adherenceDashboards.panama&&!document.getElementById("roleWorkloadAnalysis").checked&&!document.getElementById("roleScopeDataLoss").checked&&!document.getElementById("roleSettingsAccess").checked){alert("Select at least one dashboard or Settings scope.");return;}
       }
       if(role==="supervisor"||role==="management")doc.workloadAnalysis=document.getElementById("roleWorkloadAnalysis").checked;
       if(role==="supervisor"||role==="management")doc.scopeDataLoss=document.getElementById("roleScopeDataLoss").checked;
+      if(role==="supervisor"||role==="management")doc.settingsAccess=document.getElementById("roleSettingsAccess").checked;
       if(role==="regional_access"){
         doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
         if(!doc.regions.length){alert("Select at least one region for Regional Access.");return;}
@@ -4872,6 +4906,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       else access="All";
       if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
       if(["supervisor","management"].includes(r.role))access+=`<br>Scope &amp; Data Loss: ${r.scopeDataLoss===true?"Yes":"No"}`;
+      access+=`<br>Settings Access: ${canAccessSettings(r)?"Yes":"No"}`;
       access+=`<br>Years: ${roleAllowedYears(r)===null?"All (legacy)":roleArray(r.years).join(", ")||"None"}`;
       tr.innerHTML = `
         <td class="kpi-key-cell">${r.email}</td>
@@ -4888,6 +4923,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         const selectedYears=new Set(roleArray(r.years));document.querySelectorAll('input[name="roleYear"]').forEach(x=>x.checked=roleAllowedYears(r)===null||selectedYears.has(x.value));
         document.getElementById("roleWorkloadAnalysis").checked=!!r.workloadAnalysis;
         document.getElementById("roleScopeDataLoss").checked=!!r.scopeDataLoss;
+        document.getElementById("roleSettingsAccess").checked=canAccessSettings(r);
         if(r.role==="terminal")document.getElementById("newRoleTerminal").value=r.terminal||TERM_CODES[0]||"";
         if(r.role==="supervisor"){
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
@@ -5694,8 +5730,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   let settingsYear = null;
   let settingsPage = "kpi";
   settingsBtn.onclick = () => {
+    if(!canAccessSettings())return;
     showingSettings=true; showingRoles=false; showingErase=false;
-    if(CURRENT_USER && CURRENT_USER.role==="data_analyst" && settingsPage==="kpi") settingsPage="adherence_terminals";
     document.getElementById("mainApp").style.display="none";
     document.getElementById("settingsView").style.display="";
     document.getElementById("rolesView").style.display="none";
@@ -5716,7 +5752,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   function settingsTabsHtml(){
-    const canSeeKpi=CURRENT_USER && (CURRENT_USER.role==="admin" || CURRENT_USER.role==="management");
+    const canSeeKpi=canAccessSettings();
     return `<div class="adh-tabs settings-module-tabs">
       ${canSeeKpi?`<button data-settings-page="kpi" class="${settingsPage==="kpi"?"active":""}">Targets &amp; Toggles</button>`:""}
       ${canSeeKpi?`<button data-settings-page="sqdc" class="${settingsPage==="sqdc"?"active":""}">Special SQDCP Settings</button>`:""}
@@ -5729,6 +5765,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     document.querySelectorAll(".settings-module-tabs button[data-settings-page]").forEach(b=>b.onclick=()=>{settingsPage=b.dataset.settingsPage;renderSettingsView();});
   }
   function renderSettingsView(){
+    if(!canAccessSettings()){
+      showingSettings=false;
+      document.getElementById("settingsView").style.display="none";
+      document.getElementById("mainApp").style.display="";
+      render();updateSidebarContext();return;
+    }
     setUtilityHeader("Settings","Shared Planning Center — Configuration");
     if(settingsPage==="sqdc"){ renderSqdcSettingsView(); return; }
     if(settingsPage==="scope_loss"){ renderScopeLossSettingsView(); return; }
@@ -5739,6 +5781,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     renderKpiSettingsView();
   }
   function renderKpiSettingsView(){
+    const editableSettings=canEditKpiSettings();
     if (!settingsTerm || (!TERM_CODES.includes(settingsTerm)&&!PANAMA_TERM_CODES.includes(settingsTerm))) settingsTerm = TERM_CODES[0] || PANAMA_TERM_CODES[0];
     if(PANAMA_TERM_CODES.includes(settingsTerm))ensurePanamaSettings(settingsTerm);else ensureTargetTerminalRegistered(settingsTerm);
     const years = yearsForTerm(settingsTerm);
@@ -5754,7 +5797,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         <div class="settings-toolbar">
           <select id="settingsTermSelect"></select>
           <select id="settingsYearSelect"></select>
-          <button class="btn-secondary" id="settingsUploadTargetsBtn" type="button">🎯 Upload Targets Excel</button>
+          ${editableSettings?'<button class="btn-secondary" id="settingsUploadTargetsBtn" type="button">🎯 Upload Targets Excel</button>':''}
           <button class="btn-secondary" id="settingsRefreshDashboardBtn" type="button">↻ Refresh Dashboard</button>
           <button class="btn-secondary" id="settingsResetConfigBtn" type="button" style="display:none; border-color:#F2483D; color:#F2483D;">Reset Settings & Targets</button>
           <span id="saveStatus" style="font-size:11.5px; color:var(--text-faint); font-family:var(--mono);"></span>
@@ -5836,6 +5879,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
 
     renderSettingsTable();
+    if(!editableSettings){
+      document.querySelectorAll("#settingsTbody input,#settingsTbody select").forEach(el=>el.disabled=true);
+      const note=document.getElementById("saveStatus");if(note)note.textContent="Read-only Settings access";
+    }
   }
 
   function flashSaveStatus(msg, isError){
@@ -6774,7 +6821,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     uploadPanamaBtn.style.display = can("upload") ? "" : "none";
     uploadTargetsBtn.style.display = "none";
     uploadAdherenceBtn.style.display = can("upload") ? "" : "none";
-    settingsBtn.style.display = (CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload"))) ? "" : "none";
+    settingsBtn.style.display = canAccessSettings() ? "" : "none";
     rolesBtn.style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("exportConfigBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
     document.getElementById("eraseDataBtn").style.display = (CURRENT_USER && CURRENT_USER.role==="admin") ? "" : "none";
@@ -6787,7 +6834,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     scopeLossRegistryBtn.style.display = canEditScopeLoss() ? "" : "none";
     sqdcHistoryBtn.style.display = canViewSqdcHistory() ? "" : "none";
     document.getElementById("dataAnalysisSection").style.display = (can("upload") || canViewSqdcRegistry() || canEditScopeLoss()) ? "" : "none";
-    const hasSettingsArea=CURRENT_USER && (CURRENT_USER.role==="admin" || can("editSettings") || can("upload") || canViewSqdcHistory());
+    const hasSettingsArea=CURRENT_USER && (canAccessSettings() || canViewSqdcHistory());
     document.getElementById("settingsRolesSection").style.display = hasSettingsArea ? "" : "none";
     const allowed = allowedTerminalsFor(CURRENT_USER);
     if (allowed){
@@ -6823,8 +6870,18 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       banner.style.display = "";
       banner.innerHTML = "⚠ Could not connect to the database. Uploads and Settings changes will not be saved.";
     }
-    // These three datasets are independent, so load them in parallel.
-    await Promise.all([loadUploadedDataFromStorage(), loadPanamaDataFromStorage(), loadImportedTargetsFromStorage(), loadAdherenceDataFromStorage(), loadSqdcDataFromStorage(), loadScopeLossDataFromStorage()]);
+    // Load independent datasets in parallel, but do not download an entire module that this role
+    // cannot open. This changes reads only; no stored data or database structure is modified.
+    const needsPanama=canViewTerminalDashboardScope("panama")||canViewAdherenceScope("panama")||canAccessSettings();
+    const needsAdherence=hasAdherenceDashboardAccess()||canAccessSettings()||can("upload");
+    const needsSqdc=canViewSqdc()||canViewSqdcRegistry()||canViewSqdcHistory()||canAccessSettings();
+    const needsScopeLoss=canViewScopeLoss()||canEditScopeLoss()||canAccessSettings();
+    const initialLoads=[loadUploadedDataFromStorage(),loadImportedTargetsFromStorage()];
+    if(needsPanama)initialLoads.push(loadPanamaDataFromStorage());
+    if(needsAdherence)initialLoads.push(loadAdherenceDataFromStorage());
+    if(needsSqdc)initialLoads.push(loadSqdcDataFromStorage());
+    if(needsScopeLoss)initialLoads.push(loadScopeLossDataFromStorage());
+    await Promise.all(initialLoads);
     await loadKpiNameRegistry();
     // Panama terminals share Settings but remain outside the Tangier terminal navigation/data model.
     TERM_CODES = TERM_CODES.filter(t=>!PANAMA_TERM_CODES.includes(t));
@@ -6858,6 +6915,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
 
     auth.onAuthStateChanged(async (user) => {
       if (user){
+        await FIRESTORE_CACHE_READY;
         let role = null, fetchError = null;
         try {
           role = await fetchRole(user.email);
