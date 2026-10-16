@@ -2002,15 +2002,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     const aliasMatches=Object.keys(row).filter(k=>kpiIdentityKey(k)===kpiIdentityKey(field));
     return aliasMatches.length===1?row[aliasMatches[0]]:undefined;
   }
-  // A zero remains a real KPI value unless the vessel is a discharge-only call and the KPI
-  // explicitly requires load moves. In that specific case it is operationally not applicable.
-  const LOAD_MOVE_REQUIRED_KPI_IDS=new Set([
-    "RTG Moves Before Gantry","Loading Points","Alternation","Twin Planning"
-  ].map(kpiIdentityKey));
+  // For a visit with no load moves, uploaded zero KPI values mean "not calculated" rather
+  // than a real result. Non-zero values remain valid and are still evaluated against target.
   function dischargeOnlyLoadingKpiNA(row,kpi,value){
-    if(!row||!kpi||!LOAD_MOVE_REQUIRED_KPI_IDS.has(kpiIdentityKey(kpi.key||kpi)))return false;
-    const numericValue=Number(value),loadMoves=Number(rowFieldValue(row,"Load Planned")),dischargeMoves=Number(rowFieldValue(row,"Discharge Planned"));
-    return Number.isFinite(numericValue)&&numericValue===0&&Number.isFinite(loadMoves)&&loadMoves===0&&Number.isFinite(dischargeMoves)&&dischargeMoves>0;
+    if(!row||!kpi)return false;
+    const numericValue=Number(value),loadMoves=Number(rowFieldValue(row,"Load Planned"));
+    return Number.isFinite(numericValue)&&numericValue===0&&Number.isFinite(loadMoves)&&loadMoves===0;
   }
   function avgSkipNull(rows, f){
     const vals = rows.map(r=>rowFieldValue(r,f)).filter(v => v!==null && v!==undefined && v!=='' && !isNaN(v)).map(Number);
