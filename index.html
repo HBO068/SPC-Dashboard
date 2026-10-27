@@ -4702,7 +4702,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     management: "Management (view all, edit targets/weights)",
     supervisor: "Supervisor (custom read-only access)",
     planner: "Planner Access — Tangier Terminal Dashboards",
-    regional_access: "Regional Access (Hub/Gateway read-only)",
+    regional_access: "Regional Access (Region + Hub/Gateway read-only)",
     data_analyst: "Data Analyst (view all, can upload)",
     terminal: "Terminal (view one terminal only)"
   };
@@ -4738,17 +4738,16 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function regionalNetworkTypes(user){
     return new Set(roleArray(user&&user.networkTypes).filter(x=>x==="Hub"||x==="Gateway"));
   }
+  function regionalRegions(user){
+    return new Set(roleArray(user&&user.regions).map(x=>String(x).trim()).filter(Boolean));
+  }
   function regionalRegistryMatches(user,scope){
     const types=regionalNetworkTypes(user);
-    if(types.size){
-      const assignment=scope==="panama"?"Panama":"Tangier";
-      const codes=scope==="panama"?PANAMA_TERM_CODES:TERM_CODES;
-      return ADHERENCE_REGISTRY.some(reg=>reg.assignment===assignment&&codes.includes(String(reg.pod||"").trim())&&types.has(String(reg.networkType||"").trim()));
-    }
-    // Compatibility for Regional role records saved before Hub/Gateway access existed.
-    if(scope!=="tangier")return false;
-    const regions=new Set(roleArray(user&&user.regions));
-    return regions.size>0&&ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&TERM_CODES.includes(String(reg.pod||"").trim())&&regions.has(String(reg.region||"").trim()));
+    const regions=regionalRegions(user);
+    const assignment=scope==="panama"?"Panama":"Tangier";
+    const codes=scope==="panama"?PANAMA_TERM_CODES:TERM_CODES;
+    if(!types.size&&!regions.size)return false;
+    return ADHERENCE_REGISTRY.some(reg=>reg.assignment===assignment&&codes.includes(String(reg.pod||"").trim())&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim())));
   }
   function canViewTerminalDashboardScope(scope,user=CURRENT_USER){
     if(!user)return false;
@@ -4817,6 +4816,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     setUtilityHeader("User Roles","Shared Planning Center — Access Management");
     const rv = document.getElementById("rolesView");
     const networkTypeItems=[{value:"Hub",label:"Hubs"},{value:"Gateway",label:"Gateways"}];
+    const regionItems=configuredRegions().map(region=>({value:region,label:region}));
     const yearItems=configuredRoleYears().map(year=>({value:year,label:year}));
     rv.innerHTML = `
       <div class="settings-wrap">
@@ -4860,8 +4860,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <p class="adh-note" style="margin-top:7px;">Management can modify configuration. Supervisor access is read-only. Terminal and Data Analyst roles always have no Settings access.</p>
         </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
-          <h3>Regional Access — Hub / Gateway Dashboards</h3>
-          <p class="adh-note">Select the network groups this user may see. Access is automatically granted to every linked Tangier or Panama terminal classified in the selected group.</p>
+          <h3>Regional Access — Regions and Hub / Gateway Dashboards</h3>
+          <p class="adh-note">Select the Regions and network groups this user may see. A terminal must match both selections. Access is automatically granted to every linked Tangier or Panama terminal in that combination.</p>
+          <div class="section-label" style="margin-top:12px;">Accessible Regions</div>
+          ${roleCheckGrid("regionalRegion",regionItems,item=>adhEsc(item.label))}
           <div class="section-label" style="margin-top:12px;">Accessible Network Groups</div>
           ${roleCheckGrid("regionalNetworkType",networkTypeItems,item=>adhEsc(item.label))}
         </div>
@@ -4907,7 +4909,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(role==="supervisor"||role==="management")doc.scopeDataLoss=document.getElementById("roleScopeDataLoss").checked;
       if(role==="supervisor"||role==="management")doc.settingsAccess=document.getElementById("roleSettingsAccess").checked;
       if(role==="regional_access"){
+        doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
         doc.networkTypes=[...document.querySelectorAll('input[name="regionalNetworkType"]:checked')].map(x=>x.value);
+        if(!doc.regions.length){alert("Select at least one Region for Regional Access.");return;}
         if(!doc.networkTypes.length){alert("Select Hubs, Gateways, or both for Regional Access.");return;}
       }
       try {
@@ -4934,7 +4938,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       else if(r.role==="supervisor"){
         const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
         access=`Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
-      }else if(r.role==="regional_access")access=roleArray(r.networkTypes).length?`Network groups: ${roleArray(r.networkTypes).map(x=>x==="Hub"?"Hubs":"Gateways").join(", ")}`:`Tangier regions (legacy): ${roleArray(r.regions).join(", ")||"None"}`;
+      }else if(r.role==="regional_access")access=`Regions: ${roleArray(r.regions).join(", ")||"All (legacy)"}<br>Network groups: ${roleArray(r.networkTypes).map(x=>x==="Hub"?"Hubs":"Gateways").join(", ")||"All (legacy)"}`;
       else if(r.role==="planner")access="All Tangier terminal dashboards";
       else access="All";
       if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
@@ -4962,6 +4966,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
         }
         if(r.role==="regional_access"){
+          const selectedRegions=regionalRegions(r);document.querySelectorAll('input[name="regionalRegion"]').forEach(x=>x.checked=selectedRegions.has(x.value));
           const selected=regionalNetworkTypes(r);document.querySelectorAll('input[name="regionalNetworkType"]').forEach(x=>x.checked=selected.has(x.value));
         }
         document.getElementById("newRoleEmail").scrollIntoView({behavior:"smooth",block:"center"});
@@ -6771,7 +6776,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   // ---------- Roles ----------
-  // roles/{email}: standard roles; terminal:{terminal}; supervisor:{terminals,terminalDashboards,adherenceDashboards}; regional_access:{networkTypes}.
+  // roles/{email}: standard roles; terminal:{terminal}; supervisor:{terminals,terminalDashboards,adherenceDashboards}; regional_access:{regions,networkTypes}.
   let CURRENT_USER = null;
   function can(action){
     if (!CURRENT_USER) return false;
@@ -6789,9 +6794,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)||canViewScopeLoss(user)?null:[];
     if(user.role==="regional_access"){
       const types=regionalNetworkTypes(user);
-      if(types.size)return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&types.has(String(reg.networkType||"").trim())));
-      const regions=new Set(roleArray(user.regions));
-      return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
+      const regions=regionalRegions(user);
+      if(!types.size&&!regions.size)return [];
+      return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim()))));
     }
     return null; // null = all terminals
   }
@@ -6800,7 +6805,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","panama")||supervisorModuleAccess(user,"adherence","panama")?null:[];
     if(user.role==="regional_access"){
       const types=regionalNetworkTypes(user);
-      return types.size?PANAMA_TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Panama"&&String(reg.pod||"").trim()===term&&types.has(String(reg.networkType||"").trim()))):[];
+      const regions=regionalRegions(user);
+      if(!types.size&&!regions.size)return [];
+      return PANAMA_TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Panama"&&String(reg.pod||"").trim()===term&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim()))));
     }
     if(["admin","management","data_analyst"].includes(user.role))return null;
     return [];
