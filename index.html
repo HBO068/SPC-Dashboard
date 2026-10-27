@@ -4948,6 +4948,15 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
         doc.networkTypes=[...document.querySelectorAll('input[name="regionalNetworkType"]:checked')].map(x=>x.value);
         if(!doc.regions.length){alert("Select at least one Region for Regional Access.");return;}
         if(!doc.networkTypes.length){alert("Select Hubs, Gateways, or both for Regional Access.");return;}
+        // Persist the exact resolved terminal codes as well as the human-readable Region and
+        // Hub/Gateway selections. Firebase Security Rules use this list to authorize database
+        // reads terminal by terminal; the UI still recalculates from the registry at login.
+        const tangierTerminals=TERM_CODES.filter(term=>regionalTerminalAllowed(doc,"tangier",term));
+        const panamaTerminals=PANAMA_TERM_CODES.filter(term=>regionalTerminalAllowed(doc,"panama",term));
+        doc.terminals=[...new Set(tangierTerminals.concat(panamaTerminals))];
+        doc.tangierTerminals=tangierTerminals;
+        doc.panamaTerminals=panamaTerminals;
+        if(!doc.terminals.length){alert("No linked terminal matches the selected Region and Hub/Gateway type. Check the Adherence Terminal Registry before saving this role.");return;}
       }
       try {
         await db.collection("roles").doc(email).set(doc);
@@ -4973,7 +4982,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       else if(r.role==="supervisor"){
         const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
         access=`Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
-      }else if(r.role==="regional_access")access=`Regions: ${roleArray(r.regions).join(", ")||"All (legacy)"}<br>Network groups: ${roleArray(r.networkTypes).map(x=>x==="Hub"?"Hubs":"Gateways").join(", ")||"All (legacy)"}`;
+      }else if(r.role==="regional_access")access=`Regions: ${roleArray(r.regions).join(", ")||"All (legacy)"}<br>Network groups: ${roleArray(r.networkTypes).map(x=>x==="Hub"?"Hubs":"Gateways").join(", ")||"All (legacy)"}<br>Authorized terminals: ${roleArray(r.terminals).join(", ")||"Re-save role to authorize database reads"}`;
       else if(r.role==="planner")access="All Tangier terminal dashboards";
       else access="All";
       if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
