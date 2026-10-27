@@ -2204,6 +2204,34 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
   }
 
+  // Regional access is resolved from the Adherence terminal registry, which is loaded in
+  // parallel with the main dashboard data. Once that access filter is known, make one focused
+  // read for any authorized Tangier terminal that still has no rows in memory. This prevents a
+  // transient/parallel metadata miss from leaving Regional users with valid terminal buttons
+  // but an empty report. This is read-only and never changes uploaded data or metadata.
+  async function reloadMissingRegionalTerminalData(){
+    if(!CURRENT_USER||CURRENT_USER.role!=="regional_access")return;
+    const missing=TERM_CODES.filter(term=>!DATA[term]||!(DATA[term].rows||[]).length);
+    await Promise.all(missing.map(async term=>{
+      if(!DATA[term])DATA[term]={rows:[],kpis:[]};
+      try{
+        const [yres,cres]=await Promise.all([
+          storageGet("years:"+term,true),
+          storageGet("catalog:"+term,true)
+        ]);
+        const years=yres&&yres.value?JSON.parse(yres.value):[];
+        if(cres&&cres.value)DATA[term].kpis=JSON.parse(cres.value);
+        if(!years.length)return;
+        const loadedYears=await Promise.all(years.map(async year=>[String(year),await firestoreGetYearRows(term,year)]));
+        loadedYears.forEach(([year,rawRows])=>{
+          if(!rawRows)return;
+          DATA[term].rows=DATA[term].rows.filter(r=>r._year!==year).concat(normalizeRows(rawRows));
+        });
+      }catch(e){console.error("Regional terminal reload failed for",term,e);}
+    }));
+    if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
+  }
+
   // ---------- Panama weekly data (separate model — one aggregated row per terminal per week,
   // no per-vessel-call detail). Monthly/Quarterly/Yearly are simple averages of the weeks inside
   // that period, per instruction, since there's no finer-grained data to sum or max from. ----------
@@ -6944,6 +6972,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     initSettingsDefaults();
     await loadAllSettingsFromStorage();
     applyRoleToUI();
+    await reloadMissingRegionalTerminalData();
     normalizeCurrentViewForRole();
     buildMainNav();
     buildTerminalPills();
