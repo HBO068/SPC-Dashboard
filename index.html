@@ -782,8 +782,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 body[data-command-mode="terminal"] .topbar::before,body[data-command-mode="adherence"] .topbar::before,body[data-command-mode="globalreport"] .topbar::before{background-image:linear-gradient(90deg,rgba(4,15,24,.88) 0%,rgba(4,15,24,.58) 23%,rgba(4,15,24,.12) 60%,rgba(4,15,24,.28) 100%),var(--hero-global);filter:saturate(1.03) contrast(1.04);background-position:center center}
 .topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#24dcff 28%,rgba(36,220,255,.25) 65%,transparent);animation:cmdScan 5.4s ease-in-out infinite;opacity:.8}@keyframes cmdScan{0%,100%{transform:translateX(-42%);opacity:.25}50%{transform:translateX(42%);opacity:.9}}
 .brand{position:relative;z-index:3;align-items:flex-start!important}.brand-text .t1{font-size:30px!important;letter-spacing:-.025em;text-transform:uppercase;line-height:1!important;text-shadow:0 2px 18px rgba(0,0,0,.5)}.brand-text .t2{font-size:11px!important;color:#86aab9!important;margin-top:9px!important;letter-spacing:.02em}#brandFlag{position:relative;z-index:4;align-self:flex-start;margin:6px 0 0 6px}
-#commandStatus{position:absolute;z-index:4;right:22px;bottom:20px;min-width:236px;padding:12px 14px 12px 38px;border:1px solid rgba(83,191,221,.20);background:rgba(4,18,28,.76);backdrop-filter:blur(8px);border-radius:6px;font:600 9px var(--mono);letter-spacing:.07em;color:#9bb8c4;text-transform:uppercase}#commandStatus::before{content:"";position:absolute;left:14px;top:50%;width:9px;height:9px;margin-top:-5px;border-radius:50%;background:var(--cmd-green);box-shadow:0 0 0 5px rgba(56,226,154,.08),0 0 16px rgba(56,226,154,.7);animation:statusPulse 2.2s ease-out infinite}@keyframes statusPulse{0%,100%{box-shadow:0 0 0 3px rgba(56,226,154,.07),0 0 10px rgba(56,226,154,.3)}50%{box-shadow:0 0 0 8px rgba(56,226,154,0),0 0 21px rgba(56,226,154,.75)}}#commandStatus b{display:block;color:#edf7fb;font:700 11px var(--display);margin-bottom:3px;letter-spacing:.04em}
-#brandLockup{position:absolute;z-index:5;left:18px;top:10px;display:flex;align-items:center;gap:12px;width:max-content;margin:0;padding:2px 0;border-radius:0;background:transparent;border:0;backdrop-filter:none;box-shadow:none}#brandLockup img{display:block;object-fit:contain;opacity:.98;filter:drop-shadow(0 3px 10px rgba(0,0,0,.18))}#brandLockup .apm{width:146px;height:32px}#brandLockup .maersk{width:74px;height:28px}#brandLockup .sep{width:1px;height:22px;background:rgba(151,194,210,.14)}#heroMetaPanel{position:absolute;z-index:4;right:22px;top:66px;min-width:250px;padding:12px 14px;border:1px solid rgba(83,191,221,.10);background:linear-gradient(180deg,rgba(5,20,31,.52),rgba(4,17,26,.38));backdrop-filter:blur(6px);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.12)}#heroMetaPanel .meta-row{display:flex;justify-content:space-between;gap:16px;padding:5px 0;font:600 10px var(--mono);letter-spacing:.05em;color:#93b2c0;text-transform:uppercase}#heroMetaPanel .meta-row b{color:#f3fbff;font:700 11px var(--display);letter-spacing:.03em}#heroMetaPanel .meta-row.status b{color:#39e29a}#brandTitle .accent{color:#26dbff}#brandSubtitle .accent{color:#dff8ff}.topbar .brand{max-width:64%;padding-top:24px}
+#commandStatus{position:absolute;z-index:4;right:22px;top:14px;bottom:auto;width:236px;box-sizing:border-box;padding:12px 14px 12px 38px;border:1px solid rgba(83,191,221,.20);background:rgba(4,18,28,.76);backdrop-filter:blur(8px);border-radius:6px;font:600 9px var(--mono);letter-spacing:.07em;color:#9bb8c4;text-transform:uppercase}#commandStatus::before{content:"";position:absolute;left:14px;top:50%;width:9px;height:9px;margin-top:-5px;border-radius:50%;background:var(--cmd-green);box-shadow:0 0 0 5px rgba(56,226,154,.08),0 0 16px rgba(56,226,154,.7);animation:statusPulse 2.2s ease-out infinite}@keyframes statusPulse{0%,100%{box-shadow:0 0 0 3px rgba(56,226,154,.07),0 0 10px rgba(56,226,154,.3)}50%{box-shadow:0 0 0 8px rgba(56,226,154,0),0 0 21px rgba(56,226,154,.75)}}#commandStatus b{display:block;color:#edf7fb;font:700 11px var(--display);margin-bottom:3px;letter-spacing:.04em}
+#brandLockup{position:absolute;z-index:5;left:18px;top:10px;display:flex;align-items:center;gap:12px;width:max-content;margin:0;padding:2px 0;border-radius:0;background:transparent;border:0;backdrop-filter:none;box-shadow:none}#brandLockup img{display:block;object-fit:contain;opacity:.98;filter:drop-shadow(0 3px 10px rgba(0,0,0,.18))}#brandLockup .apm{width:146px;height:32px}#brandLockup .maersk{width:74px;height:28px}#brandLockup .sep{width:1px;height:22px;background:rgba(151,194,210,.14)}#heroMetaPanel{position:absolute;z-index:4;right:272px;top:8px;width:300px;box-sizing:border-box;padding:8px 14px;border:1px solid rgba(83,191,221,.10);background:linear-gradient(180deg,rgba(5,20,31,.52),rgba(4,17,26,.38));backdrop-filter:blur(6px);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.12)}#heroMetaPanel .meta-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;font:600 10px var(--mono);letter-spacing:.05em;color:#93b2c0;text-transform:uppercase}#heroMetaPanel .meta-row b{color:#f3fbff;font:700 11px var(--display);letter-spacing:.03em;white-space:nowrap}#heroMetaPanel .meta-row.status b{color:#39e29a}#brandTitle .accent{color:#26dbff}#brandSubtitle .accent{color:#dff8ff}.topbar .brand{max-width:64%;padding-top:24px}
 #mainSectionTabs,#globalSubTabs,.terminal-row,.period-row{position:relative;z-index:2}#mainSectionTabs,.terminal-row,.period-row{background:linear-gradient(180deg,rgba(9,31,44,.88),rgba(6,25,37,.88));border:1px solid rgba(56,143,169,.18);border-radius:6px;padding:7px!important}#mainSectionTabs{margin-bottom:7px!important}#globalSubTabs{margin:0 0 7px!important;background:transparent!important;border:0!important;padding:0!important}.terminal-row{margin-bottom:7px!important;gap:5px!important}.period-row{margin-bottom:14px!important;gap:10px!important}.tabs{background:rgba(3,18,27,.45)!important;border-color:rgba(61,134,158,.17)!important;border-radius:5px!important;padding:3px!important}.tab,.term-pill{border-radius:4px!important;transition:.2s ease!important}.tab.active,.term-pill.active{background:linear-gradient(180deg,#18cceb,#0aa5c8)!important;color:#00131c!important;box-shadow:0 0 22px rgba(23,214,255,.18)!important;border-color:#25dcff!important}.tab:not(.active):hover,.term-pill:not(.active):hover{background:rgba(23,214,255,.07)!important;border-color:rgba(23,214,255,.4)!important;color:#dff8ff!important}.period-picker select,.picker-select,.nav-btn{border-radius:4px!important;background:#081d2a!important;border-color:rgba(69,142,166,.26)!important}
 .section-label{color:#83a4b2!important;font-size:11px!important;letter-spacing:1.8px!important;margin:20px 0 9px!important}.section-label::before{content:"";width:12px;height:12px;border:1px solid #1fdcff;border-radius:2px;box-shadow:inset 0 0 0 3px rgba(31,220,255,.08)}.section-label::after{background:linear-gradient(90deg,rgba(23,214,255,.20),transparent)!important}
 .ncard,.term-card,.gr-kpi-card,.gr-scope-card,.gr-analysis-card,.gr-pareto-card,.adh-card,.adh-panel,.score-card,.vcard,.gauge-card,.trend-card,.chart-card,.table-card,.vscore-card{background:linear-gradient(180deg,rgba(9,31,45,.94),rgba(7,26,39,.92))!important;border:1px solid rgba(56,139,165,.19)!important;border-radius:6px!important;box-shadow:0 10px 28px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.018)}
@@ -793,7 +793,7 @@ body[data-command-mode="terminal"] .ncard,body[data-command-mode="terminal"] .sc
 body[data-command-mode="global"] #networkView,body[data-command-mode="global"] #globalReportView,body[data-command-mode="adherence"] #adherenceView{position:relative}body[data-command-mode="global"] #networkView::before,body[data-command-mode="global"] #globalReportView::before,body[data-command-mode="adherence"] #adherenceView::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.20;background:radial-gradient(circle at 48% 17%,rgba(23,214,255,.10),transparent 26%),linear-gradient(rgba(23,214,255,.032) 1px,transparent 1px),linear-gradient(90deg,rgba(23,214,255,.032) 1px,transparent 1px);background-size:auto,36px 36px,36px 36px;mask-image:linear-gradient(to bottom,black,transparent 70%)}body[data-command-mode="global"] .network-grid{grid-template-columns:1.15fr 1fr 1.35fr 1fr 1fr!important}body[data-command-mode="global"] .network-grid .ncard:nth-child(3){border-color:rgba(23,214,255,.45)!important;box-shadow:0 0 0 1px rgba(23,214,255,.06),0 18px 38px rgba(0,0,0,.18)!important}
 .adh-kpis{gap:10px!important}.adh-card{border-top:1px solid rgba(56,139,165,.19)!important}.adh-card::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;background:linear-gradient(90deg,#24dfff,transparent);opacity:.50}.adh-toolbar,.gr-toolbar{background:rgba(7,26,39,.72);border:1px solid rgba(55,135,160,.16);border-radius:6px;padding:8px!important}
 #maritimeRouteBand{height:22px;position:relative;margin:-3px 0 10px;overflow:hidden;opacity:.78;display:none}body[data-command-mode="global"] #maritimeRouteBand,body[data-command-mode="adherence"] #maritimeRouteBand{display:block}#maritimeRouteBand svg{position:absolute;inset:0;width:100%;height:100%}#maritimeRouteBand .route{stroke-dasharray:7 10;animation:routeMove 3.8s linear infinite}@keyframes routeMove{to{stroke-dashoffset:-34}}
-@media print{#commandStatus,#maritimeRouteBand,#heroMetaPanel{display:none!important}#brandLockup{background:transparent;border:0;box-shadow:none}.topbar{min-height:94px!important}}@media(max-width:1100px){.sidebar{width:142px!important}#brandLockup{display:none}#commandStatus{right:12px;min-width:190px}#heroMetaPanel{display:none}.brand-text .t1{font-size:24px!important}body[data-command-mode="global"] .network-grid{grid-template-columns:repeat(2,1fr)!important}}
+@media print{#commandStatus,#maritimeRouteBand,#heroMetaPanel{display:none!important}#brandLockup{background:transparent;border:0;box-shadow:none}.topbar{min-height:94px!important}}@media(max-width:1380px){#heroMetaPanel{display:none}}@media(max-width:1100px){.sidebar{width:142px!important}#brandLockup{display:none}#commandStatus{right:12px;width:210px}.brand-text .t1{font-size:24px!important}body[data-command-mode="global"] .network-grid{grid-template-columns:repeat(2,1fr)!important}}
 </style>
 
 <style id="weekly-vessel-filter-design-v1">
@@ -887,7 +887,10 @@ html[data-theme="light"] td{color:#16242e}
 
 /* Printing/export: every active report keeps the selected theme, remains fully
    visible, and avoids white-on-white or dark-on-dark text. */
+@page{size:A4 landscape;margin:5mm}
 @media print{
+  html,body{width:100%!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important}
+  body.printing-report .main-area .wrap{zoom:var(--print-fit-scale,1)!important;transform-origin:top left!important}
   html[data-theme="light"] body,html[data-theme="light"] .main-area,html[data-theme="light"] .wrap{background:#f3f6f8!important;color:#16242e!important}
   html[data-theme="dark"] body,html[data-theme="dark"] .main-area,html[data-theme="dark"] .wrap{background:#08161f!important;color:#e9f2f5!important}
   .topbar::before,.topbar::after{animation:none!important}
@@ -2541,8 +2544,19 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       Object.values(Chart.instances).forEach(chart=>{try{chart.stop();chart.resize();chart.update("none");}catch(e){/* keep printing */}});
     }
   }
-  window.addEventListener("beforeprint",prepareCurrentReportForPrint);
-  window.addEventListener("afterprint",()=>document.body.classList.remove("printing-report"));
+  function fitCurrentReportToOnePrintedPage(){
+    prepareCurrentReportForPrint();
+    const wrap=document.querySelector(".main-area .wrap");
+    if(!wrap)return;
+    // A4 landscape printable area at 96 CSS px/in with 5 mm margins.
+    const printableWidth=1085,printableHeight=755;
+    const width=Math.max(wrap.scrollWidth,wrap.getBoundingClientRect().width,1);
+    const height=Math.max(wrap.scrollHeight,wrap.getBoundingClientRect().height,1);
+    const scale=Math.min(1,printableWidth/width,printableHeight/height);
+    document.documentElement.style.setProperty("--print-fit-scale",String(scale));
+  }
+  window.addEventListener("beforeprint",fitCurrentReportToOnePrintedPage);
+  window.addEventListener("afterprint",()=>{document.body.classList.remove("printing-report");document.documentElement.style.removeProperty("--print-fit-scale");});
 
   function exportPeriodName(){
     return ({daily:"Day", weekly:"Week", monthly:"Month", quarterly:"Quarter", yearly:"Year"})[currentType] || "Report";
@@ -2738,22 +2752,17 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       const canvas = await captureCurrentReport();
       if(!window.jspdf || !window.jspdf.jsPDF) throw new Error("PDF export library did not load.");
       const {jsPDF}=window.jspdf;
-      // Export every report on standard A4 landscape pages. Extremely tall custom PDF pages
-      // were clipped by browsers/PDF readers; slicing keeps the complete report printable in
-      // both themes without changing the live dashboard layout.
+      // Fit the complete selected report proportionally onto one A4 landscape page.
+      // The current Light/Dark background is painted first so neither theme loses contrast.
       const pageWidth=841.89,pageHeight=595.28;
       const pdf=new jsPDF({orientation:"landscape",unit:"pt",format:"a4",compress:true});
-      const sliceHeight=Math.max(1,Math.floor(canvas.width*pageHeight/pageWidth));
-      let page=0;
-      for(let y=0;y<canvas.height;y+=sliceHeight){
-        const h=Math.min(sliceHeight,canvas.height-y),slice=document.createElement("canvas");
-        slice.width=canvas.width;slice.height=h;
-        const ctx=slice.getContext("2d");ctx.fillStyle=(CURRENT_THEME==="light"?"#F3F6F8":"#08161F");ctx.fillRect(0,0,slice.width,slice.height);ctx.drawImage(canvas,0,y,canvas.width,h,0,0,canvas.width,h);
-        if(page++)pdf.addPage("a4","landscape");
-        if(CURRENT_THEME==="light")pdf.setFillColor(243,246,248);else pdf.setFillColor(8,22,31);
-        pdf.rect(0,0,pageWidth,pageHeight,"F");
-        pdf.addImage(slice.toDataURL("image/jpeg",.94),"JPEG",0,0,pageWidth,h*pageWidth/canvas.width,undefined,"FAST");
-      }
+      const margin=12,availableWidth=pageWidth-margin*2,availableHeight=pageHeight-margin*2;
+      const scale=Math.min(availableWidth/canvas.width,availableHeight/canvas.height);
+      const imageWidth=canvas.width*scale,imageHeight=canvas.height*scale;
+      const x=(pageWidth-imageWidth)/2,y=(pageHeight-imageHeight)/2;
+      if(CURRENT_THEME==="light")pdf.setFillColor(243,246,248);else pdf.setFillColor(8,22,31);
+      pdf.rect(0,0,pageWidth,pageHeight,"F");
+      pdf.addImage(canvas.toDataURL("image/jpeg",.95),"JPEG",x,y,imageWidth,imageHeight,undefined,"FAST");
       pdf.save(exportBaseName()+".pdf");
     } catch(e){ alert("Could not export PDF: " + e.message); }
   };
@@ -4693,7 +4702,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     management: "Management (view all, edit targets/weights)",
     supervisor: "Supervisor (custom read-only access)",
     planner: "Planner Access — Tangier Terminal Dashboards",
-    regional_access: "Regional Access (Tangier read-only)",
+    regional_access: "Regional Access (Hub/Gateway read-only)",
     data_analyst: "Data Analyst (view all, can upload)",
     terminal: "Terminal (view one terminal only)"
   };
@@ -4726,11 +4735,27 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!config||typeof config!=="object")return true;
     return config[scope]===true;
   }
+  function regionalNetworkTypes(user){
+    return new Set(roleArray(user&&user.networkTypes).filter(x=>x==="Hub"||x==="Gateway"));
+  }
+  function regionalRegistryMatches(user,scope){
+    const types=regionalNetworkTypes(user);
+    if(types.size){
+      const assignment=scope==="panama"?"Panama":"Tangier";
+      const codes=scope==="panama"?PANAMA_TERM_CODES:TERM_CODES;
+      return ADHERENCE_REGISTRY.some(reg=>reg.assignment===assignment&&codes.includes(String(reg.pod||"").trim())&&types.has(String(reg.networkType||"").trim()));
+    }
+    // Compatibility for Regional role records saved before Hub/Gateway access existed.
+    if(scope!=="tangier")return false;
+    const regions=new Set(roleArray(user&&user.regions));
+    return regions.size>0&&ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&TERM_CODES.includes(String(reg.pod||"").trim())&&regions.has(String(reg.region||"").trim()));
+  }
   function canViewTerminalDashboardScope(scope,user=CURRENT_USER){
     if(!user)return false;
     if(["admin","management","data_analyst"].includes(user.role))return true;
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal",scope);
-    if(user.role==="terminal"||user.role==="regional_access"||user.role==="planner")return scope==="tangier";
+    if(user.role==="regional_access")return regionalRegistryMatches(user,scope);
+    if(user.role==="terminal"||user.role==="planner")return scope==="tangier";
     return false;
   }
   function canViewAdherenceScope(scope,user=CURRENT_USER){
@@ -4791,7 +4816,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   async function renderRolesView(){
     setUtilityHeader("User Roles","Shared Planning Center — Access Management");
     const rv = document.getElementById("rolesView");
-    const regionItems=configuredRegions().map(region=>({value:region,label:region}));
+    const networkTypeItems=[{value:"Hub",label:"Hubs"},{value:"Gateway",label:"Gateways"}];
     const yearItems=configuredRoleYears().map(year=>({value:year,label:year}));
     rv.innerHTML = `
       <div class="settings-wrap">
@@ -4835,10 +4860,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           <p class="adh-note" style="margin-top:7px;">Management can modify configuration. Supervisor access is read-only. Terminal and Data Analyst roles always have no Settings access.</p>
         </div>
         <div id="regionalRoleOptions" class="adh-panel" style="display:none;margin:14px 0;">
-          <h3>Regional Access — Tangier Terminal Dashboards Only</h3>
-          <p class="adh-note">Selected regions expose only their Tangier dashboard terminals. Panama terminals are never included, even when a region is shared.</p>
-          <div class="section-label" style="margin-top:12px;">Accessible Regions</div>
-          ${roleCheckGrid("regionalRegion",regionItems,item=>adhEsc(item.label))}
+          <h3>Regional Access — Hub / Gateway Dashboards</h3>
+          <p class="adh-note">Select the network groups this user may see. Access is automatically granted to every linked Tangier or Panama terminal classified in the selected group.</p>
+          <div class="section-label" style="margin-top:12px;">Accessible Network Groups</div>
+          ${roleCheckGrid("regionalNetworkType",networkTypeItems,item=>adhEsc(item.label))}
         </div>
         <div class="adh-panel" style="margin:14px 0;">
           <h3>Accessible Years</h3>
@@ -4882,8 +4907,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(role==="supervisor"||role==="management")doc.scopeDataLoss=document.getElementById("roleScopeDataLoss").checked;
       if(role==="supervisor"||role==="management")doc.settingsAccess=document.getElementById("roleSettingsAccess").checked;
       if(role==="regional_access"){
-        doc.regions=[...document.querySelectorAll('input[name="regionalRegion"]:checked')].map(x=>x.value);
-        if(!doc.regions.length){alert("Select at least one region for Regional Access.");return;}
+        doc.networkTypes=[...document.querySelectorAll('input[name="regionalNetworkType"]:checked')].map(x=>x.value);
+        if(!doc.networkTypes.length){alert("Select Hubs, Gateways, or both for Regional Access.");return;}
       }
       try {
         await db.collection("roles").doc(email).set(doc);
@@ -4909,7 +4934,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       else if(r.role==="supervisor"){
         const td=[],ad=[];if(supervisorModuleAccess(r,"terminal","tangier"))td.push("Tangier");if(supervisorModuleAccess(r,"terminal","panama"))td.push("Panama");if(supervisorModuleAccess(r,"adherence","tangier"))ad.push("Tangier");if(supervisorModuleAccess(r,"adherence","panama"))ad.push("Panama");
         access=`Terminal dashboards: ${td.join(" + ")||"None"}<br>Adherence: ${ad.join(" + ")||"None"}${ad.length===2?" + Global":""}`;
-      }else if(r.role==="regional_access")access=`Tangier regions: ${roleArray(r.regions).join(", ")||"None"}`;
+      }else if(r.role==="regional_access")access=roleArray(r.networkTypes).length?`Network groups: ${roleArray(r.networkTypes).map(x=>x==="Hub"?"Hubs":"Gateways").join(", ")}`:`Tangier regions (legacy): ${roleArray(r.regions).join(", ")||"None"}`;
       else if(r.role==="planner")access="All Tangier terminal dashboards";
       else access="All";
       if(["supervisor","management"].includes(r.role))access+=`<br>Workload Analysis: ${r.workloadAnalysis===true?"Yes":"No"}`;
@@ -4937,7 +4962,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
           document.getElementById("supTerminalTangier").checked=supervisorModuleAccess(r,"terminal","tangier");document.getElementById("supTerminalPanama").checked=supervisorModuleAccess(r,"terminal","panama");document.getElementById("supAdherenceTangier").checked=supervisorModuleAccess(r,"adherence","tangier");document.getElementById("supAdherencePanama").checked=supervisorModuleAccess(r,"adherence","panama");
         }
         if(r.role==="regional_access"){
-          const selected=new Set(roleArray(r.regions));document.querySelectorAll('input[name="regionalRegion"]').forEach(x=>x.checked=selected.has(x.value));
+          const selected=regionalNetworkTypes(r);document.querySelectorAll('input[name="regionalNetworkType"]').forEach(x=>x.checked=selected.has(x.value));
         }
         document.getElementById("newRoleEmail").scrollIntoView({behavior:"smooth",block:"center"});
       };
@@ -6204,7 +6229,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(!scopeValue){const x=await storageGet("adherence_scope:SPC_ADHERENCE",true)||await storageGet("adherence_scope",true);scopeValue=x&&x.value;}
       if(!yearsValue){const x=await storageGet("years:SPC_ADHERENCE",true)||await storageGet("adherence_actual_years",true);yearsValue=x&&x.value;}
       ADHERENCE_REGISTRY = registryValue ? JSON.parse(registryValue) : [];
-      ADHERENCE_REGISTRY.forEach(r=>{if(typeof r.region!=="string"||String(r.region).trim().toLowerCase()==="oceania")r.region="";});
+      ADHERENCE_REGISTRY.forEach(r=>{if(typeof r.region!=="string"||String(r.region).trim().toLowerCase()==="oceania")r.region="";if(r.networkType!=="Hub"&&r.networkType!=="Gateway")r.networkType="";});
       ADHERENCE_SCOPE = scopeValue ? JSON.parse(scopeValue) : {};
       const years = yearsValue ? JSON.parse(yearsValue) : [];
       const docs = await Promise.all(years.map(async y => {
@@ -6455,7 +6480,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function prepareAdherenceRegistryDrafts(){
     collectRegistryEdits();
     const names=adhUnmappedTerminalNames();
-    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""}));
+    names.forEach(name=>ADHERENCE_REGISTRY.push({id:adhId(),biName:name,displayName:name,pod:"",region:"",networkType:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""}));
     if(names.length)adherenceDraftsPending=true;
   }
 
@@ -6464,13 +6489,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       <td><input class="wide" data-k="biName" value="${adhEsc(r.biName)}" ${editable?"":"disabled"}></td><td><input class="wide" data-k="displayName" value="${adhEsc(r.displayName)}" ${editable?"":"disabled"}></td>
       <td><select data-k="pod" ${editable?"":"disabled"}>${adhDashboardTerminalOptions(r.pod)}</select></td>
       <td><select data-k="region" ${editable?"":"disabled"}>${adhRegionSelectOptions(r.region)}</select></td>
+      <td><select data-k="networkType" ${editable?"":"disabled"}><option value="">Select Type</option>${["Hub","Gateway"].map(x=>`<option value="${x}" ${r.networkType===x?"selected":""}>${x}</option>`).join("")}</select></td>
       <td><select data-k="assignment" ${editable?"":"disabled"}>${["None","Tangier","Panama"].map(x=>`<option ${r.assignment===x?"selected":""}>${x}</option>`).join("")}</select></td>
       <td><input type="checkbox" data-k="inScope" title="Include this OPS-controlled terminal in Adherence targets" ${r.inScope?"checked":""} ${editable?"":"disabled"}></td><td><input type="checkbox" data-k="opsControlled" title="Checked includes this terminal in actual Adherence Calls and Moves" ${r.opsControlled?"checked":""} ${editable?"":"disabled"}></td>
       <td><input type="date" data-k="effectiveFrom" value="${adhEsc(r.effectiveFrom)}" ${editable?"":"disabled"}></td><td><input type="date" data-k="effectiveTo" value="${adhEsc(r.effectiveTo)}" ${editable?"":"disabled"}></td>
       </tr>`).join("");
     return `<div class="adh-panel"><h3>Adherence Terminal Registry</h3><p>Use the Display Terminal Name in reports. Link a BI terminal to an uploaded Tangier/Panama terminal only when SPC has a planned source; leave the link blank for a legitimate BI-only terminal, which remains in Adherence with Planned 0. These settings never create or modify performance dashboards.</p>
       <div class="adh-toolbar">${editable?`<button class="btn-primary" id="adhAddTerminal">+ Add Terminal</button>${unmapped.length?`<button class="btn-primary" id="adhPrepareTerminals">Prepare ${unmapped.length} BI Terminal${unmapped.length===1?"":"s"}</button>`:""}<button class="btn-secondary" id="adhSaveRegistry">Save to Database</button><button class="btn-secondary" id="adhImportConfig">Import Configuration Excel</button>`:""}<button class="btn-secondary" id="adhExportConfig">Export Configuration Excel</button><input id="adhConfigFile" type="file" accept=".xlsx,.xlsm" hidden></div>
-      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Set the Display Terminal Name, Tangier/Panama assignment and Region; link only terminals that have a planned dashboard source.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the display settings, then save once.`:"Exact BI Terminal Name matches the BI upload. Display Terminal Name is used in COO reports. A blank dashboard link is valid and contributes BI actuals with Planned 0."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>Linked Dashboard Terminal</th><th>Region</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="9" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
+      <div id="adhConfigStatus" class="adh-status ${adherenceDraftsPending?"watch":""}">${adherenceDraftsPending?"Draft terminal rows are prepared but not saved. Set the Display Terminal Name, Region, Hub/Gateway type and Tangier/Panama assignment; link only terminals that have a planned dashboard source.":unmapped.length?`${unmapped.length} uploaded BI terminal name${unmapped.length===1?" is":"s are"} not configured. Prepare them as draft rows, complete the display settings, then save once.`:"Exact BI Terminal Name matches the BI upload. Hub/Gateway classification controls Regional role access. A blank dashboard link is valid and contributes BI actuals with Planned 0."}</div><div class="adh-table-wrap"><table class="adh-table adh-terminal-table"><thead><tr><th>Exact BI Terminal Name</th><th>Display Terminal Name</th><th>Linked Dashboard Terminal</th><th>Region</th><th>Hub / Gateway</th><th>Belongs To</th><th>In Scope (Target)</th><th>OPS Controlled</th><th>Effective From</th><th>Effective To</th></tr></thead><tbody>${rows||'<tr><td colspan="10" class="empty-note">No terminals configured yet. Use Prepare BI Terminals, or import a configuration workbook.</td></tr>'}</tbody></table></div></div>`;
   }
   function adherenceConfigYears(){
     const years=new Set(Object.keys(ADHERENCE_SCOPE).concat(ADHERENCE_ACTUAL.map(r=>String(r.year))));
@@ -6688,14 +6714,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     await persistAdherenceConfig(); invalidateAdherenceCache(); adherenceDraftsPending=false; document.getElementById("adhConfigStatus").className="adh-status good";document.getElementById("adhConfigStatus").textContent="✓ Adherence terminal links saved. These settings do not create or change performance dashboards.";
   }
   function exportAdherenceConfig(){
-    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"Region":r.region||"","SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Effective From":r.effectiveFrom,"Effective To":r.effectiveTo}));
+    const terms=ADHERENCE_REGISTRY.map(r=>({"Exact BI Terminal Name":r.biName,"Display Terminal Name":r.displayName,"POD":r.pod,"Region":r.region||"","Hub / Gateway":r.networkType||"","SPC Assignment":r.assignment,"In Scope":r.inScope?"Yes":"No","OPS Controlled":r.opsControlled?"Yes":"No","Effective From":r.effectiveFrom,"Effective To":r.effectiveTo}));
     const scope=[]; Object.keys(ADHERENCE_SCOPE).sort().forEach(y=>ADHERENCE_REGISTRY.forEach(r=>{const v=(ADHERENCE_SCOPE[y]||{})[r.id]||[];const o={Year:Number(y),"Exact BI Terminal Name":r.biName,POD:r.pod,Region:r.region||""};["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].forEach((m,i)=>o[m]=v[i]==null?null:v[i]);scope.push(o);}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(terms),"Terminals");XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(scope),"Monthly Scope %");XLSX.writeFile(wb,"SPC_Adherence_Configuration.xlsx");
   }
   function importAdherenceConfig(buffer){
     const wb=XLSX.read(buffer,{type:"array",cellDates:true}), ts=wb.Sheets["Terminals"], ss=wb.Sheets["Monthly Scope %"];
     if(!ts) throw new Error('Sheet "Terminals" is required.');
-    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}const importedRegion=Object.prototype.hasOwnProperty.call(o,"Region")?String(o.Region||"").trim():String(r.region||"").trim(),region=ADHERENCE_REGION_OPTIONS.includes(importedRegion)?importedRegion:"";Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),region,assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||"")}); });
+    XLSX.utils.sheet_to_json(ts,{defval:""}).forEach(o=>{ const bi=String(o["Exact BI Terminal Name"]||"").trim();if(!bi)return;let r=ADHERENCE_REGISTRY.find(x=>x.biName===bi);if(!r){r={id:adhId()};ADHERENCE_REGISTRY.push(r);}const importedRegion=Object.prototype.hasOwnProperty.call(o,"Region")?String(o.Region||"").trim():String(r.region||"").trim(),region=ADHERENCE_REGION_OPTIONS.includes(importedRegion)?importedRegion:"",importedNetworkType=Object.prototype.hasOwnProperty.call(o,"Hub / Gateway")?String(o["Hub / Gateway"]||"").trim():String(r.networkType||"").trim(),networkType=/^hubs?$/i.test(importedNetworkType)?"Hub":/^gateways?$/i.test(importedNetworkType)?"Gateway":"";Object.assign(r,{biName:bi,displayName:String(o["Display Terminal Name"]||bi).trim(),pod:String(o.POD||"").trim(),region,networkType,assignment:String(o["SPC Assignment"]||"None").trim(),inScope:/^(yes|true|1)$/i.test(o["In Scope"]),opsControlled:/^(yes|true|1)$/i.test(o["OPS Controlled"]),effectiveFrom:String(o["Effective From"]||""),effectiveTo:String(o["Effective To"]||"")}); });
     if(ss) XLSX.utils.sheet_to_json(ss,{defval:""}).forEach(o=>{const y=String(o.Year||"").trim(),r=ADHERENCE_REGISTRY.find(x=>x.biName===String(o["Exact BI Terminal Name"]||"").trim());if(!y||!r)return;if(!ADHERENCE_SCOPE[y])ADHERENCE_SCOPE[y]={};ADHERENCE_SCOPE[y][r.id]=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map(m=>{if(o[m]==="")return null;const n=Number(o[m]),normalized=n>1?n/100:n;if(!Number.isFinite(n)||normalized<0||normalized>1)throw new Error(`Invalid ${m} target for ${r.biName} in ${y}. Enter a value from 0% to 100%.`);return normalized;});});
   }
   function wireAdherenceView(){
@@ -6708,7 +6734,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(adherencePage==="uploads"){const b=document.getElementById("adhChooseActual");if(b)b.onclick=()=>uploadAdherenceFile.click();}
     if(adherencePage==="terminals"){
       const add=document.getElementById("adhAddTerminal"),prepare=document.getElementById("adhPrepareTerminals"),save=document.getElementById("adhSaveRegistry"),imp=document.getElementById("adhImportConfig"),exp=document.getElementById("adhExportConfig"),file=document.getElementById("adhConfigFile");
-      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",region:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
+      if(add)add.onclick=()=>{collectRegistryEdits();ADHERENCE_REGISTRY.push({id:adhId(),biName:"",displayName:"",pod:"",region:"",networkType:"",assignment:"None",inScope:false,opsControlled:false,effectiveFrom:"",effectiveTo:""});adherenceDraftsPending=true;rerenderAdherenceSurface();};
       if(prepare)prepare.onclick=()=>{prepareAdherenceRegistryDrafts();rerenderAdherenceSurface();};
       if(save)save.onclick=()=>saveRegistryFromUI().catch(e=>{document.getElementById("adhConfigStatus").textContent="✗ "+e.message;});
       if(imp)imp.onclick=()=>file.click(); if(exp)exp.onclick=exportAdherenceConfig;
@@ -6745,7 +6771,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   // ---------- Roles ----------
-  // roles/{email}: standard roles; terminal:{terminal}; supervisor:{terminals,terminalDashboards,adherenceDashboards}; regional_access:{regions}.
+  // roles/{email}: standard roles; terminal:{terminal}; supervisor:{terminals,terminalDashboards,adherenceDashboards}; regional_access:{networkTypes}.
   let CURRENT_USER = null;
   function can(action){
     if (!CURRENT_USER) return false;
@@ -6762,6 +6788,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (user.role === "terminal") return [user.terminal];
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)||canViewScopeLoss(user)?null:[];
     if(user.role==="regional_access"){
+      const types=regionalNetworkTypes(user);
+      if(types.size)return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&types.has(String(reg.networkType||"").trim())));
       const regions=new Set(roleArray(user.regions));
       return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&regions.has(String(reg.region||"").trim())));
     }
@@ -6770,6 +6798,10 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function allowedPanamaTerminalsFor(user){
     if(!user)return [];
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","panama")||supervisorModuleAccess(user,"adherence","panama")?null:[];
+    if(user.role==="regional_access"){
+      const types=regionalNetworkTypes(user);
+      return types.size?PANAMA_TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Panama"&&String(reg.pod||"").trim()===term&&types.has(String(reg.networkType||"").trim()))):[];
+    }
     if(["admin","management","data_analyst"].includes(user.role))return null;
     return [];
   }
@@ -6880,8 +6912,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     // Load independent datasets in parallel, but do not download an entire module that this role
     // cannot open. This changes reads only; no stored data or database structure is modified.
-    const needsPanama=canViewTerminalDashboardScope("panama")||canViewAdherenceScope("panama")||canAccessSettings();
-    const needsAdherence=hasAdherenceDashboardAccess()||canAccessSettings()||can("upload");
+    const regionalLogin=CURRENT_USER&&CURRENT_USER.role==="regional_access";
+    const needsPanama=regionalLogin||canViewTerminalDashboardScope("panama")||canViewAdherenceScope("panama")||canAccessSettings();
+    const needsAdherence=regionalLogin||hasAdherenceDashboardAccess()||canAccessSettings()||can("upload");
     const needsSqdc=canViewSqdc()||canViewSqdcRegistry()||canViewSqdcHistory()||canAccessSettings();
     const needsScopeLoss=canViewScopeLoss()||canEditScopeLoss()||canAccessSettings();
     const initialLoads=[loadUploadedDataFromStorage(),loadImportedTargetsFromStorage()];
