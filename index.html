@@ -4741,13 +4741,20 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   function regionalRegions(user){
     return new Set(roleArray(user&&user.regions).map(x=>String(x).trim()).filter(Boolean));
   }
-  function regionalRegistryMatches(user,scope){
-    const types=regionalNetworkTypes(user);
-    const regions=regionalRegions(user);
-    const assignment=scope==="panama"?"Panama":"Tangier";
-    const codes=scope==="panama"?PANAMA_TERM_CODES:TERM_CODES;
+  function regionalTerminalAllowed(user,scope,term){
+    const types=regionalNetworkTypes(user),regions=regionalRegions(user);
     if(!types.size&&!regions.size)return false;
-    return ADHERENCE_REGISTRY.some(reg=>reg.assignment===assignment&&codes.includes(String(reg.pod||"").trim())&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim())));
+    const assignment=scope==="panama"?"Panama":"Tangier";
+    return ADHERENCE_REGISTRY.some(reg=>
+      reg.assignment===assignment&&
+      String(reg.pod||"").trim()===String(term||"").trim()&&
+      (!regions.size||regions.has(String(reg.region||"").trim()))&&
+      (!types.size||types.has(String(reg.networkType||"").trim()))
+    );
+  }
+  function regionalRegistryMatches(user,scope){
+    const codes=scope==="panama"?PANAMA_TERM_CODES:TERM_CODES;
+    return codes.some(term=>regionalTerminalAllowed(user,scope,term));
   }
   function canViewTerminalDashboardScope(scope,user=CURRENT_USER){
     if(!user)return false;
@@ -6793,10 +6800,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if (user.role === "terminal") return [user.terminal];
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","tangier")||supervisorModuleAccess(user,"adherence","tangier")||canViewWorkloadAnalysis(user)||canViewScopeLoss(user)?null:[];
     if(user.role==="regional_access"){
-      const types=regionalNetworkTypes(user);
-      const regions=regionalRegions(user);
-      if(!types.size&&!regions.size)return [];
-      return TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Tangier"&&String(reg.pod||"").trim()===term&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim()))));
+      return TERM_CODES.filter(term=>regionalTerminalAllowed(user,"tangier",term));
     }
     return null; // null = all terminals
   }
@@ -6804,10 +6808,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(!user)return [];
     if(user.role==="supervisor")return supervisorModuleAccess(user,"terminal","panama")||supervisorModuleAccess(user,"adherence","panama")?null:[];
     if(user.role==="regional_access"){
-      const types=regionalNetworkTypes(user);
-      const regions=regionalRegions(user);
-      if(!types.size&&!regions.size)return [];
-      return PANAMA_TERM_CODES.filter(term=>ADHERENCE_REGISTRY.some(reg=>reg.assignment==="Panama"&&String(reg.pod||"").trim()===term&&(!types.size||types.has(String(reg.networkType||"").trim()))&&(!regions.size||regions.has(String(reg.region||"").trim()))));
+      return PANAMA_TERM_CODES.filter(term=>regionalTerminalAllowed(user,"panama",term));
     }
     if(["admin","management","data_analyst"].includes(user.role))return null;
     return [];
@@ -6841,6 +6842,12 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       if(setFirstAllowedPerformanceView())return;
     }
     const currentScope=(currentTerminal==="PANAMA"||PANAMA_TERM_CODES.includes(currentTerminal))?"panama":"tangier";
+    if(CURRENT_USER&&CURRENT_USER.role==="regional_access"){
+      const aggregate=currentTerminal==="ALL"||currentTerminal==="PANAMA"||currentTerminal==="SPCS";
+      if(!aggregate&&!regionalTerminalAllowed(CURRENT_USER,currentScope,currentTerminal)){
+        if(setFirstAllowedPerformanceView())return;
+      }
+    }
     if(hasTerminalDashboardAccess()&&canViewTerminalDashboardScope(currentScope))return;
     if(setFirstAllowedPerformanceView())return;
     if(hasAdherenceDashboardAccess()){
