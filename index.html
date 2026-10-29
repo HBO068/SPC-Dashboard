@@ -2232,9 +2232,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     if(typeof sqdcInvalidateDataIndex==="function")sqdcInvalidateDataIndex();
   }
 
-  // ---------- Panama weekly data (separate model — one aggregated row per terminal per week,
-  // no per-vessel-call detail). Monthly/Quarterly/Yearly are simple averages of the weeks inside
-  // that period, per instruction, since there's no finer-grained data to sum or max from. ----------
+  // ---------- Panama weekly data ----------
+  // Calls and Moves are volumes and are always summed across the selected weeks.
+  // Performance KPI results are averaged across the selected weeks.
   const PANAMA_DATA = {}; // termCode -> { weekKey -> {startDate,endDate,kpis} }
   let PANAMA_TERM_CODES = [];
 
@@ -3791,9 +3791,8 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return rawKey;
   }
   // ---------- Panama view ----------
-  // Panama's granularity floor is the WEEK (no per-vessel or daily data at all). Monthly/Quarterly/
-  // Yearly are simple averages of whichever weeks fall inside that period, per instruction — there
-  // is no finer data to sum or max from, unlike the Tangier terminals.
+  // Panama's display granularity floor is the WEEK. Monthly/Quarterly/Yearly performance KPIs
+  // average the included weekly results; Calls and Moves always sum the included weekly volumes.
   function panamaAllWeekKeys(){
     const keys = new Set();
     PANAMA_TERM_CODES.forEach(t => Object.keys(PANAMA_DATA[t]||{}).forEach(wk => keys.add(wk)));
@@ -3874,6 +3873,9 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
       return key?w.kpis[key]:null;
     }).filter(v => v !== null && v !== undefined && !isNaN(v));
     if (!vals.length) return null;
+    // Calls and Moves are operational volumes, not KPI rates. They must remain additive for
+    // weekly, monthly, quarterly and yearly views. Only performance KPIs are averaged.
+    if(canonical==="Calls"||canonical==="Moves")return vals.reduce((a,b)=>a+Number(b),0);
     return vals.reduce((a,b)=>a+b,0) / vals.length;
   }
   function panamaFmt(name, v){
@@ -5111,7 +5113,25 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
   }
 
   async function eraseTangierTerminal(term){
-    // DATA ONLY: targets/catalog/settings are deliberately independent and must survive a data erase.
+    // DATA ONLY: targets/catalog/settings and the Scope & Data Loss Missing Backups
+    // registry are deliberately independent and must survive a dashboard-data erase.
+    // Read the registry directly before deleting operational rows, then verify it afterwards.
+    // The restore branch is defensive: the delete path below never targets these documents,
+    // but this makes the separation explicit and protects the registry from future regressions.
+    const protectedScopeLossDocs = {};
+    try{
+      const scopeYearsSnap = await db.collection("meta").doc("scope_loss_years").get();
+      if(scopeYearsSnap.exists)protectedScopeLossDocs.scope_loss_years=scopeYearsSnap.data();
+      const scopeYears = scopeYearsSnap.exists && scopeYearsSnap.data().value
+        ? JSON.parse(scopeYearsSnap.data().value) : [];
+      await Promise.all((scopeYears||[]).map(async year=>{
+        const key="scope_loss_registry_"+String(year),snap=await db.collection("meta").doc(key).get();
+        if(snap.exists)protectedScopeLossDocs[key]=snap.data();
+      }));
+    }catch(e){
+      console.warn("Could not snapshot Scope & Data Loss registry before dashboard erase",e);
+      throw new Error("Dashboard data was not erased because the Missing Backups registry could not be protected.");
+    }
     const yres = await storageGet("years:"+term, true);
     const years = (yres && yres.value) ? JSON.parse(yres.value) : [];
     for (const year of years){
@@ -5129,6 +5149,14 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     }
     // Clear only the years registry. Do NOT delete catalog, settings, targets or known_terminals.
     await db.collection("terminals").doc(term).collection("meta").doc("years").delete().catch(()=>{});
+
+    // Confirm every protected Scope & Data Loss document still exists with exactly the same
+    // saved content. Restore only if a future change ever causes an unintended modification.
+    for(const [key,saved] of Object.entries(protectedScopeLossDocs)){
+      const ref=db.collection("meta").doc(key),after=await ref.get();
+      const unchanged=after.exists&&JSON.stringify(after.data())===JSON.stringify(saved);
+      if(!unchanged)await ref.set(saved);
+    }
 
     if (DATA[term]) DATA[term].rows = [];
     currentPeriod = null;
@@ -5600,6 +5628,11 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     await Promise.all([storageSet("scope_loss_years",JSON.stringify(SCOPE_LOSS_YEARS),true),storageSet("scope_loss_registry_"+year,JSON.stringify(SCOPE_LOSS_REGISTRY[year]||{}),true)]);
   }
   function scopeLossUploadedTerms(){return TERM_CODES.filter(term=>(DATA[term]?.rows||[]).some(r=>String(r["Id visit"]??"").trim()));}
+  function scopeLossRegistryTerms(){
+    const terms=new Set(scopeLossUploadedTerms());
+    Object.values(SCOPE_LOSS_REGISTRY||{}).forEach(yearBucket=>Object.keys(yearBucket||{}).forEach(term=>terms.add(term)));
+    return sortTermCodes([...terms].filter(term=>TERM_CODES.includes(term)));
+  }
   function scopeLossAvailableYears(){
     const years=new Set(SCOPE_LOSS_YEARS.map(String));
     for(let year=2020;year<=new Date().getUTCFullYear();year++)years.add(String(year));
@@ -5670,7 +5703,7 @@ window.__ASSETS__ = {"flags": {"BHBAH": "data:image/png;base64,iVBORw0KGgoAAAANS
     return `<div class="scope-loss-toolbar no-print"><div class="scope-loss-field"><label>Year</label><select id="scopeLossYear">${years.map(y=>`<option value="${y}" ${y===scopeLossYear?'selected':''}>${y}</option>`).join("")}</select></div><div class="scope-loss-field"><label>Period</label><select id="scopeLossMonth"><option value="all" ${scopeLossMonth==='all'?'selected':''}>Full Year</option>${SCOPE_LOSS_MONTHS.map((name,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${scopeLossMonth===String(i+1).padStart(2,'0')?'selected':''}>${name}</option>`).join("")}</select></div></div><div class="section-label">SCOPE &amp; DATA LOSS · ${adhEsc(period.toUpperCase())}</div>${terms.length?`${scopeLossSummaryCardsHtml(terms,scopeLossYear,scopeLossMonth)}<div class="scope-loss-grid">${terms.map(term=>{const s=scopeLossSummary(term,scopeLossYear,scopeLossMonth),color=scopeLossColor(term);return `<div class="scope-loss-card ${s.complete?'':'incomplete'}"><h3>${adhEsc(period)} Missing Backups (${adhEsc(term)})</h3>${s.complete?`<div class="scope-loss-card-body"><div class="scope-loss-chart-box"><canvas id="scopeLossChart_${adhEsc(term)}"></canvas></div></div>`:''}<div class="scope-loss-metrics"><div class="scope-loss-metric" style="--metric-color:${color}"><span>Vessels in Period</span><b>${fmtNum(s.total,0)}</b></div><div class="scope-loss-metric" style="--metric-color:#e5232f"><span>Missing Vessels</span><b>${s.complete?fmtNum(s.missing,0):'—'}</b></div></div>${s.complete?`<div class="scope-loss-legend"><span><i style="background:#e5232f"></i>Missing</span><span><i style="background:${color}"></i>Available Data</span></div>`:`<div class="scope-loss-empty">Missing backups are pending entry for ${scopeLossMonth==='all'?'one or more active months':period}.</div>`}</div>`;}).join("")}</div>`:'<div class="empty-note">No Tangier dashboard vessel visits are available for the selected period.</div>'}`;
   }
   function scopeLossRegistryHtml(){
-    const years=scopeLossAvailableYears(),terms=scopeLossUploadedTerms();
+    const years=scopeLossAvailableYears(),terms=scopeLossRegistryTerms();
     if(!terms.length)return '<div class="empty-note">Upload Tangier Dashboard Data before entering Missing Backups.</div>';
     if(!scopeLossTerm||!terms.includes(scopeLossTerm))scopeLossTerm=terms[0];
     const bucket=SCOPE_LOSS_REGISTRY[String(scopeLossYear)]?.[scopeLossTerm]||{};
